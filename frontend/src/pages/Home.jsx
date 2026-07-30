@@ -9,7 +9,17 @@ import { inr } from '@/lib/utils';
 const HERO_IMG = 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=1600&auto=format&fit=crop&q=80';
 
 export default function Home() {
-  const bestSellers = PRODUCTS.filter((p) => p.bestseller).concat(PRODUCTS.slice(0, 4)).slice(0, 6);
+  const bestSellers = React.useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const p of PRODUCTS.filter((p) => p.bestseller).concat(PRODUCTS)) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      out.push(p);
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, []);
 
   return (
     <div>

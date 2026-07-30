@@ -1,62 +1,34 @@
 [
   {
-    "content": "Phase 1: POC payment core (webhook + atomic stock + idempotent orders)",
+    "content": "Phase 1: POC payment core (webhook + atomic stock + idempotent orders) — 5/5 assertions passed",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Scaffold theme + global layout (header, footer, WhatsApp float, mobile bottom tab bar, hamburger drawer)",
+    "content": "Phase 2: Full 52-route customer app + mocked auth + backend catalog/utility APIs — testing 100%",
     "status": "completed"
   },
   {
-    "content": "Phase 2: All 10 Shopping & Discovery pages (Home, Search, PLP, PDP, Gift Hampers list+detail, Wedding, Corporate, Festival, Offers)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Build Your Own Hamper 6-step wizard with live budget summary",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Cart, Checkout, Order Success/Failed, Track Order visual pages",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Auth pages (Login, Signup, Forgot, OTP)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Content pages (About, Contact, Store Locator, Blog, Careers, FAQs, Policies, 404)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: My Account (Dashboard, Wishlist, Orders, Order Detail, Return/Cancel, Addresses, Payment Methods, Loyalty, Settings)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Admin panel with silent /admin/* redirect (Dashboard, Products, Orders, Inventory, Customers, Coupons)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Backend catalog/coupon/pincode/tracking/contact/enquiry APIs",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: Fix image URLs (loremflickr + verified Unsplash) + JSX unicode escape rendering",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 2: End-to-end testing via testing_agent_v3",
-    "status": "in_progress"
-  },
-  {
-    "content": "Phase 3: Wire real backend data + mock JWT auth + payment core into checkout",
+    "content": "Phase 3: Replace mockCatalog with /api/catalog data, wire checkout to Phase 1 payment core, backend JWT auth",
     "status": "pending"
   },
   {
-    "content": "Phase 6: AI Gift Advisor + Nano Banana hamper image generation",
+    "content": "Phase 3: End-to-end testing via testing_agent_v3",
     "status": "pending"
   },
   {
-    "content": "Phase 7: Firebase + Razorpay swap-in readiness + final security review + mobile 375/768/1440 verification",
+    "content": "Phase 4: My Account/Tracking/Returns backed by real per-user data",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 5: Admin backend CRUD (products/orders/inventory/customers/coupons)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 6: AI Gift Advisor (LlmChat) + Nano Banana hamper image generation",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 7: Firebase + Razorpay swap-in, rate limiting, mobile QA 375/768/1440",
     "status": "pending"
   }
 ]
