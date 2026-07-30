@@ -3,10 +3,11 @@ import { Link, useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/shared/Breadcrumb';
 import { CheckCircle2, Package, MapPin, Truck, Copy } from 'lucide-react';
 import ProductCard, { SectionHeader } from '@/components/shared/ProductCard';
-import { PRODUCTS } from '@/data/mockCatalog';
+import { useProducts, ProductSkeleton } from '@/lib/catalog';
 
 export default function OrderSuccess() {
   const { orderId = 'ord_XXXXX' } = useParams();
+  const { data: PRODUCTS, loading } = useProducts({ bestseller: true, limit: 6 });
   return (
     <div>
       <div className="bg-cream-300 relative overflow-hidden">
@@ -36,7 +37,7 @@ export default function OrderSuccess() {
       <div className="sk-container pb-16">
         <SectionHeader title="You May Also Like" />
         <div className="sk-scroll-x md:grid md:grid-cols-4 md:gap-4 md:scroll-auto">
-          {PRODUCTS.slice(0, 6).map((p) => <ProductCard key={p.id} p={p} />)}
+          {loading ? Array.from({length:6}).map((_,i)=><ProductSkeleton key={i} />) : PRODUCTS.slice(0, 6).map((p) => <ProductCard key={p.id} p={p} />)}
         </div>
       </div>
     </div>

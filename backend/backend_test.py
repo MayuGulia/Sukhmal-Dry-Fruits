@@ -92,7 +92,7 @@ def main():
 
     # ========== CATALOG APIs ==========
     print("\n" + "=" * 70)
-    print("SECTION 2: CATALOG APIs")
+    print("SECTION 2: CATALOG APIs (Real Catalog - 85 Products, 7 Categories, 9 Hampers)")
     print("=" * 70)
     
     # Seed catalog first (idempotent)
@@ -101,35 +101,125 @@ def main():
         "POST", "/seed/catalog", 200
     )
     
-    tester.test(
-        "List all products - GET /api/catalog/products",
+    # Test categories
+    success, resp = tester.test(
+        "List categories - GET /api/catalog/categories (expect 7)",
+        "GET", "/catalog/categories", 200
+    )
+    if success and resp:
+        data = resp.json()
+        if len(data) == 7:
+            print(f"   ✓ Got 7 categories: {', '.join([c['name'] for c in data])}")
+        else:
+            print(f"   ⚠ Expected 7 categories, got {len(data)}")
+    
+    # Test all products
+    success, resp = tester.test(
+        "List all products - GET /api/catalog/products (expect 85)",
         "GET", "/catalog/products", 200
     )
+    if success and resp:
+        data = resp.json()
+        if len(data) == 85:
+            print(f"   ✓ Got 85 products")
+        else:
+            print(f"   ⚠ Expected 85 products, got {len(data)}")
     
-    tester.test(
-        "List products by category - GET /api/catalog/products?category=nuts",
+    # Test category filter
+    success, resp = tester.test(
+        "List products by category - GET /api/catalog/products?category=nuts (expect 28)",
         "GET", "/catalog/products?category=nuts", 200
     )
+    if success and resp:
+        data = resp.json()
+        if len(data) == 28:
+            print(f"   ✓ Got 28 products in 'nuts' category")
+        else:
+            print(f"   ⚠ Expected 28 products in 'nuts', got {len(data)}")
     
-    tester.test(
-        "Search products - GET /api/catalog/products?q=almond",
-        "GET", "/catalog/products?q=almond", 200
+    # Test bestseller filter
+    success, resp = tester.test(
+        "List bestsellers - GET /api/catalog/products?bestseller=true&limit=6",
+        "GET", "/catalog/products?bestseller=true&limit=6", 200
     )
+    if success and resp:
+        data = resp.json()
+        if len(data) <= 6 and all(p.get('bestseller') for p in data):
+            print(f"   ✓ Got {len(data)} bestseller products")
+        else:
+            print(f"   ⚠ Bestseller filter issue: got {len(data)} products")
     
-    tester.test(
-        "Get product by slug - GET /api/catalog/product/california-almonds-premium",
-        "GET", "/catalog/product/california-almonds-premium", 200
+    # Test search
+    success, resp = tester.test(
+        "Search products - GET /api/catalog/products?q=kaju (cashew search)",
+        "GET", "/catalog/products?q=kaju", 200
     )
+    if success and resp:
+        data = resp.json()
+        if len(data) > 0:
+            print(f"   ✓ Search 'kaju' returned {len(data)} products")
+        else:
+            print(f"   ⚠ Search 'kaju' returned no products")
+    
+    # Test sort
+    success, resp = tester.test(
+        "Sort products - GET /api/catalog/products?sort=price-asc&limit=10",
+        "GET", "/catalog/products?sort=price-asc&limit=10", 200
+    )
+    if success and resp:
+        data = resp.json()
+        if len(data) > 0:
+            prices = [p['price'] for p in data]
+            if prices == sorted(prices):
+                print(f"   ✓ Products sorted by price ascending: {prices[:3]}...")
+            else:
+                print(f"   ⚠ Sort not working correctly")
+    
+    # Test product detail
+    success, resp = tester.test(
+        "Get product by slug - GET /api/catalog/product/kaju-320-n",
+        "GET", "/catalog/product/kaju-320-n", 200
+    )
+    if success and resp:
+        data = resp.json()
+        required_fields = ['description', 'highlights', 'allergen_info', 'variants', 'images']
+        missing = [f for f in required_fields if f not in data]
+        if not missing:
+            print(f"   ✓ Product has all required fields: {', '.join(required_fields)}")
+            print(f"   ✓ Variants: {len(data['variants'])}, Images: {len(data['images'])}")
+        else:
+            print(f"   ⚠ Missing fields: {missing}")
     
     tester.test(
         "Get non-existent product - GET /api/catalog/product/nonexistent",
         "GET", "/catalog/product/nonexistent", 404
     )
     
-    tester.test(
-        "List hampers - GET /api/catalog/hampers",
+    # Test hampers
+    success, resp = tester.test(
+        "List hampers - GET /api/catalog/hampers (expect 9)",
         "GET", "/catalog/hampers", 200
     )
+    if success and resp:
+        data = resp.json()
+        if len(data) == 9:
+            print(f"   ✓ Got 9 hampers")
+        else:
+            print(f"   ⚠ Expected 9 hampers, got {len(data)}")
+    
+    # Test hamper detail
+    success, resp = tester.test(
+        "Get hamper by slug - GET /api/catalog/hamper/royal-gold-hamper",
+        "GET", "/catalog/hamper/royal-gold-hamper", 200
+    )
+    if success and resp:
+        data = resp.json()
+        required_fields = ['tier', 'tags', 'contents', 'description']
+        missing = [f for f in required_fields if f not in data]
+        if not missing:
+            print(f"   ✓ Hamper has all required fields")
+        else:
+            print(f"   ⚠ Missing fields: {missing}")
 
     # ========== CHECKOUT APIs ==========
     print("\n" + "=" * 70)

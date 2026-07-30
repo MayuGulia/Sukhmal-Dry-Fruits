@@ -289,14 +289,78 @@ class Hamper(BaseModel):
     stock: int = 100
 
 
+# --- Image URL builder (loremflickr with topic keywords + confirmed food fallbacks) ---
+_LOREM = "https://loremflickr.com/{w}/{w}/{kw}?lock={lock}"
+_KW_MAP = {
+    "cashews": "cashews,nuts,food",
+    "almonds": "almonds,nuts,food",
+    "pistachios": "pistachios,nuts,food",
+    "walnuts": "walnuts,nuts,food",
+    "raisins": "raisins,dried,fruit",
+    "medjool": "dates,medjool,fruit",
+    "anjeer": "fig,dried,fruit",
+    "chia": "chia,seeds,food",
+    "cranberries": "cranberries,dried,fruit",
+    "nuts": "mixednuts,food,nuts",
+    "dry-fruits": "driedfruit,mix,food",
+    "seeds": "seeds,healthy,food",
+    "dates": "dates,fruit,food",
+    "berries": "berries,dried,fruit",
+    "royal-gold": "gift,basket,luxury,fruit",
+    "diwali": "diwali,gift,indian",
+    "wedding-c": "wedding,gift,basket",
+    "corp-elite": "gift,corporate,fruit",
+    "birthday": "birthday,gift,basket",
+    "rakhi": "rakhi,indian,festival",
+    "eid": "eid,dates,gift",
+    "christmas": "christmas,gift,basket",
+    "new-year": "newyear,gift,basket",
+}
+
+
+def _img_url(key: str, w: int = 800, seed: Optional[str] = None) -> str:
+    kw = _KW_MAP.get(key, "driedfruit,nuts,food")
+    lock_src = seed if seed else key
+    lock = abs(hash(lock_src)) % 100000
+    return _LOREM.format(w=w, kw=kw, lock=lock)
+
+
+def _enrich_product(p: Dict[str, _Any]) -> Dict[str, _Any]:
+    if not p:
+        return p
+    base_key = p.get("img_key", "nuts")
+    slug = p.get("slug", "x")
+    p["images"] = [
+        _img_url(base_key, 800, seed=f"{slug}-1"),
+        _img_url(base_key, 800, seed=f"{slug}-2"),
+        _img_url(base_key, 800, seed=f"{slug}-3"),
+    ]
+    return p
+
+
+def _enrich_hamper(h: Dict[str, _Any]) -> Dict[str, _Any]:
+    if not h:
+        return h
+    img_key = h.get("img_key", "royal-gold")
+    h["image"] = _img_url(img_key, 900)
+    return h
+
+
+def _enrich_category(c: Dict[str, _Any]) -> Dict[str, _Any]:
+    if not c:
+        return c
+    c["image"] = _img_url(c.get("img_key", c.get("slug", "nuts")), 800)
+    return c
+
+
 @api_router.get("/catalog/categories")
 async def list_categories():
     docs = await db.categories.find({}, {"_id": 0}).to_list(50)
-    return docs
+    return [_enrich_category(c) for c in docs]
 
 
 @api_router.get("/catalog/products")
-async def list_products(category: Optional[str] = None, q: Optional[str] = None, limit: int = 100):
+async def list_products(category: Optional[str] = None, q: Optional[str] = None, bestseller: bool = False, limit: int = 200, sort: Optional[str] = None):
     query: Dict[str, _Any] = {}
     if category and category != "all":
         query["category"] = category
@@ -304,9 +368,20 @@ async def list_products(category: Optional[str] = None, q: Optional[str] = None,
         query["$or"] = [
             {"name": {"$regex": q, "$options": "i"}},
             {"tagline": {"$regex": q, "$options": "i"}},
+            {"subcategory": {"$regex": q, "$options": "i"}},
+            {"description": {"$regex": q, "$options": "i"}},
         ]
-    docs = await db.products.find(query, {"_id": 0}).limit(limit).to_list(limit)
-    return docs
+    if bestseller:
+        query["bestseller"] = True
+    cursor = db.products.find(query, {"_id": 0})
+    if sort == "price-asc":
+        cursor = cursor.sort("price", 1)
+    elif sort == "price-desc":
+        cursor = cursor.sort("price", -1)
+    elif sort == "rating":
+        cursor = cursor.sort("rating", -1)
+    docs = await cursor.limit(limit).to_list(limit)
+    return [_enrich_product(p) for p in docs]
 
 
 @api_router.get("/catalog/product/{slug}")
@@ -314,7 +389,7 @@ async def get_product(slug: str):
     doc = await db.products.find_one({"slug": slug}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "product not found")
-    return doc
+    return _enrich_product(doc)
 
 
 @api_router.get("/catalog/hampers")
@@ -323,7 +398,7 @@ async def list_hampers(tag: Optional[str] = None, limit: int = 100):
     if tag:
         query["tags"] = tag
     docs = await db.hampers.find(query, {"_id": 0}).limit(limit).to_list(limit)
-    return docs
+    return [_enrich_hamper(h) for h in docs]
 
 
 @api_router.get("/catalog/hamper/{slug}")
@@ -331,7 +406,7 @@ async def get_hamper(slug: str):
     doc = await db.hampers.find_one({"slug": slug}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "hamper not found")
-    return doc
+    return _enrich_hamper(doc)
 
 
 # ---------- Coupon validation ----------
@@ -436,22 +511,56 @@ async def bulk_enquiry(msg: BulkEnquiry):
     return {"ok": True}
 
 
-# ---------- Seed catalog (idempotent) ----------
-@api_router.post("/seed/catalog")
-async def seed_catalog():
-    if await db.products.count_documents({}) > 0:
+# ---------- Seed catalog (idempotent, from data/catalog_seed.json) ----------
+import json as _json
+
+_SEED_PATH = ROOT_DIR / "data" / "catalog_seed.json"
+
+
+def _load_seed():
+    if not _SEED_PATH.exists():
+        return {"products": [], "categories": [], "hampers": []}
+    with _SEED_PATH.open() as f:
+        return _json.load(f)
+
+
+async def _do_seed(force: bool = False):
+    seed = _load_seed()
+    if force:
+        await db.products.delete_many({})
+        await db.categories.delete_many({})
+        await db.hampers.delete_many({})
+    if await db.products.count_documents({}) > 0 and not force:
         return {"seeded": False, "reason": "already exists"}
-    # Import the mock data directly \u2014 for MVP we seed from a static list.
-    products_seed = [
-        {"id": "p_almonds_premium", "slug": "california-almonds-premium", "name": "California Almonds", "category": "nuts", "tagline": "Premium Grade A", "price": 449, "mrp": 599, "rating": 4.8, "reviews": 1284, "bestseller": True, "natural": True, "stock": 120},
-        {"id": "p_cashews", "slug": "kaju-w320-cashews", "name": "W320 Cashews", "category": "nuts", "tagline": "Whole & Crunchy", "price": 549, "mrp": 699, "rating": 4.9, "reviews": 942, "bestseller": True, "stock": 80},
-        {"id": "p_pistachios", "slug": "roasted-salted-pistachios", "name": "Roasted Salted Pistachios", "category": "nuts", "tagline": "Iranian premium", "price": 699, "mrp": 899, "rating": 4.7, "reviews": 611, "stock": 60},
-        {"id": "p_medjool", "slug": "medjool-dates", "name": "Medjool Dates", "category": "dates", "tagline": "Jordanian, king of dates", "price": 799, "mrp": 999, "rating": 4.9, "reviews": 508, "bestseller": True, "stock": 40},
-    ]
-    for p in products_seed:
-        p["created_at"] = now_iso()
-    await db.products.insert_many(products_seed)
-    return {"seeded": True, "count": len(products_seed)}
+    now = now_iso()
+    for p in seed["products"]:
+        p["created_at"] = now
+    for c in seed["categories"]:
+        c["created_at"] = now
+    for h in seed["hampers"]:
+        h["created_at"] = now
+    if seed["products"]:
+        await db.products.insert_many(seed["products"])
+    if seed["categories"]:
+        await db.categories.insert_many(seed["categories"])
+    if seed["hampers"]:
+        await db.hampers.insert_many(seed["hampers"])
+    return {"seeded": True, "counts": {"products": len(seed["products"]), "categories": len(seed["categories"]), "hampers": len(seed["hampers"])}}
+
+
+@api_router.post("/seed/catalog")
+async def seed_catalog(force: bool = False):
+    return await _do_seed(force=force)
+
+
+@app.on_event("startup")
+async def _auto_seed_on_startup():
+    try:
+        if await db.products.count_documents({}) == 0:
+            r = await _do_seed()
+            logger.info(f"Auto-seed complete: {r}")
+    except Exception as e:
+        logger.error(f"Auto-seed failed: {e}")
 
 
 # ==========================================================

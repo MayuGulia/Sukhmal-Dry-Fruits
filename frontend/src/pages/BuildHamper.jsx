@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { PageHeader } from '@/components/shared/Breadcrumb';
 import { inr } from '@/lib/utils';
-import { PRODUCTS } from '@/data/mockCatalog';
+import { useProducts } from '@/lib/catalog';
 import { useCart } from '@/contexts/CartContext';
 import { ArrowLeft, ArrowRight, Sparkles, Plus, Minus, Check, Trash2, Wand2, Gift, LoaderCircle } from 'lucide-react';
 
@@ -35,6 +35,7 @@ export default function BuildHamper() {
   const [state, setState] = useState(() => ({ budget: 2500, style: STYLES[1].key, items: {}, cardStyle: CARDS[0].key, message: '', recipient: '', progress: 0, ...loadState() }));
   const [loading, setLoading] = useState(false);
   const { add } = useCart();
+  const { data: PRODUCTS } = useProducts({ limit: 200 });
 
   const setPersist = (patch) => {
     setState((s) => { const next = { ...s, ...patch }; localStorage.setItem(LS, JSON.stringify(next)); return next; });

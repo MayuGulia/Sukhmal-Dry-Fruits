@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { LayoutDashboard, Package, ShoppingBag, Boxes, Users, Tag, LogOut, TrendingUp, Search, Plus, Edit3, Trash2 } from 'lucide-react';
-import { PRODUCTS, HAMPERS } from '@/data/mockCatalog';
+import { PRODUCTS as MOCK_PRODUCTS, HAMPERS as MOCK_HAMPERS } from '@/data/mockCatalog';
+import { useProducts, useHampers } from '@/lib/catalog';
 import { inr } from '@/lib/utils';
 
 const SIDE = [
@@ -48,6 +49,8 @@ export function AdminLayout() {
 }
 
 export function AdminDashboard() {
+  const { data: PRODUCTS } = useProducts({ limit: 200 });
+  const { data: HAMPERS } = useHampers();
   const stats = [
     { l: 'Total Revenue (MTD)', v: '₹12,45,600', c: '+18%', Ic: TrendingUp },
     { l: 'Orders (MTD)', v: '412', c: '+22%', Ic: ShoppingBag },
@@ -71,6 +74,7 @@ export function AdminDashboard() {
 }
 
 export function AdminProducts() {
+  const { data: PRODUCTS } = useProducts({ limit: 200 });
   const [q, setQ] = useState('');
   const list = PRODUCTS.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
   return (
@@ -125,6 +129,7 @@ export function AdminOrders() {
 }
 
 export function AdminInventory() {
+  const { data: PRODUCTS } = useProducts({ limit: 200 });
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-brand-900 mb-4">Inventory</h1>
