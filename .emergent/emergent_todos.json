@@ -1,0 +1,62 @@
+[
+  {
+    "content": "Phase 1: POC payment core (webhook + atomic stock + idempotent orders)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Scaffold theme + global layout (header, footer, WhatsApp float, mobile bottom tab bar, hamburger drawer)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: All 10 Shopping & Discovery pages (Home, Search, PLP, PDP, Gift Hampers list+detail, Wedding, Corporate, Festival, Offers)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Build Your Own Hamper 6-step wizard with live budget summary",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Cart, Checkout, Order Success/Failed, Track Order visual pages",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Auth pages (Login, Signup, Forgot, OTP)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Content pages (About, Contact, Store Locator, Blog, Careers, FAQs, Policies, 404)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: My Account (Dashboard, Wishlist, Orders, Order Detail, Return/Cancel, Addresses, Payment Methods, Loyalty, Settings)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Admin panel with silent /admin/* redirect (Dashboard, Products, Orders, Inventory, Customers, Coupons)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Backend catalog/coupon/pincode/tracking/contact/enquiry APIs",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: Fix image URLs (loremflickr + verified Unsplash) + JSX unicode escape rendering",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 2: End-to-end testing via testing_agent_v3",
+    "status": "in_progress"
+  },
+  {
+    "content": "Phase 3: Wire real backend data + mock JWT auth + payment core into checkout",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 6: AI Gift Advisor + Nano Banana hamper image generation",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 7: Firebase + Razorpay swap-in readiness + final security review + mobile 375/768/1440 verification",
+    "status": "pending"
+  }
+]
