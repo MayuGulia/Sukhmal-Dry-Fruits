@@ -6,6 +6,7 @@ const LS_KEY = 'sk_cart_v1';
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [coupon, setCoupon] = useState(null);
+  const [hydrated, setHydrated] = useState(false); // gate the save effect until first load completes
 
   useEffect(() => {
     try {
@@ -16,11 +17,13 @@ export const CartProvider = ({ children }) => {
         setCoupon(p.coupon || null);
       }
     } catch {}
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(LS_KEY, JSON.stringify({ items, coupon }));
-  }, [items, coupon]);
+    if (!hydrated) return; // prevent overwriting saved cart with initial empty state
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ items, coupon })); } catch {}
+  }, [items, coupon, hydrated]);
 
   const add = (p, { qty = 1, variant, source = 'product' } = {}) => {
     setItems((cur) => {
@@ -56,6 +59,7 @@ export const CartProvider = ({ children }) => {
     let discount = 0;
     if (coupon?.code === 'WELCOME10') discount = Math.round(subtotal * 0.10);
     if (coupon?.code === 'FESTIVE500' && subtotal >= 1500) discount = 500;
+    if (coupon?.code === 'BULK25' && subtotal >= 10000) discount = Math.round(subtotal * 0.25);
     const shipping = subtotal - discount >= 799 ? 0 : (subtotal > 0 ? 79 : 0);
     const gst = Math.round((subtotal - discount) * 0.05);
     const total = Math.max(0, subtotal - discount + shipping + gst);
@@ -65,7 +69,7 @@ export const CartProvider = ({ children }) => {
   const count = items.reduce((s, x) => s + x.qty, 0);
 
   return (
-    <CartCtx.Provider value={{ items, add, updateQty, remove, clear, coupon, setCoupon, totals, count }}>
+    <CartCtx.Provider value={{ items, add, updateQty, remove, clear, coupon, setCoupon, totals, count, hydrated }}>
       {children}
     </CartCtx.Provider>
   );

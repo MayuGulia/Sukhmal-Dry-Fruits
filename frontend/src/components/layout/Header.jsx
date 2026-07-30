@@ -41,7 +41,7 @@ export default function Header({ onOpenDrawer }) {
           <Link to={isAuthed ? '/account' : '/login'} className="md:hidden text-brand-900" aria-label="Account"><User size={22} /></Link>
           <Link to="/cart" data-testid="hdr-cart" className="relative text-brand-900" aria-label="Cart">
             <ShoppingBag size={24} />
-            {count > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gold-500 text-white text-[10px] font-bold grid place-items-center">{count}</span>}
+            {count > 0 && <span data-testid="cart-badge" className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gold-500 text-white text-[10px] font-bold grid place-items-center">{count}</span>}
           </Link>
         </div>
       </div>

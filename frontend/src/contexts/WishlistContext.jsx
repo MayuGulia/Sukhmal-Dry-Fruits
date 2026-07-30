@@ -5,10 +5,12 @@ const LS = 'sk_wishlist_v1';
 
 export const WishlistProvider = ({ children }) => {
   const [ids, setIds] = useState([]);
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     try { const raw = localStorage.getItem(LS); if (raw) setIds(JSON.parse(raw)); } catch {}
+    setHydrated(true);
   }, []);
-  useEffect(() => { localStorage.setItem(LS, JSON.stringify(ids)); }, [ids]);
+  useEffect(() => { if (hydrated) localStorage.setItem(LS, JSON.stringify(ids)); }, [ids, hydrated]);
 
   const toggle = (id) => setIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const has = (id) => ids.includes(id);

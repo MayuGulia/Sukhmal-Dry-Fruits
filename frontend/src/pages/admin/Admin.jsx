@@ -16,14 +16,15 @@ const SIDE = [
 
 // Admin guard — silent redirect for non-admin. Never reveal admin surface exists.
 export function AdminLayout() {
-  const { isAuthed, isAdmin, logout } = useAuth();
+  const { isAuthed, isAdmin, logout, loading } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
-  // Silent redirect: send to customer login with returnTo, no message that admin exists
-  if (!isAuthed || !isAdmin) {
-    nav('/login', { replace: true, state: { from: loc.pathname } });
-    return null;
-  }
+  // Silent redirect: send to customer login with returnTo, no message that admin exists.
+  React.useEffect(() => {
+    if (loading) return;
+    if (!isAuthed || !isAdmin) nav('/login', { replace: true, state: { from: loc.pathname } });
+  }, [isAuthed, isAdmin, loading, nav, loc.pathname]);
+  if (!isAuthed || !isAdmin) return null;
   return (
     <div className="min-h-screen bg-cream-100">
       <div className="grid md:grid-cols-[240px_1fr] min-h-screen">

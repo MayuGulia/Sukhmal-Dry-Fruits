@@ -37,9 +37,12 @@ const SIDEBAR = [
 ];
 
 export function AccountLayout() {
-  const { user, isAuthed, logout } = useAuth();
+  const { user, isAuthed, logout, loading } = useAuth();
   const nav = useNavigate();
-  if (!isAuthed) { nav('/login'); return null; }
+  React.useEffect(() => {
+    if (!loading && !isAuthed) nav('/login');
+  }, [isAuthed, loading, nav]);
+  if (!isAuthed) return null;
 
   return (
     <div>
