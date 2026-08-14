@@ -1,0 +1,291 @@
+Sukhmal Dry Fruits Korner - Sitemap
+v2
+Sukhmal Dry Fruits Korner — E-commerce Website (Desktop + Mobile)
+Version 2.0
+1. Complete Page Hierarchy
+1.1 Shopping & Discovery
+1.2 Build Your Own Hamper (linear wizard)
+1.3 Cart, Checkout & Orders
+1.4 Auth
+1.5 My Account
+1.6 Content & Trust Pages
+1.7 Admin (separate protected namespace)
+2. Desktop Navigation
+3. Mobile Responsive Structure
+3.1 Mobile Header (collapsed)
+3.2 Mobile Bottom Tab Bar (persistent, fixed)
+3.3 Mobile-Specific Behavior Changes
+3.4 Breakpoints (standard, confirm final values against
+DesignSystem doc)
+4. Cross-Page Link Map (key flows)
+5. Notes for Build Agent
+1. Complete Page Hierarchy
+1.1 Shopping & Discovery
+# 	Page 	Parent 	URL Slug 	Access
+1 	Homepage 	— (root) 	/ 	Public
+2 Search
+Results
+Header search
+bar /search?q= 	Public
+3
+Product
+Listing Page 	Homepage / Nav /category/:slug 	Public
+
+-- 1 of 8 --
+
+(category)
+4 Product
+Detail Page
+Product Listing
+Page /product/:slug 	Public
+5
+Gift
+Hampers
+Listing
+Homepage / Nav 	/gift-hampers 	Public
+6 Gift Hamper
+Detail
+Gift Hampers
+Listing /gift-hampers/:slug 	Public
+7
+Wedding
+Gifts
+Landing
+Nav 	/wedding-gifts 	Public
+8
+Corporate
+Gifts
+Landing
+Nav 	/corporate-gifts 	Public
+9 Festival
+Collections Homepage / Nav 	/festival-collections 	Public
+10 Offers /
+Deals Page Nav 	/offers 	Public
+1.2 Build Your Own Hamper (linear wizard)
+# 	Page 	Parent 	URL Slug 	Access
+11 Step 1 —
+Budget Homepage / Nav 	/build-hamper/budget 	Public
+12
+Step 2 —
+Hamper
+Style
+Step 1 	/build-hamper/hamper 	Public
+13 Step 3 —
+Products Step 2 /build-
+hamper/products Public
+14 Step 4 —
+Gift Card Step 3 /build-hamper/gift-
+card Public
+15 Step 5 —
+Preview Step 4 	/build-hamper/preview 	Public
+16 Step 6 —
+Confirm Step 5 	/build-hamper/confirm Auth (at
+payment)
+
+-- 2 of 8 --
+
+1.3 Cart, Checkout & Orders
+# 	Page 	Parent 	URL Slug 	Access
+17
+Shopping
+Cart
+(incl. empty-
+cart state)
+Header cart
+icon /cart 	Public
+18 	Checkout 	Cart 	/checkout 	Auth
+19 Order
+Success Checkout 	/order-success/:orderId 	Auth
+20
+Order
+Failed /
+Payment
+Retry
+Checkout 	/order-failed/:orderId 	Auth
+21 	Track Order
+Header +
+Order
+Success
+/track-order
+Public
+(Order ID
+lookup)
+22
+Return /
+Cancel
+Request
+Order Detail 	/account/orders/:orderId/return 	Auth
+1.4 Auth
+# 	Page 	Parent 	URL Slug 	Access
+23 	Login 	Header 	/login 	Public
+24 	Sign Up 	Login 	/signup 	Public
+25 	Forgot Password 	Login 	/forgot-password 	Public
+26 	OTP Verification 	Login / Signup 	/verify-otp 	Public
+1.5 My Account
+# 	Page 	Parent 	URL Slug 	Access
+27 	Dashboard 	Header (post-login) 	/account 	Auth
+28 	Wishlist 	Header + Account 	/wishlist 	Auth
+
+-- 3 of 8 --
+
+29 	My Orders 	Account 	/account/orders 	Auth
+30 	Order Detail 	My Orders 	/account/orders/:orderId 	Auth
+31 	Order History 	Account 	/account/order-history 	Auth
+32 	Saved Addresses 	Account 	/account/addresses 	Auth
+33 	Payment Methods 	Account 	/account/payment-methods 	Auth
+34 	Loyalty Points 	Account 	/account/loyalty 	Auth
+35 	Profile Settings 	Account 	/account/settings 	Auth
+1.6 Content & Trust Pages
+# 	Page 	Parent 	URL Slug 	Access
+36 	About Us 	Footer / Nav 	/about-us 	Public
+37 	Contact Us 	Footer / Nav 	/contact-us 	Public
+38 Store
+Locator Header + Footer 	/store-locator 	Public
+39 Blog (listing
++ article) Footer 	/blog, /blog/:slug 	Public
+40 	Careers 	Footer 	/careers 	Public
+41 	FAQs Footer + Contact
+Us /faqs 	Public
+42
+Shipping &
+Delivery
+Policy
+Footer 	/shipping-delivery 	Public
+43
+Returns &
+Refunds
+Policy
+Footer 	/returns-refunds 	Public
+44 Privacy
+Policy Footer 	/privacy-policy 	Public
+45 	Terms &
+Conditions
+Footer /terms-conditions Public
+46 404 Not
+Found Any broken link 	/404 	Public
+
+-- 4 of 8 --
+
+1.7 Admin (separate protected namespace)
+# 	Page 	Parent 	URL Slug 	Access
+47 Admin
+Dashboard — 	/admin 	Admin only
+48 Products
+Management
+Admin
+Dashboard /admin/products 	Admin only
+49 Orders
+Management
+Admin
+Dashboard /admin/orders 	Admin only
+50 Inventory
+Management
+Admin
+Dashboard /admin/inventory 	Admin only
+51 	Customers Admin
+Dashboard /admin/customers 	Admin only
+52
+Coupons /
+Offers
+Management
+Admin
+Dashboard /admin/offers 	Admin only
+2. Desktop Navigation
+Header: Logo → Search bar → Wishlist icon → Build Your Own Hamper CTA → Cart
+icon (count badge) Primary nav bar: Shop by Category (mega-menu) · Dry Fruits ·
+Nuts · Seeds · Dates · Berries · Gift Hampers · Wedding Gifts (New) · Corporate
+Gifts · Offers (%) Footer (4 columns + payment/trust row): Shop · Customer
+Service · My Account · About Us — plus newsletter signup and payment/security
+badges
+3. Mobile Responsive Structure
+The design screens already show a working mobile layout for Track Order — apply
+the same responsive pattern sitewide. Standard mobile e-commerce conventions to
+follow:
+3.1 Mobile Header (collapsed)
+
+-- 5 of 8 --
+
+Hamburger icon — opens slide-in drawer with full category list +
+account/wishlist/track order links (replaces desktop mega-menu)
+Center: logo (icon-only or compact wordmark)
+Right: search icon (expands to full-width search overlay on tap), cart icon with
+count
+3.2 Mobile Bottom Tab Bar (persistent, fixed)
+Standard for shopping apps — improves conversion vs. relying on header alone:
+Tab 	Links to
+Home 	Homepage
+Categories 	Category drawer / Product Listing
+Build Hamper 	Build Your Own Hamper Step 1
+Cart 	Cart (with live badge count)
+Account 	Account Dashboard (or Login if guest)
+3.3 Mobile-Specific Behavior Changes
+Filters (Product Listing Page): desktop sidebar becomes a mobile bottom
+sheet/drawer triggered by a “Filter” button, not permanently visible
+Product grid: 2 columns on mobile vs. 3 on desktop
+Build Your Own Hamper step indicator: desktop horizontal stepper
+becomes mobile compact “Step 3 of 6” text plus a progress bar (avoid
+cramming 6 circles on small width)
+Checkout order summary: desktop sticky sidebar becomes a mobile
+collapsible summary bar pinned above the “Place Order” button
+Image galleries (PDP): desktop thumbnail strip beside the image becomes a
+mobile swipeable carousel with dot indicators below the image
+Tables (Nutritional Info, etc.): must remain horizontally scrollable or stack
+into label-value pairs — never overflow/break layout
+WhatsApp floating button: repositions to avoid overlapping the bottom tab
+bar
+3.4 Breakpoints (standard, confirm final values
+against DesignSystem doc)
+Breakpoint 	Width 	Layout
+Single column, bottom tab
+
+-- 6 of 8 --
+
+Mobile 	below 640px 	bar, hamburger nav
+Tablet 	640–1024px 2-column grids, condensed
+header, no bottom tab bar
+Desktop 	above 1024px Full layout as per supplied
+UI Screens
+4. Cross-Page Link Map (key flows)
+From 	To
+Homepage → Best Sellers card 	Product Detail Page
+Homepage → “Build Your Own Hamper”
+CTA Build Hamper Step 1
+Homepage → “Explore Gift Hampers” 	Gift Hampers Listing
+Header search → results 	Search Results Page
+Product Listing → product card 	Product Detail Page
+Product Detail → “Add to Cart” Cart updates (stays on page,
+confirmation toast)
+Product Detail → “You May Also Like”
+card Another Product Detail Page
+Cart (empty state) → “Continue
+Shopping” 	Homepage or last-viewed category
+Cart → “Proceed to Checkout” 	Checkout (redirects to Login if guest)
+Checkout → “Place Order Securely” Order Success (or Order Failed on
+payment error)
+Order Success → “Track Your Order” 	Track Order (pre-filled Order ID)
+My Orders → order row → Track /
+Reorder / Return Track Order / Cart / Return Request
+Wishlist → “Move to Cart” 	Cart
+Any page → WhatsApp floating button 	External WhatsApp chat
+Footer policy links 	Respective static content page
+
+-- 7 of 8 --
+
+Broken/invalid URL 	404 Not Found
+5. Notes for Build Agent
+Build Your Own Hamper is a linear wizard — Steps 2–6 must redirect to Step
+1 if session/budget state is missing; no direct URL skipping.
+Track Order is intentionally public — only an Order ID is required, since gift
+recipients (not just the buyer) may track a delivery.
+Admin routes ( /admin/* ) sit in a fully separate protected namespace — never
+linked from customer-facing nav or footer. See the SecurityArchitecture
+document for access-control rules.
+Checkout requires authentication; Cart does not — guest users can add to
+cart and are prompted to log in only at “Proceed to Checkout.”
+Mobile is not a scaled-down desktop — the bottom tab bar, filter bottom-
+sheets, and carousel patterns above are structural changes, not just
+responsive CSS resizing. Build mobile layouts as first-class, not an
+afterthought.
+
+-- 8 of 8 --
+

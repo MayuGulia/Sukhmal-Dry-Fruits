@@ -1,41 +1,168 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Plus, Star, Check } from 'lucide-react';
+import { Heart, Plus, Star, Check, Leaf, Hand, Gift, Truck } from 'lucide-react';
 import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
+
+function shortSubtitle(p) {
+  if (p.subcategory) return p.subcategory;
+  const raw = String(p.tagline || '').split(/[—–.]/)[0].trim();
+  if (!raw) return '';
+  return raw.length > 36 ? `${raw.slice(0, 34)}…` : raw;
+}
+
+function StarRow({ rating = 0, reviews = 0 }) {
+  return (
+    <div className="flex items-center gap-0.5 mt-0.5">
+      {[1, 2, 3, 4, 5].map((i) => {
+        const filled = rating >= i;
+        const half = !filled && rating >= i - 0.5;
+        return (
+          <span key={i} className="relative inline-flex h-3.5 w-3.5">
+            <Star
+              size={14}
+              className="text-[#E0D6C8]"
+              fill="currentColor"
+              strokeWidth={0}
+            />
+            {(filled || half) && (
+              <span
+                className="absolute inset-0 overflow-hidden sk-star"
+                style={{ width: half ? '50%' : '100%' }}
+              >
+                <Star size={14} fill="currentColor" strokeWidth={0} />
+              </span>
+            )}
+          </span>
+        );
+      })}
+      <span className="text-[12px] text-ink-500 ml-1.5 tabular-nums">({reviews})</span>
+    </div>
+  );
+}
 
 export default function ProductCard({ p, variant = 'default' }) {
   const { add } = useCart();
   const { has, toggle } = useWishlist();
   const active = has(p.id);
-  const disc = p.mrp ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
+  const labeled = variant === 'labeled';
+  const variants = p.variants?.length
+    ? p.variants
+    : [{ w: p.weight || '250g', price: p.price }];
+  const [vi, setVi] = useState(0);
+  const selected = variants[Math.min(vi, variants.length - 1)] || variants[0];
+  const price = selected?.price ?? p.price;
+  const subtitle = shortSubtitle(p);
+
+  if (labeled) {
+    return (
+      <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full">
+        <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-cream-200">
+          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+          {p.bestseller && <span className="sk-pill sk-pill-brown absolute top-2 left-2 !py-1 !px-2.5">Bestseller</span>}
+          <button
+            onClick={(e) => { e.preventDefault(); toggle(p.id); }}
+            aria-label="Wishlist"
+            className="absolute top-2 right-2 h-9 w-9 rounded-full bg-white/95 grid place-items-center shadow-sk-sm text-brand-900"
+          >
+            <Heart size={16} fill={active ? 'currentColor' : 'none'} className={active ? 'text-red-500' : ''} />
+          </button>
+        </Link>
+        <div className="p-3.5 flex flex-col gap-1.5 flex-1">
+          <Link
+            to={`/product/${p.slug}`}
+            className="font-display font-bold text-[15px] md:text-base text-brand-900 leading-tight line-clamp-2"
+          >
+            {p.name}{p.variants?.[0]?.w ? ` (${p.variants[0].w})` : ''}
+          </Link>
+          <div className="flex items-center gap-1 text-[12px] text-ink-600">
+            <Star size={13} className="sk-star fill-current" />
+            <span className="font-medium text-brand-900">{p.rating}</span>
+            <span>({p.reviews})</span>
+          </div>
+          <div className="mt-auto pt-2.5 space-y-2.5">
+            <div className="font-display font-bold text-brand-900 text-[1.15rem] leading-none tracking-tight">{inr(p.price)}</div>
+            <button
+              onClick={() => add(p, { qty: 1, variant: p.variants?.[0] })}
+              data-testid={`add-cart-${p.slug}`}
+              className="sk-btn-primary w-full !py-2.5 !rounded-[10px] text-[13px] tracking-wide"
+            >
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-[210px] md:w-auto">
-      <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-cream-200">
-        <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-        {p.bestseller && <span className="sk-pill sk-pill-brown absolute top-2 left-2 !py-1 !px-2.5">Bestseller</span>}
-        {disc > 0 && <span className="sk-pill sk-pill-gold absolute top-2 right-2 !py-1 !px-2.5">{disc}% OFF</span>}
-        <button onClick={(e) => { e.preventDefault(); toggle(p.id); }} aria-label="Wishlist" className={`absolute bottom-2 right-2 h-9 w-9 rounded-full bg-white/95 grid place-items-center shadow-sk-sm ${active ? 'text-red-500' : 'text-brand-900'}`}>
-          <Heart size={16} fill={active ? 'currentColor' : 'none'} />
+    <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full overflow-hidden">
+      <Link to={`/product/${p.slug}`} className="relative block aspect-[5/4] overflow-hidden bg-cream-200">
+        <img
+          src={p.images[0]}
+          alt={p.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+        <button
+          onClick={(e) => { e.preventDefault(); toggle(p.id); }}
+          aria-label="Wishlist"
+          className={`absolute top-2.5 right-2.5 drop-shadow-md ${active ? 'text-red-500' : 'text-white'}`}
+        >
+          <Heart size={22} strokeWidth={1.6} fill={active ? 'currentColor' : 'none'} />
         </button>
       </Link>
-      <div className="p-3.5 flex flex-col gap-1.5 flex-1">
-        <div className="text-[11px] uppercase tracking-wider text-ink-500">{p.tagline}</div>
-        <Link to={`/product/${p.slug}`} className="font-semibold text-brand-900 leading-tight text-[15px] line-clamp-2">{p.name}</Link>
-        <div className="flex items-center gap-1 text-[12px] text-ink-600">
-          <Star size={13} className="sk-star fill-current" />
-          <span className="font-medium text-brand-900">{p.rating}</span>
-          <span>({p.reviews})</span>
-        </div>
-        <div className="mt-1.5 flex items-end justify-between gap-2">
-          <div>
-            <div className="font-display font-bold text-brand-900 text-lg leading-none">{inr(p.price)}</div>
-            {p.mrp && p.mrp > p.price && <div className="text-[11px] text-ink-500 line-through leading-none mt-0.5">MRP {inr(p.mrp)}</div>}
+
+      <div className="p-3.5 md:p-4 flex flex-col gap-1.5 flex-1">
+        <Link
+          to={`/product/${p.slug}`}
+          className="font-display font-bold text-[17px] md:text-lg text-brand-900 leading-snug line-clamp-1"
+        >
+          {p.name}
+        </Link>
+        {subtitle && (
+          <div className="text-[12px] md:text-[13px] text-ink-500 leading-snug line-clamp-1 -mt-0.5">
+            {subtitle}
           </div>
-          <button onClick={() => add(p, { qty: 1, variant: p.variants?.[0] })} aria-label="Add to cart" data-testid={`add-cart-${p.slug}`} className="h-9 w-9 rounded-lg bg-brand-900 text-white grid place-items-center hover:bg-brand-700">
-            <Plus size={16} />
+        )}
+
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {variants.slice(0, 3).map((v, i) => {
+            const on = i === vi;
+            return (
+              <button
+                key={v.w}
+                type="button"
+                onClick={(e) => { e.preventDefault(); setVi(i); }}
+                className={`px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+                  on
+                    ? 'border-[var(--sk-gold-500)] bg-[rgba(197,160,89,0.12)] text-brand-900'
+                    : 'border-line bg-cream-100 text-ink-600 hover:border-line-strong'
+                }`}
+              >
+                {v.w}
+              </button>
+            );
+          })}
+        </div>
+
+        <StarRow rating={p.rating} reviews={p.reviews} />
+
+        <div className="mt-auto pt-2.5 flex items-end justify-between gap-2">
+          <div className="font-display font-bold text-brand-900 text-[1.15rem] md:text-xl leading-none tracking-tight">
+            {inr(price).replace('₹', '₹ ')}
+            <span className="text-[12px] md:text-[13px] font-sans font-medium text-ink-600 ml-1.5">
+              Onwards
+            </span>
+          </div>
+          <button
+            onClick={() => add(p, { qty: 1, variant: selected })}
+            aria-label="Add to cart"
+            data-testid={`add-cart-${p.slug}`}
+            className="h-10 w-10 rounded-full bg-brand-900 text-white grid place-items-center shrink-0 hover:bg-brand-700 shadow-sk-sm transition-colors"
+          >
+            <Plus size={18} strokeWidth={2.25} />
           </button>
         </div>
       </div>
@@ -78,23 +205,38 @@ export function SectionHeader({ eyebrow, title, subtitle, cta }) {
   );
 }
 
-export function TrustStrip() {
+export function TrustStrip({ overlay = false }) {
   const items = [
-    { icon: '🌿', label: '100% Natural' },
-    { icon: '👐', label: 'Handpicked Quality' },
-    { icon: '🎁', label: 'Premium Packaging' },
-    { icon: '🚚', label: 'Express Delivery' },
+    { Ic: Leaf, label: '100% Natural', sub: 'No Preservatives' },
+    { Ic: Hand, label: 'Handpicked Quality', sub: 'Finest from Around the World' },
+    { Ic: Gift, label: 'Premium Packaging', sub: 'Made for Gifting' },
+    { Ic: Truck, label: 'Express Delivery', sub: 'Across India' },
   ];
+  const inner = (
+    <div className={`grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-2 ${overlay ? 'py-4 md:py-5' : 'py-6'}`}>
+      {items.map(({ Ic, label, sub }) => (
+        <div key={label} className="flex items-center gap-3 justify-center px-2">
+          <div className={`shrink-0 grid place-items-center ${overlay ? 'text-[var(--sk-gold-300)]' : 'text-[var(--sk-gold-400)]'}`}>
+            <Ic size={overlay ? 22 : 24} strokeWidth={1.5} />
+          </div>
+          <div className="min-w-0">
+            <div className={`font-semibold text-sm md:text-[15px] leading-tight ${overlay ? 'text-white' : 'text-brand-900'}`}>{label}</div>
+            <div className={`text-[11px] mt-0.5 leading-tight ${overlay ? 'text-cream-200/75' : 'text-ink-500'}`}>{sub}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+  if (overlay) {
+    return (
+      <div className="absolute inset-x-0 bottom-0 z-20 bg-[rgba(62,39,21,0.72)] backdrop-blur-[2px] border-t border-white/10">
+        <div className="sk-container">{inner}</div>
+      </div>
+    );
+  }
   return (
     <div className="bg-white border-y border-line">
-      <div className="sk-container grid grid-cols-2 md:grid-cols-4 gap-y-4 py-6">
-        {items.map((it) => (
-          <div key={it.label} className="flex items-center gap-3 justify-center">
-            <div className="text-2xl">{it.icon}</div>
-            <div className="font-semibold text-brand-900 text-sm md:text-base">{it.label}</div>
-          </div>
-        ))}
-      </div>
+      <div className="sk-container">{inner}</div>
     </div>
   );
 }

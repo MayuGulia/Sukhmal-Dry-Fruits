@@ -2,6 +2,16 @@
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
   theme: {
+    /* Breakpoints: mobile <640 · tablet 640–1024 · desktop >1024
+       sm = tablet start · lg = desktop chrome */
+    screens: {
+      xs: '360px',
+      sm: '640px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       colors: {
         brand: {
@@ -34,22 +44,19 @@ module.exports = {
       },
       fontFamily: {
         display: ['Playfair Display', 'ui-serif', 'Georgia', 'serif'],
-        ui: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-      },
-      screens: {
-        'xs': '360px',
+        ui: ['DM Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
-        'lg': '10px',
-        'xl': '14px',
+        lg: '10px',
+        xl: '14px',
         '2xl': '18px',
       },
       boxShadow: {
-        'sk-sm': '0 1px 2px rgba(62,39,21,0.06)',
-        'sk-md': '0 4px 14px rgba(62,39,21,0.08)',
-        'sk-lg': '0 12px 32px rgba(62,39,21,0.12)',
-      }
-    }
+        'sk-sm': '0 1px 2px rgba(60,36,21,0.06)',
+        'sk-md': '0 4px 14px rgba(60,36,21,0.08)',
+        'sk-lg': '0 12px 32px rgba(60,36,21,0.12)',
+      },
+    },
   },
   plugins: [require('tailwindcss-animate')],
 };

@@ -1,192 +1,539 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { PageHeader } from '@/components/shared/Breadcrumb';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { TrustStrip } from '@/components/shared/ProductCard';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { inr } from '@/lib/utils';
-import { Lock, MapPin, CalendarDays, Gift, CreditCard, Landmark, Wallet, Banknote, ChevronDown, Shield } from 'lucide-react';
-import { api } from '@/lib/api';
+import {
+  Lock, MapPin, CalendarDays, Gift, CreditCard, Landmark, Wallet, Banknote,
+  ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Plus, Truck,
+} from 'lucide-react';
 
 const PAY_METHODS = [
-  { key: 'upi', label: 'UPI', Ic: Wallet, desc: 'Google Pay, PhonePe, Paytm, BHIM' },
-  { key: 'card', label: 'Credit / Debit Card', Ic: CreditCard, desc: 'Visa, Mastercard, RuPay, Amex' },
-  { key: 'nb', label: 'Net Banking', Ic: Landmark, desc: 'All major banks' },
-  { key: 'wallet', label: 'Wallets', Ic: Wallet, desc: 'Paytm, Amazon Pay, MobiKwik' },
-  { key: 'cod', label: 'Cash on Delivery', Ic: Banknote, desc: 'Available in select pincodes' },
+  { key: 'upi', label: 'UPI', Ic: Wallet, desc: 'Pay with UPI Apps' },
+  { key: 'card', label: 'Credit / Debit Card', Ic: CreditCard, desc: 'Visa · MasterCard · RuPay' },
+  { key: 'nb', label: 'Net Banking', Ic: Landmark, desc: 'All Major Banks' },
+  { key: 'wallet', label: 'Wallets', Ic: Wallet, desc: 'Paytm · PhonePe · Amazon Pay' },
+  { key: 'cod', label: 'Cash on Delivery', Ic: Banknote, desc: 'Pay when you receive' },
 ];
 
 const ADDRESSES = [
-  { id: 'a1', label: 'Home', name: 'Priya Sharma', line1: '145, Katra Neel', line2: 'Chandni Chowk, New Delhi', pincode: '110006', phone: '+91 98765 43210' },
-  { id: 'a2', label: 'Office', name: 'Priya Sharma', line1: 'DLF Cyber Hub, Level 3', line2: 'Sector 24, Gurugram', pincode: '122002', phone: '+91 98765 43210' },
+  {
+    id: 'a1', label: 'Default', name: 'Monika Batra',
+    line1: 'B-204, Green Park Extension', line2: 'New Delhi', pincode: '110016', phone: '+91 98765 43210',
+  },
+  {
+    id: 'a2', label: 'Home', name: 'Priya Sharma',
+    line1: '22, Golf Links, Malviya Nagar', line2: 'New Delhi', pincode: '110017', phone: '+91 98765 43210',
+  },
+  {
+    id: 'a3', label: 'Office', name: 'Sukhmal Industries Pvt. Ltd.',
+    line1: 'Okhla Industrial Area, Phase II', line2: 'New Delhi', pincode: '110020', phone: '+91 98765 43210',
+  },
 ];
 
-export default function Checkout() {
-  const { items, totals, clear } = useCart();
-  const { isAuthed, login } = useAuth();
-  const nav = useNavigate();
-  const [address, setAddress] = useState(ADDRESSES[0].id);
-  const [showSummary, setShowSummary] = useState(false);
-  const [deliveryDate, setDeliveryDate] = useState('tomorrow');
-  const [payment, setPayment] = useState('upi');
-  const [placing, setPlacing] = useState(false);
-  const [giftMsg, setGiftMsg] = useState({ on: false, name: '', phone: '', text: '' });
+const STEPS = [
+  { label: 'Cart', to: '/cart' },
+  { label: 'Checkout', current: true },
+  { label: 'Payment' },
+  { label: 'Order Confirmation' },
+];
 
-  if (items.length === 0) return (
-    <div className="sk-container py-24 text-center">
-      <div className="font-display text-2xl text-brand-900">Your cart is empty.</div>
-      <Link to="/category/all" className="sk-btn-primary mt-4 inline-flex">Continue Shopping</Link>
+function formatDayLabel(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function minDateStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function FlourishGold() {
+  return (
+    <div className="mx-auto mt-1.5 flex items-center justify-center gap-2 text-[var(--sk-gold-400)]" aria-hidden>
+      <span className="text-[10px] leading-none">❧</span>
+      <span className="h-px w-10 bg-[var(--sk-gold-400)]/70" />
+      <span className="text-[10px] leading-none">❧</span>
     </div>
   );
+}
 
-  // Auto-login as a demo customer if not signed in (Phase 3 will swap this)
-  const ensureAuth = () => { if (!isAuthed) login({ email: 'demo@sukhmal.in', name: 'Demo User' }); };
-
-  const placeOrder = async () => {
-    ensureAuth();
-    setPlacing(true);
-    try {
-      // Real integration: POST /api/orders with idempotency key, get Razorpay order_id, open checkout.
-      // For now, we simulate the payment core flow (POC-shaped): create order, simulate webhook to confirm.
-      const idempotency_key = 'chk_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-      // Show a Razorpay-style loading modal for 900ms
-      await new Promise((r) => setTimeout(r, 900));
-      const orderId = 'ord_' + Math.random().toString(36).slice(2, 12);
-      // Success path (webhook-confirmed in production; simulated here)
-      clear();
-      nav(`/order-success/${orderId}`);
-    } finally { setPlacing(false); }
-  };
-
+function OrderSummaryBody({ items, totals, count }) {
   return (
-    <div>
-      <PageHeader title="Checkout" breadcrumb={[{ label: 'Cart', to: '/cart' }, { label: 'Checkout' }]} />
-      {/* Step indicator */}
-      <div className="sk-container pt-6">
-        <div className="flex items-center gap-3 text-sm">
-          {[['Cart', true], ['Checkout', true], ['Payment', false], ['Confirmation', false]].map(([l, active], i) => (
-            <React.Fragment key={l}>
-              <div className={`inline-flex items-center gap-2 ${active ? 'text-brand-900' : 'text-ink-500'}`}>
-                <div className={`w-6 h-6 rounded-full grid place-items-center text-[11px] font-bold ${active ? 'bg-brand-900 text-white' : 'bg-line-strong text-white'}`}>{i + 1}</div>
-                <span className="font-semibold">{l}</span>
-              </div>
-              {i < 3 && <div className={`flex-1 h-[2px] max-w-[40px] ${active ? 'bg-brand-900' : 'bg-line-strong'}`} />}
-            </React.Fragment>
-          ))}
+    <>
+      <div className="space-y-0 text-sm max-h-[240px] overflow-auto">
+        {items.map((it, idx) => (
+          <div
+            key={it.key}
+            className={`flex items-start gap-2.5 py-3 ${idx > 0 ? 'border-t border-line' : ''}`}
+          >
+            <img src={it.image} className="w-12 h-12 rounded-lg object-cover bg-cream-200 border border-line shrink-0" alt="" />
+            <div className="flex-1 min-w-0">
+              <div className="line-clamp-1 font-display font-semibold text-brand-900 text-[13px]">{it.name}</div>
+              {it.variant && <div className="text-[11px] text-ink-500 mt-0.5">{it.variant}</div>}
+              <div className="text-[11px] text-ink-600 mt-0.5">{inr(it.price)} x {it.qty}</div>
+            </div>
+            <div className="font-display font-semibold text-brand-900 text-[13px] shrink-0">{inr(it.price * it.qty)}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-1 border-t border-line pt-3 space-y-1.5 text-sm">
+        <div className="flex justify-between">
+          <span className="text-ink-600">Subtotal ({count} Item{count !== 1 ? 's' : ''})</span>
+          <span className="text-brand-900">{inr(totals.subtotal)}</span>
+        </div>
+        {totals.discount > 0 && (
+          <div className="flex justify-between text-[var(--sk-green-500)]">
+            <span>Discount</span>
+            <span>– {inr(totals.discount)}</span>
+          </div>
+        )}
+        <div className="flex justify-between">
+          <span className="text-ink-600">GST (5%)</span>
+          <span className="text-brand-900">{inr(totals.gst)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-ink-600">Shipping Charges</span>
+          <span className={totals.shipping === 0 ? 'text-[var(--sk-green-500)] font-bold' : 'text-brand-900'}>
+            {totals.shipping === 0 ? 'FREE' : inr(totals.shipping)}
+          </span>
+        </div>
+
+        <div className="mt-3 rounded-lg bg-cream-300/80 px-3.5 py-3 flex justify-between items-end gap-2">
+          <div>
+            <div className="font-semibold text-brand-900">Total Amount</div>
+            <div className="text-[10px] text-ink-500">(Inclusive of all taxes)</div>
+          </div>
+          <span className="font-display font-bold text-xl text-brand-900">{inr(totals.total)}</span>
         </div>
       </div>
 
-      <div className="sk-container py-8 grid md:grid-cols-[1fr_380px] gap-8">
-        <div className="space-y-6">
-          {/* Address */}
-          <section className="sk-card p-5">
-            <div className="flex items-center justify-between">
-              <div className="font-display text-lg font-bold text-brand-900 inline-flex items-center gap-2"><MapPin size={18} /> Delivery Address</div>
-              <button className="sk-btn-ghost text-sm">+ Add New Address</button>
+      {totals.discount > 0 && (
+        <div className="mt-3 text-[12px] text-[var(--sk-green-500)] bg-[var(--sk-green-100)] p-3 rounded-lg flex items-center gap-2">
+          <Truck size={14} className="shrink-0" />
+          Yay! You are saving {inr(totals.discount)} on this order.
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function Checkout() {
+  const { items, totals, clear, count, coupon } = useCart();
+  const { isAuthed, loading: authLoading } = useAuth();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const [address, setAddress] = useState(ADDRESSES[0].id);
+  const [showSummary, setShowSummary] = useState(false);
+  const [deliveryDate, setDeliveryDate] = useState('custom');
+  const [customDate, setCustomDate] = useState('');
+  const [payment, setPayment] = useState('upi');
+  const [placing, setPlacing] = useState(false);
+  const [showAddAddr, setShowAddAddr] = useState(false);
+  const [giftMsg, setGiftMsg] = useState({ name: '', phone: '', text: '' });
+
+  // Guests must log in — never silent auto-login
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthed) {
+      const returnPath = loc.pathname + loc.search;
+      nav(`/login?return=${encodeURIComponent(returnPath)}`, {
+        replace: true,
+        state: { from: returnPath, returnTo: returnPath },
+      });
+    }
+  }, [isAuthed, authLoading, nav, loc.pathname, loc.search]);
+
+  if (authLoading || !isAuthed) {
+    return (
+      <div className="sk-container py-24 text-center text-ink-500 text-sm">
+        Redirecting to login…
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="sk-container py-24 text-center">
+        <div className="font-display text-2xl text-brand-900">Your cart is empty.</div>
+        <Link to="/category/all" className="sk-btn-primary mt-4 inline-flex">Continue Shopping</Link>
+      </div>
+    );
+  }
+
+  const selectedAddr = ADDRESSES.find((a) => a.id === address) || ADDRESSES[0];
+
+  const placeOrder = async () => {
+    setPlacing(true);
+    try {
+      await new Promise((r) => setTimeout(r, 900));
+      const orderId = 'SKF' + Math.random().toString().slice(2, 8);
+      const now = new Date();
+      const etaStart = new Date(now);
+      etaStart.setDate(etaStart.getDate() + 2);
+      const etaEnd = new Date(now);
+      etaEnd.setDate(etaEnd.getDate() + 4);
+      const fmt = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+      const snap = {
+        orderId,
+        placedAt: now.toISOString(),
+        paymentMethod: payment,
+        paymentLabel: PAY_METHODS.find((m) => m.key === payment)?.label || payment,
+        address: selectedAddr,
+        deliveryDate,
+        customDate,
+        giftMsg,
+        items: items.map((it) => ({
+          key: it.key,
+          id: it.id,
+          name: it.name,
+          image: it.image,
+          price: it.price,
+          qty: it.qty,
+          variant: it.variant,
+        })),
+        totals: { ...totals },
+        count,
+        coupon: coupon?.code || null,
+        eta: `${fmt(etaStart)} – ${fmt(etaEnd)}`,
+      };
+      try {
+        sessionStorage.setItem('sk_last_order', JSON.stringify(snap));
+      } catch {}
+
+      clear();
+      nav(`/order-success/${orderId}`);
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  return (
+    <div className="pb-28 md:pb-0">
+      <div className="bg-cream-100 border-b border-line">
+        <div className="sk-container py-6 md:py-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="font-display font-bold text-brand-900 text-3xl md:text-4xl">Checkout</h1>
+              {/* Step indicator — Cart > Checkout > Payment > Order Confirmation */}
+              <nav className="mt-3 flex items-center gap-1.5 text-sm flex-wrap" aria-label="Checkout progress">
+                {STEPS.map((s, i) => (
+                  <React.Fragment key={s.label}>
+                    {s.to ? (
+                      <Link
+                        to={s.to}
+                        className={`whitespace-nowrap ${s.current ? 'text-brand-900 font-semibold' : 'text-ink-500 hover:text-brand-900'}`}
+                      >
+                        {s.label}
+                      </Link>
+                    ) : (
+                      <span className={`whitespace-nowrap ${s.current ? 'text-brand-900 font-semibold' : 'text-ink-500'}`}>
+                        {s.label}
+                      </span>
+                    )}
+                    {i < STEPS.length - 1 && <ChevronRight size={14} className="text-ink-400 shrink-0" />}
+                  </React.Fragment>
+                ))}
+              </nav>
             </div>
-            <div className="mt-4 grid md:grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-[var(--sk-cream-400)] bg-[var(--sk-cream-300)]/90 px-3 py-2">
+              <ShieldCheck size={16} className="text-brand-900 shrink-0" />
+              <span className="text-[12px] font-semibold text-brand-900">Secure Checkout</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="sk-container py-8 grid lg:grid-cols-[1fr_360px] gap-8 items-start">
+        <div className="space-y-5">
+          {/* Step 1 — Address */}
+          <section className="sk-card p-5 md:p-6">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <div className="font-display text-lg font-bold text-brand-900 inline-flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-full bg-brand-900 text-white text-[12px] grid place-items-center font-ui">1</span>
+                  <MapPin size={18} /> Delivery Address
+                </div>
+                <p className="text-[12px] text-ink-500 mt-1 ml-9">Select or add a delivery address.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddAddr((v) => !v)}
+                className="text-sm font-semibold text-brand-900 inline-flex items-center gap-1 hover:underline"
+                data-testid="checkout-add-address"
+              >
+                <Plus size={14} /> Add New Address
+              </button>
+            </div>
+
+            <div className="mt-4 grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
               {ADDRESSES.map((a) => (
-                <label key={a.id} className={`sk-card p-4 cursor-pointer flex gap-3 ${address === a.id ? 'ring-2 ring-brand-900' : ''}`}>
-                  <input type="radio" name="addr" checked={address === a.id} onChange={() => setAddress(a.id)} className="mt-1 accent-[var(--sk-brown-900)]" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2"><b className="text-brand-900">{a.name}</b><span className="sk-pill">{a.label}</span></div>
-                    <div className="text-sm text-ink-600 mt-1">{a.line1}, {a.line2} – {a.pincode}</div>
-                    <div className="text-[12px] text-ink-500 mt-0.5">{a.phone}</div>
+                <label
+                  key={a.id}
+                  className={`rounded-xl border p-3.5 cursor-pointer flex gap-2.5 transition bg-white min-h-[132px] ${
+                    address === a.id
+                      ? 'border-[var(--sk-gold-500)] ring-1 ring-[var(--sk-gold-500)]/50 shadow-sk-sm'
+                      : 'border-line hover:border-line-strong'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="addr"
+                    checked={address === a.id}
+                    onChange={() => setAddress(a.id)}
+                    className="mt-1 accent-[var(--sk-brown-900)] shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <b className="text-brand-900 text-sm">{a.name}</b>
+                      <span className="sk-pill !bg-[var(--sk-cream-300)] !text-brand-900 !py-0.5 !px-2 text-[10px]">{a.label}</span>
+                    </div>
+                    <div className="text-[12px] text-ink-600 mt-1 leading-snug">
+                      {a.line1}, {a.line2} – {a.pincode}
+                    </div>
+                    <div className="text-[11px] text-ink-500 mt-1">{a.phone}</div>
                   </div>
                 </label>
               ))}
-            </div>
-          </section>
 
-          {/* Delivery date */}
-          <section className="sk-card p-5">
-            <div className="font-display text-lg font-bold text-brand-900 inline-flex items-center gap-2"><CalendarDays size={18} /> Delivery Date</div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {[{ k: 'today', l: 'Today' }, { k: 'tomorrow', l: 'Tomorrow' }, { k: 'custom', l: 'Custom' }].map((o) => (
-                <button key={o.k} onClick={() => setDeliveryDate(o.k)} className={`px-4 py-2 rounded-full text-sm font-medium ${deliveryDate === o.k ? 'bg-brand-900 text-white' : 'bg-white text-brand-900 border border-line-strong'}`}>{o.l}</button>
-              ))}
-              {deliveryDate === 'custom' && <input type="date" min={new Date().toISOString().split('T')[0]} className="sk-input !py-2 max-w-[200px]" />}
+              <button
+                type="button"
+                onClick={() => setShowAddAddr(true)}
+                className="rounded-xl border border-dashed border-line-strong p-4 min-h-[132px] flex flex-col items-center justify-center gap-2 text-brand-900 hover:bg-cream-200 transition"
+              >
+                <div className="w-9 h-9 rounded-full bg-cream-300 grid place-items-center">
+                  <Plus size={18} />
+                </div>
+                <span className="font-semibold text-sm">Add New Address</span>
+              </button>
             </div>
-          </section>
 
-          {/* Gift message */}
-          <section className="sk-card p-5">
-            <label className="font-display text-lg font-bold text-brand-900 inline-flex items-center gap-2"><Gift size={18} /> Send as Gift?</label>
-            <div className="mt-2 flex items-center gap-2">
-              <input type="checkbox" checked={giftMsg.on} onChange={(e) => setGiftMsg({ ...giftMsg, on: e.target.checked })} className="accent-[var(--sk-brown-900)]" /> <span className="text-sm text-ink-600">Add recipient details and gift message</span>
-            </div>
-            {giftMsg.on && (
-              <div className="mt-3 grid md:grid-cols-2 gap-3">
-                <input value={giftMsg.name} onChange={(e) => setGiftMsg({ ...giftMsg, name: e.target.value })} placeholder="Recipient name" className="sk-input" />
-                <input value={giftMsg.phone} onChange={(e) => setGiftMsg({ ...giftMsg, phone: e.target.value })} placeholder="Recipient phone" className="sk-input" />
-                <textarea value={giftMsg.text} onChange={(e) => setGiftMsg({ ...giftMsg, text: e.target.value.slice(0, 150) })} rows={2} placeholder="Gift message (150 chars)" className="sk-input md:col-span-2" />
-                <div className="md:col-span-2 text-[11px] text-ink-500 text-right">{giftMsg.text.length}/150</div>
+            {showAddAddr && (
+              <div className="mt-4 grid sm:grid-cols-2 gap-3 p-4 rounded-xl bg-cream-200 border border-line">
+                <input placeholder="Full name" className="sk-input" />
+                <input placeholder="Phone" className="sk-input" />
+                <input placeholder="Address line 1" className="sk-input sm:col-span-2" />
+                <input placeholder="City" className="sk-input" />
+                <input placeholder="Pincode" className="sk-input" />
+                <button type="button" className="sk-btn-primary sm:col-span-2 w-max" onClick={() => setShowAddAddr(false)}>
+                  Save Address
+                </button>
               </div>
             )}
           </section>
 
-          {/* Payment methods */}
-          <section className="sk-card p-5">
-            <div className="font-display text-lg font-bold text-brand-900 inline-flex items-center gap-2"><Shield size={18} /> Payment Method</div>
-            <div className="mt-4 space-y-2">
-              {PAY_METHODS.map((m) => (
-                <label key={m.key} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer ${payment === m.key ? 'border-brand-900 bg-cream-200' : 'border-line hover:border-line-strong'}`}>
-                  <input type="radio" name="pay" checked={payment === m.key} onChange={() => setPayment(m.key)} className="accent-[var(--sk-brown-900)]" />
-                  <m.Ic size={20} className="text-brand-900" />
-                  <div className="flex-1">
-                    <div className="font-semibold text-brand-900 text-sm">{m.label}</div>
-                    <div className="text-[11px] text-ink-500">{m.desc}</div>
-                  </div>
-                </label>
+          {/* Step 2 — Delivery date */}
+          <section className="sk-card p-5 md:p-6">
+            <div className="font-display text-lg font-bold text-brand-900 inline-flex items-center gap-2">
+              <span className="w-7 h-7 rounded-full bg-brand-900 text-white text-[12px] grid place-items-center font-ui">2</span>
+              <CalendarDays size={18} /> Delivery Date
+            </div>
+            <p className="text-[12px] text-ink-500 mt-1 ml-9">Choose your preferred delivery date.</p>
+            <div className="mt-4 flex flex-wrap gap-2.5 items-center">
+              {[
+                { k: 'today', l: `Today ${formatDayLabel(0)}` },
+                { k: 'tomorrow', l: `Tomorrow ${formatDayLabel(1)}` },
+                { k: 'custom', l: 'Custom Date' },
+              ].map((o) => (
+                <button
+                  key={o.k}
+                  type="button"
+                  onClick={() => setDeliveryDate(o.k)}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition ${
+                    deliveryDate === o.k
+                      ? 'bg-[var(--sk-cream-300)] text-brand-900 border-[var(--sk-gold-500)] ring-1 ring-[var(--sk-gold-500)]/40'
+                      : 'bg-white text-brand-900 border-line-strong hover:border-brand-900'
+                  }`}
+                >
+                  {o.l}
+                </button>
               ))}
+              {deliveryDate === 'custom' && (
+                <input
+                  type="date"
+                  min={minDateStr()}
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="sk-input !py-2.5 !w-auto min-w-[160px]"
+                />
+              )}
             </div>
           </section>
-        </div>
 
-        {/* Sticky sidebar (desktop) / collapsible bar (mobile) */}
-        <aside className="hidden md:block sk-card p-5 h-fit sticky top-4">
-          <div className="font-display font-bold text-brand-900 text-lg">Order Summary</div>
-          <div className="mt-3 space-y-1.5 text-sm max-h-[240px] overflow-auto pr-2">
-            {items.map((it) => (
-              <div key={it.key} className="flex items-center gap-2">
-                <img src={it.image} className="w-10 h-10 rounded-lg object-cover bg-cream-200" alt="" />
-                <div className="flex-1">
-                  <div className="line-clamp-1 text-brand-900">{it.name}</div>
-                  <div className="text-[11px] text-ink-500">Qty {it.qty}{it.variant ? ` • ${it.variant}` : ''}</div>
+          {/* Step 3 — Gift recipient */}
+          <section className="sk-card p-5 md:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="font-display text-lg font-bold text-brand-900 inline-flex items-center gap-2 flex-wrap">
+                  <span className="w-7 h-7 rounded-full bg-brand-900 text-white text-[12px] grid place-items-center font-ui">3</span>
+                  <Gift size={18} /> Gift Recipient Details
+                  <span className="text-[12px] font-ui font-normal text-ink-500">(Optional)</span>
                 </div>
-                <div className="font-semibold text-brand-900 text-[13px]">{inr(it.price * it.qty)}</div>
+                <p className="text-[12px] text-ink-500 mt-1 ml-9">For send-as-gift orders</p>
               </div>
-            ))}
-          </div>
-          <div className="mt-3 border-t border-line pt-3 space-y-1.5 text-sm">
-            <div className="flex justify-between"><span className="text-ink-600">Subtotal</span><span>{inr(totals.subtotal)}</span></div>
-            {totals.discount > 0 && <div className="flex justify-between text-[var(--sk-green-500)]"><span>Discount</span><span>–{inr(totals.discount)}</span></div>}
-            <div className="flex justify-between"><span className="text-ink-600">GST</span><span>{inr(totals.gst)}</span></div>
-            <div className="flex justify-between"><span className="text-ink-600">Shipping</span><span>{totals.shipping === 0 ? 'FREE' : inr(totals.shipping)}</span></div>
-            <div className="flex justify-between border-t border-line pt-2 mt-2"><span className="font-display">Total</span><span className="font-display font-bold text-lg">{inr(totals.total)}</span></div>
-          </div>
-          <button onClick={placeOrder} disabled={placing} data-testid="place-order" className="sk-btn-primary w-full mt-5 !py-3.5">
-            {placing ? 'Processing...' : <><Lock size={16} /> Place Order Securely</>}
-          </button>
-          <div className="mt-3 text-[11px] text-ink-500 text-center">SSL secured • 100% safe payments</div>
-        </aside>
-
-        {/* Mobile collapsible summary + place button */}
-        <div className="md:hidden fixed bottom-16 left-0 right-0 z-30 bg-white border-t border-line shadow-sk-lg">
-          <button onClick={() => setShowSummary((s) => !s)} className="w-full flex items-center justify-between px-4 py-3">
-            <div><div className="text-[11px] text-ink-500">Total</div><div className="font-display font-bold text-brand-900 text-lg">{inr(totals.total)}</div></div>
-            <div className="sk-btn-ghost text-sm"><ChevronDown size={16} className={showSummary ? 'rotate-180 transition' : 'transition'} /> {items.length} item{items.length !== 1 ? 's' : ''}</div>
-          </button>
-          {showSummary && (
-            <div className="px-4 pb-3 space-y-1.5 text-sm border-t border-line pt-2">
-              <div className="flex justify-between"><span className="text-ink-600">Subtotal</span><span>{inr(totals.subtotal)}</span></div>
-              {totals.discount > 0 && <div className="flex justify-between text-[var(--sk-green-500)]"><span>Discount</span><span>–{inr(totals.discount)}</span></div>}
-              <div className="flex justify-between"><span className="text-ink-600">GST</span><span>{inr(totals.gst)}</span></div>
-              <div className="flex justify-between"><span className="text-ink-600">Shipping</span><span>{totals.shipping === 0 ? 'FREE' : inr(totals.shipping)}</span></div>
+              <div className="hidden sm:grid place-items-center w-16 h-16 rounded-xl bg-cream-300 text-[var(--sk-gold-500)] shrink-0">
+                <Gift size={28} strokeWidth={1.25} />
+              </div>
             </div>
-          )}
-          <button onClick={placeOrder} disabled={placing} className="sk-btn-primary w-full !rounded-none !py-4 text-base">{placing ? 'Processing...' : <><Lock size={16} /> Place Order Securely</>}</button>
+            <div className="mt-4 grid md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[12px] font-semibold text-brand-900">Recipient Name</label>
+                <input
+                  value={giftMsg.name}
+                  onChange={(e) => setGiftMsg({ ...giftMsg, name: e.target.value })}
+                  placeholder="Enter recipient name"
+                  className="sk-input mt-1"
+                  data-testid="gift-name"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] font-semibold text-brand-900">Recipient Mobile</label>
+                <div className="mt-1 flex gap-2">
+                  <span className="sk-input !w-auto shrink-0 flex items-center text-ink-600 !px-3">+91</span>
+                  <input
+                    value={giftMsg.phone}
+                    onChange={(e) => setGiftMsg({ ...giftMsg, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                    placeholder="Enter mobile number"
+                    className="sk-input"
+                    data-testid="gift-phone"
+                  />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-[12px] font-semibold text-brand-900">Gift Message</label>
+                <textarea
+                  value={giftMsg.text}
+                  onChange={(e) => setGiftMsg({ ...giftMsg, text: e.target.value.slice(0, 200) })}
+                  rows={3}
+                  placeholder="Write your message here..."
+                  className="sk-input mt-1"
+                  data-testid="gift-message"
+                />
+                <div className="text-[11px] text-ink-500 text-right mt-1">{giftMsg.text.length}/200</div>
+              </div>
+            </div>
+          </section>
+
+          {/* Step 4 — Payment method cards */}
+          <section className="sk-card p-5 md:p-6">
+            <div className="font-display text-lg font-bold text-brand-900 inline-flex items-center gap-2">
+              <span className="w-7 h-7 rounded-full bg-brand-900 text-white text-[12px] grid place-items-center font-ui">4</span>
+              <CreditCard size={18} /> Payment Method
+            </div>
+            <p className="text-[12px] text-ink-500 mt-1 ml-9">Select a payment option.</p>
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5">
+              {PAY_METHODS.map((m) => {
+                const selected = payment === m.key;
+                return (
+                  <label
+                    key={m.key}
+                    className={`relative flex flex-col gap-2 p-3.5 rounded-xl border cursor-pointer transition bg-white min-h-[110px] ${
+                      selected
+                        ? 'border-[var(--sk-gold-500)] ring-1 ring-[var(--sk-gold-500)]/50 bg-cream-200/40'
+                        : 'border-line hover:border-line-strong'
+                    }`}
+                    data-testid={`pay-${m.key}`}
+                  >
+                    <input
+                      type="radio"
+                      name="pay"
+                      checked={selected}
+                      onChange={() => setPayment(m.key)}
+                      className="absolute top-3 left-3 accent-[var(--sk-brown-900)]"
+                    />
+                    <m.Ic size={22} className="text-brand-900 mt-5" />
+                    <div>
+                      <div className="font-semibold text-brand-900 text-[13px] leading-snug">{m.label}</div>
+                      <div className="text-[10px] text-ink-500 mt-0.5 leading-snug">{m.desc}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+
+          <Link to="/cart" className="sk-btn-ghost text-sm inline-flex">
+            <ChevronLeft size={14} /> Back to Cart
+          </Link>
         </div>
+
+        {/* Desktop sticky summary */}
+        <aside className="hidden lg:block space-y-3 sticky top-24">
+          <div className="flex items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-2.5 shadow-sk-sm">
+            <ShieldCheck size={16} className="text-[var(--sk-gold-500)] shrink-0" />
+            <div className="text-[11px] text-brand-900 leading-snug">
+              <span className="font-semibold">Secure Checkout</span>
+              <span className="text-ink-500"> — 100% Safe &amp; Secure Payments</span>
+            </div>
+          </div>
+
+          <div className="sk-card !overflow-hidden">
+            <div className="bg-brand-900 text-white px-5 py-4 text-center">
+              <div className="font-display font-bold text-lg">Order Summary</div>
+              <FlourishGold />
+            </div>
+            <div className="p-5 bg-gradient-to-b from-cream-100 to-white">
+              <OrderSummaryBody items={items} totals={totals} count={count} />
+              <button
+                type="button"
+                onClick={placeOrder}
+                disabled={placing}
+                data-testid="place-order"
+                className="sk-btn-primary w-full mt-5 !py-3.5 flex-col !gap-0.5"
+              >
+                {placing ? (
+                  'Processing…'
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-2"><Lock size={16} /> Place Order Securely</span>
+                    <span className="text-[10px] font-medium opacity-80">100% Safe &amp; Secure Payments</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </aside>
       </div>
+
+      {/* Mobile collapsible summary above Place Order */}
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-30 bg-white border-t border-line shadow-sk-lg">
+        <button
+          type="button"
+          onClick={() => setShowSummary((s) => !s)}
+          className="w-full flex items-center justify-between px-4 py-3"
+          data-testid="mobile-summary-toggle"
+        >
+          <div>
+            <div className="text-[11px] text-ink-500">Total Amount</div>
+            <div className="font-display font-bold text-brand-900 text-lg">{inr(totals.total)}</div>
+          </div>
+          <div className="sk-btn-ghost text-sm inline-flex items-center gap-1">
+            <ChevronDown size={16} className={`transition ${showSummary ? 'rotate-180' : ''}`} />
+            {count} item{count !== 1 ? 's' : ''}
+          </div>
+        </button>
+        {showSummary && (
+          <div className="px-4 pb-3 border-t border-line pt-3 max-h-[40vh] overflow-auto">
+            <OrderSummaryBody items={items} totals={totals} count={count} />
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={placeOrder}
+          disabled={placing}
+          data-testid="place-order-mobile"
+          className="sk-btn-primary w-full !rounded-none !py-4 text-base"
+        >
+          {placing ? 'Processing…' : (
+            <span className="inline-flex items-center gap-2"><Lock size={16} /> Place Order Securely</span>
+          )}
+        </button>
+      </div>
+
+      <TrustStrip />
     </div>
   );
 }

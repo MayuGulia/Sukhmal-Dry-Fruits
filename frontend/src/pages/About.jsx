@@ -1,41 +1,204 @@
 import React from 'react';
-import { PageHeader } from '@/components/shared/Breadcrumb';
-import { TIMELINE, CERTS } from '@/data/mockContent';
-import { Users, Award, TrendingUp, Package, Heart } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import Breadcrumb from '@/components/shared/Breadcrumb';
+import FlourishTitle from '@/components/home/FlourishTitle';
+import {
+  Leaf, Award, Heart, Hand, Users, TrendingUp, Package, ShieldCheck,
+  Search, Sparkles, Box, ClipboardCheck, Facebook, Instagram, Linkedin, ArrowRight,
+} from 'lucide-react';
+
+const HERO_IMG = '/brand/about-hero-family.png';
+const FOUNDER_IMG = '/brand/about-founder-portrait.png';
+const QUOTE_IMG = '/brand/about-quote-nuts.png';
+const CTA_IMG = '/brand/about-thankyou-nuts.png';
+
+const PROCESS_IMGS = [
+  '/brand/about-process-sorting.png',
+  '/brand/about-process-hands.png',
+  '/brand/about-process-packaging.png',
+  '/brand/about-process-quality.png',
+];
+
+const TIMELINE = [
+  { year: '2010', title: 'The Beginning', text: 'Opened our first small store with a passion for pure dry fruits.' },
+  { year: '2013', title: 'Premium Sourcing', text: 'Began importing premium dry fruits from trusted global origins.' },
+  { year: '2016', title: 'Expanding Love', text: 'Grew the assortment with more varieties families love.' },
+  { year: '2018', title: 'Gift Hampers', text: 'Introduced handcrafted hampers for celebrations & gifting.' },
+  { year: '2021', title: 'Pan India Delivery', text: 'Scaled logistics to deliver freshness across India.' },
+  { year: '2023', title: 'Corporate Gifting', text: 'Became a trusted partner for corporate & bulk gifting.' },
+  { year: '2025', title: 'The Future', text: 'Innovating with care — D2C experience, quality-first always.' },
+];
+
+const CERTS = [
+  { code: 'FSSAI', desc: 'Certified', meta: 'Licensed Food Business' },
+  { code: 'ISO', desc: 'Food Safety Management', meta: '22000 Certified' },
+  { code: 'HACCP', desc: 'Food Safety Assurance', meta: 'Process Assured' },
+  { code: 'GMP', desc: 'Good Manufacturing Practice', meta: 'Facility Certified' },
+];
+
+const STATS = [
+  { Ic: TrendingUp, n: '30+', l: 'Years of Trust' },
+  { Ic: Users, n: '20K+', l: 'Happy Customers' },
+  { Ic: Award, n: '500+', l: 'Corporate Clients' },
+  { Ic: Package, n: '150+', l: 'Products' },
+  { Ic: Heart, n: '99%', l: 'Customer Satisfaction' },
+];
+
+const TEAM = [
+  {
+    name: 'Saurabh Malhotra',
+    role: 'Founder',
+    bio: 'Visionary behind Sukhmal — obsessed with purity, freshness, and honest gifting.',
+    img: '/brand/about-team-saurabh.png',
+  },
+  {
+    name: 'Priya Malhotra',
+    role: 'Co-Founder',
+    bio: 'Steers brand experience, packaging craft, and every celebration-ready hamper.',
+    img: '/brand/about-team-priya.png',
+  },
+  {
+    name: 'Rohit Sharma',
+    role: 'Quality Head',
+    bio: 'Guards every batch — sorting, moisture checks, and aflatoxin-safe standards.',
+    img: '/brand/about-team-rohit.png',
+  },
+  {
+    name: 'Neha Verma',
+    role: 'Customer Support Head',
+    bio: 'Makes sure every order feels personal — from enquiry to doorstep delight.',
+    img: '/brand/about-team-neha.png',
+  },
+];
+
+const HERO_ICONS = [
+  { Ic: Leaf, label: '100% Natural' },
+  { Ic: Award, label: 'Premium Quality' },
+  { Ic: Hand, label: 'Handpicked' },
+  { Ic: Heart, label: 'Made with Love' },
+];
+
+const PROCESS_STEPS = [
+  { Ic: Search, title: 'Careful Sorting', text: 'Hand-sorted for size, colour, and purity.' },
+  { Ic: Sparkles, title: 'Hygienic Processing', text: 'Clean, controlled facility handling.' },
+  { Ic: Box, title: 'Premium Packaging', text: 'Sealed to lock in freshness & aroma.' },
+  { Ic: ClipboardCheck, title: 'Quality Inspection', text: 'Batch-tested before every dispatch.' },
+];
 
 export default function About() {
-  const stats = [
-    { Ic: TrendingUp, n: '30+', l: 'Years of Trust' },
-    { Ic: Users, n: '50,000+', l: 'Happy Customers' },
-    { Ic: Award, n: '400+', l: 'Corporate Clients' },
-    { Ic: Package, n: '150+', l: 'Product Varieties' },
-    { Ic: Heart, n: '4.9★', l: 'Customer Satisfaction' },
-  ];
-
   return (
-    <div>
-      <PageHeader title="Our Story" subtitle="Three generations of nut-lovers, one obsession: freshness." breadcrumb={[{ label: 'About Us' }]} />
-      <section className="sk-container py-14 grid md:grid-cols-2 gap-10 items-center">
-        <div>
-          <div className="sk-section-eyebrow">BRAND STORY</div>
-          <h2 className="sk-section-title text-3xl md:text-4xl mt-2">Curating Freshness Since 1994</h2>
-          <p className="text-ink-600 mt-4">Founded in the bustling lanes of Old Delhi, Sukhmal Dry Fruits Korner was born from a simple belief — that everyone deserves access to the freshest, purest, most premium dry fruits, sourced directly from where they’re grown best.</p>
-          <p className="text-ink-600 mt-3">From Kashmir’s walnut groves to Iran’s pistachio orchards to California’s almond farms, we travel far to bring the best home. Three decades in, that promise hasn’t changed.</p>
-          <blockquote className="mt-6 border-l-4 border-gold-500 pl-4 italic text-brand-900">“We don’t just sell dry fruits. We deliver an experience — hand-picked, carefully packed, and thoughtfully shipped.” <div className="text-[12px] text-ink-500 not-italic mt-1">— Rajesh Sukhmal, Founder</div></blockquote>
+    <div className="bg-cream-100">
+      {/* HERO */}
+      <section className="relative overflow-hidden bg-cream-200 border-b border-line">
+        <div className="sk-container py-10 md:py-16 grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+          <div>
+            <Breadcrumb items={[{ label: 'About Us' }]} />
+            <div className="sk-section-eyebrow mt-4">ABOUT SUKHMAL</div>
+            <h1 className="font-display font-bold text-brand-900 text-3xl md:text-5xl leading-tight mt-2">
+              Premium Quality. Timeless Trust. Crafted with Love.
+            </h1>
+            <p className="text-ink-600 mt-4 max-w-xl text-sm md:text-base leading-relaxed">
+              From a small neighbourhood store to a trusted name in dry fruits and gifting —
+              Sukhmal Dry Fruits Korner has grown on one promise: purity you can taste,
+              freshness you can trust, and hampers crafted with heart.
+            </p>
+            <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {HERO_ICONS.map(({ Ic, label }) => (
+                <div key={label} className="flex flex-col items-start gap-2">
+                  <div className="h-11 w-11 rounded-full bg-white border border-line grid place-items-center text-[var(--sk-gold-400)] shadow-[var(--sk-shadow-sm)]">
+                    <Ic size={18} strokeWidth={1.75} />
+                  </div>
+                  <span className="text-[12px] md:text-sm font-semibold text-brand-900 leading-snug">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="relative">
+            <img
+              src={HERO_IMG}
+              alt="Sukhmal family with gift hampers"
+              className="w-full h-[280px] md:h-[420px] object-cover rounded-2xl shadow-[var(--sk-shadow-lg)] border border-line"
+            />
+          </div>
         </div>
-        <img src="https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&auto=format&fit=crop" alt="Founder" className="rounded-2xl object-cover w-full h-[420px]" />
       </section>
 
-      <section className="bg-cream-200 py-14">
+      {/* FOUNDER STORY */}
+      <section className="sk-container py-14 md:py-20">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
+          <div className="lg:col-span-4">
+            <img
+              src={FOUNDER_IMG}
+              alt="Saurabh Malhotra, Founder"
+              className="w-full h-full min-h-[320px] object-cover rounded-2xl border border-line shadow-[var(--sk-shadow-md)]"
+            />
+          </div>
+          <div className="lg:col-span-5 flex flex-col justify-center">
+            <div className="sk-section-eyebrow">FOUNDER&apos;S NOTE</div>
+            <h2 className="sk-section-title text-3xl md:text-4xl mt-2">A Dream Rooted in Passion</h2>
+            <p className="text-ink-600 mt-4 leading-relaxed">
+              Sukhmal was born from a simple belief — that every family deserves access to the
+              freshest, purest dry fruits, sourced with honesty and packed with care. What began
+              as a small shop has become a promise we renew with every order.
+            </p>
+            <p className="text-ink-600 mt-3 leading-relaxed">
+              Purity, freshness, and trust aren&apos;t marketing words for us. They are how we
+              source, sort, pack, and ship — every single day.
+            </p>
+            <div className="mt-6 pt-4 border-t border-line">
+              <div className="font-display text-2xl italic text-brand-900" style={{ fontFamily: 'cursive, "Playfair Display", serif' }}>
+                Saurabh Malhotra
+              </div>
+              <div className="text-[12px] text-ink-500 mt-0.5">Founder, Sukhmal Dry Fruits Korner</div>
+            </div>
+          </div>
+          <div className="lg:col-span-3">
+            <div className="h-full rounded-2xl bg-brand-900 text-white p-6 md:p-7 flex flex-col justify-between shadow-[var(--sk-shadow-lg)]">
+              <div>
+                <div className="font-display text-5xl text-gold-300 leading-none">&ldquo;</div>
+                <p className="font-display text-xl md:text-2xl leading-snug mt-2">
+                  Our mission is to deliver purity, quality and smiles in every pack we send.
+                </p>
+              </div>
+              <img src={QUOTE_IMG} alt="" className="mt-6 w-full h-28 object-cover rounded-xl opacity-90" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TIMELINE */}
+      <section className="bg-cream-200 py-14 md:py-20 border-y border-line">
         <div className="sk-container">
-          <div className="text-center mb-10"><div className="sk-section-eyebrow">MILESTONES</div><h2 className="sk-section-title text-3xl md:text-4xl mt-2">The Journey So Far</h2></div>
-          <div className="relative pl-8 md:pl-0">
-            <div className="absolute left-3 md:left-1/2 md:-translate-x-1/2 top-0 bottom-0 w-[2px] bg-gold-500" />
-            <div className="space-y-8">
-              {TIMELINE.map((t, i) => (
-                <div key={t.year} className={`relative md:grid md:grid-cols-2 md:gap-8 md:items-center ${i % 2 === 0 ? '' : 'md:direction-rtl'}`}>
-                  <div className={`sk-card p-5 ${i % 2 === 0 ? 'md:mr-8' : 'md:ml-8 md:col-start-2'}`}><div className="font-display text-3xl font-bold text-brand-900">{t.year}</div><div className="font-semibold text-brand-900">{t.title}</div><div className="text-sm text-ink-600 mt-1">{t.text}</div></div>
-                  <div className="absolute -left-8 md:left-1/2 md:-translate-x-1/2 top-4 w-4 h-4 rounded-full bg-gold-500 ring-4 ring-cream-200" />
+          <FlourishTitle title="Our Journey" />
+          <p className="text-center text-ink-600 -mt-4 mb-10 md:mb-14 text-sm md:text-base max-w-xl mx-auto">
+            From a neighbourhood store to pan-India gifting — 2010 to 2025.
+          </p>
+
+          <div className="hidden lg:block relative">
+            <div className="absolute left-0 right-0 top-8 border-t-2 border-dashed border-[var(--sk-gold-500)]" />
+            <div className="grid grid-cols-7 gap-3 relative">
+              {TIMELINE.map((t) => (
+                <div key={t.year} className="text-center pt-2">
+                  <div className="mx-auto h-4 w-4 rounded-full bg-[var(--sk-gold-500)] ring-4 ring-cream-200 mb-4" />
+                  <div className="font-display font-bold text-brand-900 text-2xl">{t.year}</div>
+                  <div className="font-semibold text-brand-900 text-sm mt-1">{t.title}</div>
+                  <p className="text-[11px] text-ink-500 mt-1.5 leading-snug px-1">{t.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:hidden relative pl-8">
+            <div className="absolute left-3 top-0 bottom-0 w-[2px] bg-[var(--sk-gold-500)]" />
+            <div className="space-y-6">
+              {TIMELINE.map((t) => (
+                <div key={t.year} className="relative">
+                  <div className="absolute -left-8 top-1.5 w-4 h-4 rounded-full bg-[var(--sk-gold-500)] ring-4 ring-cream-200" />
+                  <div className="bg-white border border-line rounded-xl p-4 shadow-[var(--sk-shadow-sm)]">
+                    <div className="font-display text-2xl font-bold text-brand-900">{t.year}</div>
+                    <div className="font-semibold text-brand-900">{t.title}</div>
+                    <p className="text-sm text-ink-600 mt-1">{t.text}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -43,20 +206,117 @@ export default function About() {
         </div>
       </section>
 
-      <section className="sk-container py-14">
-        <div className="text-center mb-8"><div className="sk-section-eyebrow">CERTIFIED</div><h2 className="sk-section-title text-3xl md:text-4xl mt-2">Trust You Can Verify</h2></div>
+      {/* MANUFACTURING */}
+      <section className="sk-container py-14 md:py-20">
+        <FlourishTitle title="Pure Process. Perfect Quality." />
+        <p className="text-center text-ink-600 -mt-4 mb-10 text-sm md:text-base max-w-xl mx-auto">
+          Hygienic handling from sort to seal — so every bite stays as fresh as the day it arrived.
+        </p>
+        <div className="grid md:grid-cols-2 gap-3 md:gap-4 mb-8">
+          {PROCESS_IMGS.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt={`Manufacturing step ${i + 1}`}
+              className="w-full h-40 md:h-52 object-cover rounded-2xl border border-line"
+              loading="lazy"
+            />
+          ))}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {CERTS.map((c) => (
-            <div key={c.code} className="sk-card p-6 text-center"><div className="h-14 w-14 mx-auto rounded-full bg-cream-300 grid place-items-center font-display text-brand-900 font-bold">{c.code.charAt(0)}</div><div className="font-display font-bold text-brand-900 mt-3">{c.code}</div><div className="text-[12px] text-ink-500">{c.desc}</div></div>
+          {PROCESS_STEPS.map(({ Ic, title, text }) => (
+            <div key={title} className="bg-white border border-line rounded-xl p-5 text-center shadow-[var(--sk-shadow-sm)]">
+              <div className="mx-auto h-12 w-12 rounded-full bg-cream-300 text-brand-900 grid place-items-center">
+                <Ic size={22} strokeWidth={1.75} />
+              </div>
+              <div className="font-display font-bold text-brand-900 mt-3">{title}</div>
+              <p className="text-[12px] text-ink-500 mt-1">{text}</p>
+            </div>
+          ))}
+        </div>
+        <div className="text-center mt-8">
+          <Link to="/faqs" className="sk-btn-primary">
+            Know More About Our Process <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
+
+      {/* CERTIFICATIONS */}
+      <section className="bg-cream-200 py-14 border-y border-line">
+        <div className="sk-container">
+          <FlourishTitle title="Our Certifications" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 -mt-2">
+            {CERTS.map((c) => (
+              <div key={c.code} className="bg-white border border-line rounded-xl p-6 text-center shadow-[var(--sk-shadow-sm)]">
+                <div className="h-16 w-16 mx-auto rounded-full border-2 border-[var(--sk-gold-500)] bg-cream-100 grid place-items-center">
+                  <ShieldCheck size={28} className="text-brand-900" strokeWidth={1.5} />
+                </div>
+                <div className="font-display font-bold text-brand-900 mt-3 text-lg">{c.code}</div>
+                <div className="text-[12px] text-ink-600 mt-0.5">{c.desc}</div>
+                <div className="text-[11px] text-ink-400 mt-1">{c.meta}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* STATS */}
+      <section className="bg-brand-900 text-white py-12 md:py-14">
+        <div className="sk-container">
+          <div className="text-center mb-8">
+            <div className="sk-section-eyebrow !text-gold-300">SUKHMAL IN NUMBERS</div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 md:gap-4">
+            {STATS.map(({ Ic, n, l }) => (
+              <div key={l} className="text-center">
+                <Ic size={26} className="mx-auto text-gold-300" strokeWidth={1.5} />
+                <div className="font-display font-bold text-3xl md:text-4xl mt-2">{n}</div>
+                <div className="text-[12px] md:text-sm opacity-80 mt-0.5">{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* TEAM */}
+      <section className="sk-container py-14 md:py-20">
+        <FlourishTitle title="The People Behind Sukhmal" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 -mt-2">
+          {TEAM.map((m) => (
+            <div key={m.name} className="bg-white border border-line rounded-xl overflow-hidden text-center group shadow-[var(--sk-shadow-sm)]">
+              <div className="aspect-[4/5] overflow-hidden bg-cream-200">
+                <img src={m.img} alt={m.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+              </div>
+              <div className="p-4 md:p-5">
+                <div className="font-display font-bold text-brand-900 text-lg leading-tight">{m.name}</div>
+                <div className="text-[12px] font-semibold text-[var(--sk-gold-400)] mt-0.5">{m.role}</div>
+                <p className="text-[12px] text-ink-500 mt-2 leading-snug line-clamp-3">{m.bio}</p>
+                <div className="flex justify-center gap-3 mt-3 text-ink-400">
+                  <Facebook size={14} /><Instagram size={14} /><Linkedin size={14} />
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </section>
 
-      <section className="bg-brand-900 text-white py-14">
-        <div className="sk-container grid grid-cols-2 md:grid-cols-5 gap-6">
-          {stats.map(({ Ic, n, l }) => (
-            <div key={l} className="text-center"><Ic size={26} className="mx-auto text-gold-300" /><div className="font-display font-bold text-3xl mt-2">{n}</div><div className="text-[12px] opacity-80">{l}</div></div>
-          ))}
+      {/* CLOSING CTA */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img src={CTA_IMG} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-brand-900/85" />
+        </div>
+        <div className="relative sk-container py-16 md:py-20 text-center text-white">
+          <h2 className="font-display font-bold text-3xl md:text-4xl max-w-3xl mx-auto leading-tight">
+            Thank You for Being a Part of Our Journey
+          </h2>
+          <p className="mt-4 text-cream-200/90 max-w-xl mx-auto text-sm md:text-base">
+            We promise to continue delivering purity, quality and happiness in every bite.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to="/category/all" className="sk-btn-gold">Shop Dry Fruits</Link>
+            <Link to="/contact-us" className="sk-btn-outline !bg-white/10 !border-white/40 !text-white">Contact Us</Link>
+          </div>
         </div>
       </section>
     </div>

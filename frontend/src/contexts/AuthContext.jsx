@@ -3,6 +3,18 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const Ctx = createContext(null);
 const LS = 'sk_auth_v1';
 
+/**
+ * Build a /login location that preserves a safe post-auth return path
+ * (e.g. checkout). Prefer navigate('/login', { state: { from: '/checkout' } }).
+ * Query form: /login?return=/checkout — resolved by AuthPage.resolveReturnPath.
+ */
+export function loginLocation(returnTo = '/account') {
+  const path = typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')
+    ? returnTo
+    : '/account';
+  return { pathname: '/login', search: `?return=${encodeURIComponent(path)}`, state: { from: path, returnTo: path } };
+}
+
 // Firebase-shaped mock: user object matches shape we’ll get from Firebase Auth in Phase 7 swap.
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -33,7 +45,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => { localStorage.removeItem(LS); setUser(null); };
 
   return (
-    <Ctx.Provider value={{ user, isAuthed: !!user, isAdmin: user?.role === 'admin', login, logout, loading }}>
+    <Ctx.Provider value={{ user, isAuthed: !!user, isAdmin: user?.role === 'admin', login, logout, loading, loginLocation }}>
       {children}
     </Ctx.Provider>
   );

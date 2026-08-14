@@ -1,0 +1,293 @@
+Sukhmal Dry Fruits Korner - PRD
+Sukhmal Dry Fruits Korner — E-commerce Website
+Version 1.0
+1. Overview
+2. Scope of Pages
+3. Global Elements (present on every page)
+4. Page-Level Functional Requirements
+4.1 Homepage
+4.2 Product Listing Page
+4.3 Product Detail Page
+4.4 Gift Hampers Listing + Detail
+4.5 Wedding Gifts Landing Page
+4.6 Festival Collections
+4.7 Build Your Own Hamper (6-step wizard)
+4.8 Wishlist
+4.9 Cart
+4.10 Checkout
+4.11 Order Success
+4.12 Track Order
+4.13 About Us
+4.14 Contact Us
+4.15 My Account
+5. Authentication & Roles
+6. Third-Party Integrations Required
+7. Non-Functional Requirements
+8. Out of Scope (v1)
+9. Design Fidelity Instruction (for the build agent)
+1. Overview
+Product: Sukhmal Dry Fruits Korner — a premium D2C e-commerce website
+selling dry fruits, nuts, seeds, dates, berries, and curated gift hampers, with a
+strong festival and wedding-gifting focus.
+Business model: Direct online sales (retail) + gift hamper customization +
+bulk/corporate gifting orders.
+
+-- 1 of 9 --
+
+Primary goal: Build a pixel-accurate, secure, production-ready frontend and
+backend from the attached UI Screens, matching the provided design exactly — no
+visual reinterpretation.
+Target users: - End customers buying dry fruits/nuts for personal consumption -
+Gift buyers (festivals, weddings, birthdays, corporate gifting) - Repeat/loyalty
+customers with saved addresses and order history - Store admin (product, order,
+and inventory management — separate access level)
+2. Scope of Pages
+# 	Page 	Type
+1 	Homepage 	Public
+2 Product Listing Page (category +
+filters) Public
+3 	Product Detail Page 	Public
+4 	Gift Hampers Listing 	Public
+5 	Gift Hamper Detail 	Public
+6 	Wedding Gifts Landing Page 	Public
+7
+Festival Collections
+(Diwali/Rakhi/Eid/Christmas/New
+Year)
+Public
+8 Build Your Own Hamper (6-step
+flow) Public → Auth on checkout
+9 	Wishlist 	Auth
+10 	Shopping Cart 	Public/Auth
+11 	Checkout 	Auth
+12 	Order Success 	Auth
+13 	Track Order 	Public (Order ID lookup)
+14 	About Us 	Public
+15 	Contact Us 	Public
+16 	My Account — Dashboard 	Auth
+
+-- 2 of 9 --
+
+17 My Account — My Orders /
+Order Detail Auth
+18 	My Account — Order History 	Auth
+19 	My Account — Saved Addresses 	Auth
+20 	My Account — Profile Settings 	Auth
+21 	Login / Sign Up 	Public
+22 Admin Panel (products, orders,
+inventory) Admin only — separate route
+3. Global Elements (present on every
+page)
+Top utility bar: Free delivery threshold, 100% Natural, Premium Quality,
+Handpicked with Care badges; right side — AI Assistant, Track Order, Store
+Locator, Login/Sign Up, Cart icon with live count
+Header: Logo + brand name/tagline, global search bar (dry fruits, nuts, gift
+hampers), Wishlist icon, “Build Your Own Hamper” CTA button, Cart icon with
+item count
+Primary nav: Shop by Category (mega-menu), Dry Fruits, Nuts, Seeds, Dates,
+Berries, Gift Hampers, Wedding Gifts (badged “New”), Corporate Gifts, Offers
+(badged “%”)
+Footer: Newsletter subscribe, Shop links, Customer Service links, My
+Account links, About Us links, payment method icons
+(Visa/Mastercard/RuPay/UPI), SSL/secure payment trust badges, social icons
+Floating WhatsApp chat button (bottom-right, persistent across pages)
+AI Assistant — chat widget for gift recommendations (“Gift Advisor
+Assistant”) and AI-generated hamper visual preview (“AI Image Generation”
+— describe a hamper in text, get a generated preview image)
+4. Page-Level Functional
+Requirements
+4.1 Homepage
+
+-- 3 of 9 --
+
+Hero carousel with video/image, dual CTA (Explore Gift Hampers / Build Your
+Own Hamper)
+Trust strip: 100% Natural, Handpicked, Premium Packaging, Express Delivery
+Shop by Category horizontal scroller (6 categories, arrows to scroll)
+Festival Collections horizontal scroller
+Best Sellers grid with quick “Add to Cart,” wishlist heart icon, star ratings,
+price
+“Make Every Gift Extra Special” — Build Your Own Hamper banner
+AI Image Generation panel — text prompt → generated hamper preview
+Gift Advisor Assistant chat panel
+Why Choose Us feature grid
+Wedding Gifts / Corporate Gifting promo blocks
+Customer testimonials carousel with photo, name, rating, verified buyer
+badge
+Instagram feed grid (linked to @handle)
+Newsletter signup
+4.2 Product Listing Page
+Left sidebar filters: Category (with count), Price Range slider, Weight
+(250g/500g/1kg/2kg/5kg+), Speciality checkboxes (Natural, Premium, No
+Preservatives, Handpicked)
+Sort dropdown (Popularity, Price, Rating, Newest)
+Product grid cards: image, name, variant, weight-selector chips, star rating +
+review count, price (“Onwards”), quick add (+) button, wishlist heart
+Pagination / “Showing X of Y products”
+Corporate gifting promo card in sidebar
+4.3 Product Detail Page
+Image gallery with thumbnail strip + zoom
+Breadcrumb, bestseller badge, rating, review count, “Sold by” verified badge
+Price with strike-through MRP + discount %
+Weight selector chips, quantity stepper
+Add to Cart (primary), Wishlist (secondary), Add Gift Message (expandable)
+Pincode delivery checker
+“Quick Order on WhatsApp” CTA
+Trust icon row (Natural/Premium/Handpicked/Delivery/Secure Packaging)
+Tabbed content: Description, Nutritional Info (table), Ingredients, Benefits,
+Storage Instructions, Reviews, FAQs
+Rating breakdown bar chart + individual reviews with verified buyer tag
+“You May Also Like” carousel
+4.4 Gift Hampers Listing + Detail
+
+-- 4 of 9 --
+
+Category chips (All/Birthday/Wedding/Corporate/Festival/Luxury), budget-
+range quick filters
+Hamper cards with tier badge (Premium/Deluxe/Luxury), weight, price
+Detail page: “What’s Inside” itemized list with per-item weight, personalized
+message field, delivery date picker, product details bullets
+4.5 Wedding Gifts Landing Page
+Hero video/image with CTA
+“Why Sukhmal Wedding Gifts” 5-point trust grid
+Bulk order request form: name, phone, email, occasion type, expected
+quantity, additional requirements — submits as a lead, plus
+WhatsApp/Instagram DM shortcuts
+4.6 Festival Collections
+One promo block per festival (Diwali/Rakhi/Eid/Christmas/New Year) with
+themed copy + linked hamper product row per festival (4 products each,
+“View All” link)
+4.7 Build Your Own Hamper (6-step wizard)
+1. Budget — slider + preset chips (₹1,000–₹15,000+), shows “approx X
+products in this range”
+2. Hamper — choose container style (Basket/Box/Wooden Crate/Round Box)
+with price shown per style
+3. Products — category-tabbed product grid, add/remove with live running
+total; persistent right-side summary panel (Budget / Spent / Remaining /
+Products Added list with per-item qty and remove)
+4. Gift Card — pick a card design template, personalize message (150-char
+counter), optional recipient name, live card preview
+5. Preview — full hamper image + summary, “Redesign Hamper” / “Create
+Another Hamper” / “Confirm & Proceed” (loading state with progress %)
+6. Complete — confirmation
+Sidebar summary panel persists and updates live across steps 2–5
+4.8 Wishlist
+Grid of saved items with weight-selector, “Move to Cart,” “Remove,” “Move
+All to Cart” bulk action
+
+-- 5 of 9 --
+
+4.9 Cart
+Line items: image, name/variant, unit price, qty stepper, remove, line total
+Coupon code field
+Order summary: subtotal, discount, GST (5%), shipping (free-shipping
+threshold messaging), total
+“Proceed to Checkout”
+4.10 Checkout
+Step indicator (Cart → Checkout → Payment → Confirmation)
+Saved address selection (radio cards) + “Add New Address”
+Delivery date picker (Today/Tomorrow/Custom)
+Optional gift-recipient fields (name, mobile, message with char counter) — for
+send-as-gift orders
+Payment method selection: UPI, Credit/Debit Card, Net Banking, Wallets,
+Cash on Delivery
+Order summary sidebar (sticky), “Place Order Securely”
+4.11 Order Success
+Confirmation animation/illustration, Order ID, payment status, estimated
+delivery window
+Order summary recap, “Track Your Order” / “Continue Shopping” CTAs
+Cross-sell carousel
+4.12 Track Order
+Order ID lookup field
+Order info summary (ID, date, recipient, payment status, amount)
+Shipment progress stepper (Confirmed → Packed → Shipped → Out for
+Delivery → Delivered)
+Tracking updates timeline (timestamped), delivery partner details with
+tracking number and support contact
+Fully responsive — desktop and mobile layouts both required (see mobile
+variant in supplied screens)
+4.13 About Us
+Brand story, founder note (with quote), company timeline (2010–2025
+milestones), manufacturing process steps, certifications (FSSAI, ISO, HACCP,
+GMP — display as badges), stats counter (years, customers, corporate clients,
+
+-- 6 of 9 --
+
+products, satisfaction %), team grid
+4.14 Contact Us
+Contact channel cards: Visit Store, Call, WhatsApp, Email
+Contact form: first/last name, email, phone, subject, query-type dropdown,
+order ID (optional), message, privacy-policy consent checkbox
+Store map embed + address/hours/parking info + “Get Directions”
+Bulk order CTA block (mirrors Wedding page)
+FAQ accordion
+4.15 My Account
+Dashboard: profile summary, order/wishlist/address counters with links,
+recent orders, quick actions
+My Orders: filterable list (All/Processing/Shipped/Delivered/Cancelled), order
+detail panel with items, delivery address, order summary, tracking timeline,
+invoice download, reorder action
+Saved Addresses: card list with edit/delete, “Add New Address”
+Profile Settings: personal info form, change password form, notification
+preferences (email/SMS/WhatsApp toggles), delete-account option
+5. Authentication & Roles
+Customer auth: Firebase Authentication (email/phone + password, or OTP)
+— required for Checkout, Wishlist persistence, My Account, Order History
+Guest flow: browsing, cart, product/hamper viewing allowed without login;
+login required only at checkout
+Admin role: separate Firebase custom claim ( role: admin ), separate
+protected route namespace, own login — never exposed on the customer-
+facing UI
+Full auth boundary rules to follow the separately supplied
+SecurityArchitecture document — this PRD defines what needs protecting,
+not the security implementation itself
+6. Third-Party Integrations Required
+Integration 	Purpose
+
+-- 7 of 9 --
+
+Firebase Authentication 	Customer + Admin login
+Payment Gateway (Razorpay/Stripe —
+hosted checkout) UPI, Card, Net Banking, Wallets
+AI Assistant / Chat API 	Gift Advisor Assistant widget
+AI Image Generation API “Generate hamper preview from text
+description” homepage feature
+WhatsApp Business (click-to-chat link) 	Support + Quick Order
+Maps embed 	Store Locator / Contact Us map
+Delivery partner tracking (Blue Dart
+shown in mockup — placeholder, confirm
+actual courier API)
+Track Order live status
+Exact API contracts for the above are covered in the separately supplied
+APIDocumentation document — do not invent endpoints; wait for that spec
+before wiring these features.
+7. Non-Functional Requirements
+Fully responsive: desktop, tablet, mobile (mobile variant explicitly supplied for
+Track Order — apply same responsive discipline sitewide)
+Page load performance: lazy-load below-the-fold images and carousels
+SEO-friendly URLs and meta tags per product/category/hamper page
+All forms client + server-side validated
+WCAG-reasonable accessibility (alt text, contrast, keyboard nav) — not a
+redesign excuse, keep within supplied visual design
+Currency: INR (₹), GST-inclusive pricing shown at cart/checkout
+8. Out of Scope (v1)
+Native mobile app
+Multi-language/localization
+Subscription/recurring orders
+International shipping/checkout (domestic India only, per “Across India”
+delivery messaging in designs)
+
+-- 8 of 9 --
+
+9. Design Fidelity Instruction (for the
+build agent)
+All 23 supplied UI Screens are final, approved, high-fidelity designs. Match them
+exactly — layout, spacing, typography, color, iconography, component states, and
+copy. Do not substitute default styling, do not “improve” or reinterpret the design.
+Refer to the separately supplied DesignSystem document for exact tokens (colors,
+fonts, spacing scale). Where a screen shows a specific interaction (e.g., live-
+updating hamper summary, char-count fields, progress percentage on preview),
+implement that exact behavior — not an approximation.
+
+-- 9 of 9 --
+

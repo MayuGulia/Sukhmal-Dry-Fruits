@@ -35,6 +35,19 @@ dist
 *token.json*
 *credentials.json*
 
+# Excel source is 127MB — over GitHub's 100MB file limit. Catalog already lives in frontend/src/data/mockCatalog.js
+Product_Listings_Master.xlsx
+
+# Local junk / generated
+frontend/.design-crops/
+frontend/frontend/
+frontend/..jpg
+frontend/public/brand/_ref/
+frontend/public/brand/_ref_f/
+frontend/public/brand/_ref_w/
+frontend/src/data/_import_products.json
+.netlify/
+
 # Logs and debug files
 npm-debug.log*
 yarn-debug.log*

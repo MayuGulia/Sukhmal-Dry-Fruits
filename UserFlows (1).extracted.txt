@@ -1,0 +1,828 @@
+Sukhmal Dry Fruits Korner - User
+Flows
+Sukhmal Dry Fruits Korner — E-commerce Website
+Version 1.0
+0. Notation
+1. Guest vs Logged-in Entry Decision
+2. Core Shopping Flow
+3. Build Your Own Hamper — Full Wizard Flow
+4. Search Flow
+5. Authentication Flow
+6. Checkout & Payment Flow
+7. Order Lifecycle & Logistics/Tracking Flow
+8. Return / Cancellation Flow
+9. AI Feature Flows
+9.1 AI Image Generation (Homepage widget)
+9.2 Gift Advisor Assistant (chat widget)
+10. Admin Panel Flows
+10.1 Admin Login
+10.2 Product Management
+10.3 Order Management
+10.4 Inventory Management
+10.5 Customer & Coupon Management
+11. Cross-Cutting Edge Cases (apply across all flows)
+12. Flow Summary Map
+0. Notation
+Each flow is written as: Step → Action → System Response → Next Step /
+Branch. Decision points are marked with [D]. Error/edge-case branches are
+marked with [E].
+1. Guest vs Logged-in Entry Decision
+
+-- 1 of 14 --
+
+Step 	Action 	System Response 	Next
+1 User lands on any
+page
+Session checked
+for Firebase auth
+token
+[D] Token valid?
+2a Yes → Logged-in
+state
+Header shows
+account icon +
+name, cart/wishlist
+synced to account
+Continue as
+authenticated
+2b 	No → Guest state
+Header shows
+Login/Sign Up,
+cart stored in
+local/session
+storage only
+Continue as guest
+— browsing, cart,
+wishlist* allowed
+* Wishlist as guest is stored locally and prompted to merge into account on next
+login — do not block guest wishlist usage, but persist only after auth.
+2. Core Shopping Flow
+Step 	Screen 	Action System
+Response
+Next /
+Branch
+1 	Homepage
+Browse
+category /
+search / click
+product card
+Navigate to
+Product
+Listing or
+Product Detail
+→ Step 2
+2 Product
+Listing
+Apply
+filter/sort
+Grid re-
+renders, URL
+query params
+update
+Stays on page
+3 	Product Detail Select weight
+variant
+Price updates
+to match
+variant
+Stays on page
+4 	Product Detail Click “Add to
+Cart”
+[D] Stock
+available for
+selected
+qty/variant?
+See Step
+4a/4b
+Cart count
+badge
+
+-- 2 of 14 --
+
+4a 	— 	Yes
+updates,
+confirmation
+toast, item
+added to cart
+state
+Stays on page
+or → Cart
+4b 	— No (out of
+stock) [E]
+“Add to Cart”
+disabled,
+“Notify Me
+When
+Available”
+shown instead
+User can enter
+email/phone
+for restock
+alert
+5 	Cart Click “Proceed
+to Checkout”
+[D] User
+logged in?
+See Step
+5a/5b
+5a 	— 	Yes 	→ Checkout
+5b 	— 	No
+Redirect to
+Login, cart
+state
+preserved (not
+lost), post-
+login returns
+to Checkout
+→ Auth Flow
+(Section 5)
+3. Build Your Own Hamper — Full
+Wizard Flow
+Step 	Screen 	Action System
+Response
+Next /
+Branch
+1 Step 1 —
+Budget
+Select/slide budget
+amount
+Suggested
+product-
+count range
+shown
+Continue
+enabled
+2
+Step 2 —
+Hamper
+Style
+Select container
+(Basket/Box/Crate/Round
+Box)
+Style price
+factored into
+running total
+Continue
+3
+Step 3 —
+Products
+Add/remove products
+from tabbed grid
+[D] Running
+total ≤
+budget?
+See 3a/3b
+
+-- 3 of 14 --
+
+3a 	— 	Within budget
+“Continue”
+enabled,
+summary
+panel
+updates live
+Continue to
+Step 4
+3b 	— 	Exceeds budget [E]
+“Continue”
+disabled or
+warning
+shown; user
+must remove
+items or
+increase
+budget (back
+to Step 1)
+Blocked
+until
+resolved
+4 Step 4 —
+Gift Card
+Select card design, write
+message (150-char
+limit), optional recipient
+name
+Live preview
+renders on
+the right
+Continue
+5 Step 5 —
+Preview Review full hamper [D] User
+action?
+“Redesign
+Hamper” →
+back to Step
+3; “Create
+Another
+Hamper” →
+new wizard
+instance
+added to
+cart, current
+one saved;
+“Confirm &
+Proceed” →
+Step 6
+6 Step 6 —
+Confirm
+Hamper added to cart as
+a single line item
+[D] Logged
+in?
+Same
+branch as
+Section 2,
+Step 5
+Edge case [E]: If user abandons mid-wizard (closes tab), wizard state persists in
+session for re-entry within the same session only — do not persist indefinitely
+without login.
+
+-- 4 of 14 --
+
+4. Search Flow
+Step 	Action 	System Response 	Next / Branch
+1 User types in
+search bar
+Live suggestions
+dropdown
+(products,
+categories) after
+2+ characters
+[D] User selects
+suggestion or
+presses Enter
+2a 	Selects suggestion
+Navigate directly
+to that
+Product/Category
+page
+End
+2b 	Presses Enter → Search Results
+Page with query See Step 3
+3 Search Results
+Page [D] Results found?
+3a: Yes → grid
+shown, filters
+available (same as
+Product Listing).
+3b: No [E] → “No
+results found”
+state with
+suggested
+categories/best-
+sellers shown, not
+a dead end
+5. Authentication Flow
+Step 	Screen 	Action System
+Response Next / Branch
+1 	Login
+Enter
+email/phone +
+password, or
+choose OTP
+login
+[D] Method?
+1a: Password →
+Step 2. 1b: OTP →
+Step 3
+2a: Yes →
+Dashboard/return-
+to-origin. 2b: No
+
+-- 5 of 14 --
+
+2 	— Submit
+password
+[D]
+Credentials
+valid?
+[E] → inline error,
+no indication of
+“email not found”
+vs “wrong
+password”
+(prevents user
+enumeration)
+3 	—
+Enter
+phone/email
+for OTP
+Firebase
+sends OTP
+→ OTP
+Verification
+screen
+4 OTP
+Verification Enter code
+[D] Code valid
++ not
+expired?
+4a: Yes → logged
+in, return-to-
+origin. 4b: No [E]
+→ error, “Resend
+OTP” with
+cooldown timer
+(rate-limited)
+5
+Login →
+“Forgot
+Password”
+Enter
+registered
+email
+Firebase
+sends reset
+link
+Confirmation
+screen: “Check
+your email” — do
+not confirm/deny
+if email exists
+(enumeration
+protection)
+6 	Sign Up
+Enter name,
+email/phone,
+password
+[D]
+Email/phone
+already
+registered?
+6a: No → account
+created,
+verification sent.
+6b: Yes [E] →
+“Account exists,
+log in instead”
+prompt with
+direct link to
+Login
+6. Checkout & Payment Flow
+Step 	Screen 	Action System
+Response
+Next /
+Branch
+Select/add
+Address
+validated
+
+-- 6 of 14 --
+
+1 	Checkout 	delivery
+address
+(pincode
+serviceable
+check)
+[D]
+Serviceable?
+1a 	— 	Yes 	Continue 	→ Step 2
+1b 	— 	No [E]
+“We don’t
+deliver to this
+pincode yet” —
+block
+progression,
+allow choosing a
+different address
+Blocked
+2 	Checkout Select
+delivery date
+Available dates
+shown based on
+courier capacity
+→ Step 3
+3 	Checkout
+(Optional) Fill
+gift recipient
+details
+Stored against
+order, not user
+profile
+→ Step 4
+4 	Checkout
+Select
+payment
+method
+→ Step 5
+5 	Checkout
+Click “Place
+Order
+Securely”
+Order created in
+pending state;
+redirect to
+payment
+gateway (hosted
+checkout — card
+data never
+touches
+Sukhmal’s
+server)
+→ Step 6
+6 Payment
+Gateway
+User
+completes
+payment
+Gateway sends
+server-to-
+server webhook
+(not just
+frontend
+redirect)
+confirming
+payment status
+[D] Payment
+status per
+webhook
+6a 	— 	Success
+Order status →
+confirmed,
+stock 	→ Order
+
+-- 7 of 14 --
+
+decremented,
+confirmation
+email/SMS sent
+Success page
+6b 	— 	Failed [E]
+Order status →
+payment_failed,
+stock NOT
+decremented
+→ Order
+Failed page
+with “Retry
+Payment” (re-
+attempts Step
+5, same order
+ID, does not
+create
+duplicate
+order)
+6c 	—
+Timeout / user
+abandons
+gateway [E]
+Order remains
+pending for a
+defined window
+(e.g., 15 min),
+then auto-
+cancelled if no
+webhook
+received
+Cart items
+restored for
+user to retry
+Critical rule: Order confirmation must be driven by the payment gateway
+webhook, never by the frontend “success” redirect alone — frontend redirect can
+be spoofed/interrupted, webhook cannot.
+7. Order Lifecycle &
+Logistics/Tracking Flow
+Step 	Trigger 	System Action User-Visible
+Result
+1 	Payment confirmed Order status:
+Confirmed
+Order Success
+page, appears in
+My Orders
+2 Admin/warehouse
+marks packed
+Order status:
+Packed
+Track Order page
+updates
+3
+Courier picks up,
+tracking ID Order status:
+Shipped
+Tracking ID +
+courier name
+shown on Track
+
+-- 8 of 14 --
+
+assigned 	Order
+4
+Courier
+webhook/API
+update
+Order status: Out
+for Delivery
+Push/SMS
+notification sent
+5 	Delivery confirmed Order status:
+Delivered
+Notification sent,
+“Return/Replace”
+option becomes
+available for a
+defined window
+—
+[E] Delivery
+failed/returned by
+courier
+Order status:
+Delivery Failed
+User notified,
+support/reschedule
+flow triggered
+Track Order lookup flow: Order ID entered → [D] Valid ID? → Yes: full timeline
+shown (public, no login needed) → No [E]: “Order not found, check your ID” — no
+account/personal info ever exposed to a wrong/guessed ID beyond what’s on the
+order itself.
+8. Return / Cancellation Flow
+Step 	Action 	System Response 	Next / Branch
+1 My Orders → order
+→ “Return/Cancel” [D] Order status?
+1a: Not yet
+shipped → full
+cancel allowed,
+instant refund
+initiated. 1b:
+Shipped/Delivered
+[E] → return flow
+(reason selection,
+pickup
+scheduling), not a
+simple cancel
+2 Return reason
+submitted
+Request status:
+Pending Review
+(admin sees in
+Admin → Orders)
+Notification sent to
+user
+3a: Yes → pickup
+scheduled, refund
+initiated post
+
+-- 9 of 14 --
+
+3 Admin
+approves/rejects [D] Approved? pickup
+confirmation. 3b:
+No [E] → reason
+shown to user,
+support contact
+offered
+9. AI Feature Flows
+9.1 AI Image Generation (Homepage widget)
+Step 	Action 	System Response 	Next / Branch
+1 User types hamper
+description
+Submit to image-
+gen API
+Loading state
+shown
+2 	— [D] Generation
+successful?
+2a: Yes → preview
+image shown,
+“Build This
+Hamper” CTA links
+into Build-Your-
+Own wizard (pre-
+filled where
+possible). 2b: No
+[E] → friendly
+retry message,
+does not silently
+fail
+— 	Rate limiting [E] If user spams
+requests
+Cooldown/limit
+message, prevents
+API cost abuse
+9.2 Gift Advisor Assistant (chat widget)
+Step 	Action System
+Response Next / Branch
+1 User opens chat, states
+occasion/budget/relationship
+Assistant (via AI
+Assistant API)
+asks clarifying
+questions if → Step 2
+
+-- 10 of 14 --
+
+needed
+2 Assistant recommends
+product(s)/hamper(s)
+Product cards
+rendered inline
+in chat with
+“Add to Cart” /
+“View” actions
+User can act
+directly from
+chat, no forced
+page navigation
+— 	[E] API unavailable/timeout
+Fallback
+message:
+“Assistant
+unavailable,
+browse Gift
+Hampers
+instead” with
+direct link
+Never a dead-
+end chat
+10. Admin Panel Flows
+10.1 Admin Login
+Step 	Action 	System Response 	Next / Branch
+1 Admin navigates to
+/admin
+[D] Has admin
+custom claim
+(Firebase)?
+1a: Yes + valid
+session → Admin
+Dashboard. 1b: No
+[E] → redirected to
+standard customer
+Login, no distinct
+“admin login” page
+exposed publicly
+(avoids revealing
+admin surface)
+2 Admin logs in with
+credentials
+[D] Role claim =
+admin?
+2a: Yes →
+Dashboard. 2b: No
+[E] → treated as
+regular customer
+login, no error
+revealing “you
+tried to access
+admin”
+
+-- 11 of 14 --
+
+10.2 Product Management
+Step 	Action 	System Response 	Next / Branch
+1 Admin → Products
+→ “Add Product”
+Form: name,
+category, images,
+variants/weights,
+price, stock,
+description
+→ Step 2
+2 	Submit [D] Validation
+passed?
+2a: Yes → product
+saved, live on
+storefront
+immediately or as
+“draft” (confirm
+with PRD). 2b: No
+[E] → inline field
+errors
+3
+Admin →
+edit/deactivate
+existing product
+Changes reflected
+on storefront;
+deactivated
+products removed
+from listing but
+preserved in past
+order records
+—
+10.3 Order Management
+Step 	Action 	System Response 	Next / Branch
+1 Admin → Orders →
+filter by status Order list updates 	→ Step 2
+2
+Admin updates
+order status
+(Packed/Shipped)
+Status change
+propagates to
+customer’s Track
+Order page in real
+time
+→ triggers Section
+7 flow
+3
+Admin
+views/approves
+Return requests
+→ Section 8, Step 3
+10.4 Inventory Management
+
+-- 12 of 14 --
+
+Step 	Action 	System Response 	Next / Branch
+1
+Stock level edited
+manually, or auto-
+decremented on
+order confirm
+[D] Stock reaches
+0?
+1a: Yes → product
+auto-marked “Out
+of Stock” on
+storefront. 1b:
+Low-stock
+threshold reached
+[E] → admin
+alert/notification
+— [E] Concurrent
+orders for last unit
+Stock check +
+decrement must be
+atomic (single
+transaction)
+Prevents
+overselling the
+same last unit to
+two simultaneous
+buyers
+10.5 Customer & Coupon Management
+Step 	Action 	System Response
+1 Admin views customer
+list/order history
+Read access only — no
+raw password/payment
+data ever visible to admin
+2
+Admin creates coupon
+(code, %/flat discount,
+validity, min order value)
+Coupon becomes usable at
+Cart/Checkout, validated
+server-side at apply time
+(not just frontend)
+11. Cross-Cutting Edge Cases (apply
+across all flows)
+Scenario 	Required Behavior
+Session expires mid-checkout
+Save cart/form state, prompt re-login,
+return user to exact same checkout step
+— never lose entered data
+Item goes out of stock while in cart
+Flag at Cart and again at Checkout (re-
+validate stock right before payment, not
+just at add-to-cart time)
+
+-- 13 of 14 --
+
+Price changes between add-to-cart and
+checkout
+Show updated price with a clear notice,
+do not silently charge a different amount
+than shown
+Duplicate order submission (double-click
+“Place Order”)
+Idempotent order creation — same
+submission never creates two orders
+Guest wishlist/cart on login
+Merge local guest data into account data,
+don’t overwrite/discard either side
+silently
+Admin URL accessed by non-admin Same as 10.1 — silently treated as
+customer area, no distinguishing error
+Invalid/expired Order ID on Track Order
+Generic “not found” message, no data
+leakage about whether the ID format is
+close to valid
+Payment success at gateway but
+webhook delayed/lost
+Order stays “pending” briefly with a
+reconciliation job checking gateway
+status — never leave a paid order stuck
+as unpaid indefinitely
+12. Flow Summary Map
+Guest/Login Check → Browse (Search / Category / AI Advisor)
+→ Product Detail → Add to Cart ─────────────┐
+→ Build Your Own Hamper (6-step wizard) ─────┤
+↓
+Cart
+↓
+Login (if guest)
+↓
+Checkout
+↓
+Payment Gateway (webhook-confirmed)
+↓ 	↓
+Success 	Failed/Timeout
+↓ 	↓
+Order Success 	Order Failed → Retry
+↓
+Track Order → Delivered → Return/Cancel (window)
+Admin (separate namespace): Login → Dashboard → Products / Orders / Inventory /
+Customers / Coupons
+
+-- 14 of 14 --
+

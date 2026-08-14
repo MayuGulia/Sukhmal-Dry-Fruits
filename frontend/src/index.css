@@ -1,38 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
-
 :root {
-  /* Sukhmal Dry Fruits Korner — design tokens (extracted from supplied 23 UI screens) */
-  --sk-brown-900: #3E2715;   /* header, primary text, primary CTA fill */
-  --sk-brown-800: #50331B;   /* nav bar, buttons */
-  --sk-brown-700: #6A3E2A;   /* accent brown, selected pill */
+  /* Sukhmal Dry Fruits Korner — tokens from approved UI screens */
+  --sk-brown-900: #3C2415;   /* utility bar, footer, primary CTA, nav text */
+  --sk-brown-800: #4A2E1A;   /* newsletter band / hover */
+  --sk-brown-700: #6A3E2A;   /* accent brown */
   --sk-brown-600: #7d4e35;
   --sk-brown-500: #8a5a3f;
-  --sk-gold-500:  #BDAA7E;   /* secondary CTA fill (gold/beige) */
-  --sk-gold-400:  #D2A06E;   /* warm gold accent */
+  --sk-gold-500:  #C5A059;   /* metallic gold — seals, icons, accents */
+  --sk-gold-400:  #D4AF6A;   /* brighter gold for icons on dark */
   --sk-gold-300:  #E4C79A;
-  --sk-cream-100: #FAF6EE;   /* page bg */
-  --sk-cream-200: #F8F6F2;   /* alt section bg */
-  --sk-cream-300: #F3E5D7;   /* warm cream (hero bg) */
+  --sk-cream-100: #FAF7F2;   /* page / header bg */
+  --sk-cream-200: #F5F0E8;   /* alt section / mega-menu hover */
+  --sk-cream-300: #F3E5D7;   /* warm cream */
   --sk-cream-400: #EADBC8;
   --sk-ink-900:   #1a1613;
   --sk-ink-800:   #222222;
   --sk-ink-600:   #555555;
   --sk-ink-500:   #777777;
   --sk-ink-400:   #9a9a9a;
-  --sk-line:      #E7DFD3;   /* subtle border on cream */
+  --sk-line:      #E7DFD3;
   --sk-line-strong: #D4C8B4;
-  --sk-green-500: #4E8C4E;
+  --sk-green-500: #5C8D44;
   --sk-green-100: #D9F0D2;
   --sk-red-500:   #D32F2F;
+  --sk-badge-red: #E53935;   /* cart badge — always visible */
   --sk-star:      #E8A11A;
 
-  --sk-shadow-sm: 0 1px 2px rgba(62,39,21,0.06);
-  --sk-shadow-md: 0 4px 14px rgba(62,39,21,0.08);
-  --sk-shadow-lg: 0 12px 32px rgba(62,39,21,0.12);
+  --sk-shadow-sm: 0 1px 2px rgba(60,36,21,0.06);
+  --sk-shadow-md: 0 4px 14px rgba(60,36,21,0.08);
+  --sk-shadow-lg: 0 12px 32px rgba(60,36,21,0.12);
 }
 
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
@@ -40,15 +41,15 @@
 html, body, #root {
   background: var(--sk-cream-100);
   color: var(--sk-ink-800);
-  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 .font-display { font-family: 'Playfair Display', ui-serif, Georgia, serif; }
-.font-ui { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+.font-ui { font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif; }
 
 /* Shared components */
 .sk-container { max-width: 1280px; margin: 0 auto; padding-left: 1rem; padding-right: 1rem; }
-@media (min-width: 768px) { .sk-container { padding-left: 1.5rem; padding-right: 1.5rem; } }
+@media (min-width: 640px) { .sk-container { padding-left: 1.5rem; padding-right: 1.5rem; } }
 @media (min-width: 1024px) { .sk-container { padding-left: 2rem; padding-right: 2rem; } }
 
 .sk-btn-primary {
@@ -108,7 +109,7 @@ html, body, #root {
   border: 1.5px solid var(--sk-line-strong); background: #fff; color: var(--sk-ink-800);
   font-size: .95rem; transition: border-color .15s;
 }
-.sk-input:focus { outline: none; border-color: var(--sk-brown-900); box-shadow: 0 0 0 3px rgba(62,39,21,.08); }
+.sk-input:focus { outline: none; border-color: var(--sk-brown-900); box-shadow: 0 0 0 3px rgba(60,36,21,.08); }
 
 /* Scrollers */
 .sk-scroll-x {
@@ -119,6 +120,9 @@ html, body, #root {
 .sk-scroll-x::-webkit-scrollbar { height: 6px; }
 .sk-scroll-x::-webkit-scrollbar-thumb { background: var(--sk-line-strong); border-radius: 3px; }
 
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 /* Star rating */
 .sk-star { color: var(--sk-star); }
 
@@ -126,18 +130,26 @@ html, body, #root {
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
-/* Mobile bottom-nav safe area (avoid content behind fixed bar) */
-@media (max-width: 767px) {
-  body { padding-bottom: 72px; }
+/* Mobile bottom-nav safe area — tabs only below sm (640px) */
+@media (max-width: 639px) {
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Hero decorative fade */
 .sk-hero-veil {
-  position: absolute; inset: 0; background: linear-gradient(180deg, rgba(62,39,21,0) 0%, rgba(62,39,21,0.15) 40%, rgba(62,39,21,0.55) 100%);
+  position: absolute; inset: 0; background: linear-gradient(180deg, rgba(60,36,21,0) 0%, rgba(60,36,21,0.15) 40%, rgba(60,36,21,0.55) 100%);
 }
 
 /* Smooth reveal */
 @keyframes sk-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .sk-fade-up { animation: sk-fade-up .4s ease both; }
+
+/* Homepage brand motion */
+@keyframes home-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+.home-fade-up { animation: home-fade-up .7s cubic-bezier(.22,1,.36,1) both; }
+.home-page img { -webkit-user-drag: none; }
 
 /* Table (nutritional info): stack on mobile via <div>-based rows */

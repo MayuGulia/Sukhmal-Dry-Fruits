@@ -1,27 +1,113 @@
 import React from 'react';
-import { PageHeader } from '@/components/shared/Breadcrumb';
-import ProductCard, { HamperCard } from '@/components/shared/ProductCard';
-import { useProducts, useHampers, ProductSkeleton } from '@/lib/catalog';
-import { Tag } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Clock, Percent, Sparkles, Tag } from 'lucide-react';
+import ProductCard from '@/components/shared/ProductCard';
+import { useProducts, useHampers, ProductSkeleton, HamperSkeleton } from '@/lib/catalog';
+import { PremiumHamperCard } from '@/pages/GiftHampers';
+
+const COUPONS = [
+  { code: 'WELCOME10', desc: '10% OFF on your first order', detail: 'Valid on dry fruits, nuts & hampers. Max discount ₹500.' },
+  { code: 'FESTIVE500', desc: '₹500 OFF on orders above ₹1,500', detail: 'Perfect for festival shopping. One use per account.' },
+  { code: 'BULK25', desc: '25% OFF on 25+ hampers', detail: 'Corporate & wedding bulk orders. GST invoice available.' },
+];
+
+const HIGHLIGHTS = [
+  { Ic: Percent, t: 'Seasonal markdowns', s: 'Curated cuts on bestsellers every week' },
+  { Ic: Sparkles, t: 'Hamper combos', s: 'Gift-ready sets at special onwards pricing' },
+  { Ic: Clock, t: 'Limited windows', s: 'Festival drops while stocks last' },
+];
 
 export default function Offers() {
   const { data: products, loading } = useProducts({ limit: 12 });
-  const { data: hampers } = useHampers();
+  const { data: hampers, loading: hamperLoading } = useHampers();
+  const saleProducts = products.filter((p) => p.mrp && p.mrp > p.price);
+  const showProducts = saleProducts.length ? saleProducts : products;
+  const saleHampers = hampers.filter((h) => h.mrp && h.mrp > h.price);
+  const showHampers = saleHampers.length ? saleHampers : hampers;
+
   return (
-    <div>
-      <PageHeader title="Offers & Deals" subtitle="Save big on premium dry fruits, nuts, and hampers." breadcrumb={[{ label: 'Offers' }]} />
-      <div className="sk-container py-12">
-        <div className="grid md:grid-cols-3 gap-4 mb-10">
-          {[{ code: 'WELCOME10', desc: '10% OFF on your first order' }, { code: 'FESTIVE500', desc: '₹500 OFF on orders above ₹1,500' }, { code: 'BULK25', desc: '25% OFF on 25+ hampers' }].map((c) => (
-            <div key={c.code} className="sk-card p-5 border-dashed border-2 border-gold-500">
-              <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-lg bg-gold-500 text-white grid place-items-center"><Tag size={18} /></div><div><div className="font-display font-bold text-brand-900 text-lg">{c.code}</div><div className="text-[12px] text-ink-600">{c.desc}</div></div></div>
+    <div className="bg-[var(--sk-cream-100)]">
+      <div className="relative overflow-hidden bg-brand-900 text-white">
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{ background: 'radial-gradient(ellipse at 20% 20%, #BDAA7E55, transparent 55%), radial-gradient(ellipse at 80% 80%, #E8A11A33, transparent 50%)' }}
+        />
+        <div className="relative sk-container py-12 md:py-16">
+          <div className="text-white/70 text-[12px] mb-3">
+            <Link to="/" className="hover:text-white">Home</Link>
+            <span className="mx-1.5">›</span>
+            <span className="text-white font-medium">Offers</span>
+          </div>
+          <p className="font-display italic text-[var(--sk-gold-300)] text-xl">Savings & Seasonal</p>
+          <h1 className="font-display font-bold text-4xl md:text-5xl mt-1 max-w-2xl leading-tight">
+            Offers & <span className="text-[var(--sk-gold-400)]">Deals</span>
+          </h1>
+          <p className="text-white/80 mt-3 max-w-xl text-sm md:text-base">
+            Save on premium dry fruits, nuts, and curated gift hampers — without compromising on quality.
+          </p>
+          <div className="mt-8 grid sm:grid-cols-3 gap-3 max-w-3xl">
+            {HIGHLIGHTS.map(({ Ic, t, s }) => (
+              <div key={t} className="flex items-start gap-3 bg-white/10 border border-white/15 rounded-xl px-4 py-3">
+                <Ic size={18} strokeWidth={1.5} className="text-[var(--sk-gold-300)] mt-0.5 shrink-0" />
+                <div>
+                  <div className="font-semibold text-sm">{t}</div>
+                  <div className="text-[11px] text-white/70 mt-0.5">{s}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="sk-container py-12 md:py-14">
+        <div className="flex items-end justify-between gap-4 mb-5">
+          <div>
+            <div className="sk-section-eyebrow">COUPON CODES</div>
+            <h2 className="font-display font-bold text-brand-900 text-2xl md:text-3xl mt-1">Redeem at Checkout</h2>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4 mb-14">
+          {COUPONS.map((c) => (
+            <div key={c.code} className="bg-white border-2 border-dashed border-gold-500 rounded-xl p-5 shadow-sk-sm">
+              <div className="flex items-start gap-3">
+                <div className="h-11 w-11 rounded-lg bg-gold-500 text-white grid place-items-center shrink-0">
+                  <Tag size={18} />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-brand-900 text-xl tracking-wide">{c.code}</div>
+                  <div className="text-sm text-ink-700 mt-0.5 font-medium">{c.desc}</div>
+                  <p className="text-[12px] text-ink-500 mt-2 leading-snug">{c.detail}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>
-        <div className="font-display text-2xl text-brand-900 font-bold mb-4">Discounted Hampers</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">{hampers.slice(0, 4).map((h) => <HamperCard key={h.id} h={h} />)}</div>
-        <div className="font-display text-2xl text-brand-900 font-bold mb-4">Products on Sale</div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">{loading ? Array.from({length:8}).map((_,i)=><ProductSkeleton key={i} />) : products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
+
+        <div className="flex items-end justify-between gap-4 mb-5">
+          <div>
+            <div className="sk-section-eyebrow">GIFTING</div>
+            <h2 className="font-display font-bold text-brand-900 text-2xl md:text-3xl mt-1">Discounted Hampers</h2>
+          </div>
+          <Link to="/gift-hampers" className="sk-btn-ghost text-sm hidden sm:inline-flex">Shop Hampers →</Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-14">
+          {hamperLoading
+            ? Array.from({ length: 4 }).map((_, i) => <HamperSkeleton key={i} />)
+            : showHampers.slice(0, 4).map((h) => <PremiumHamperCard key={h.id} h={h} />)}
+        </div>
+
+        <div className="flex items-end justify-between gap-4 mb-5">
+          <div>
+            <div className="sk-section-eyebrow">EVERYDAY ESSENTIALS</div>
+            <h2 className="font-display font-bold text-brand-900 text-2xl md:text-3xl mt-1">Products on Sale</h2>
+          </div>
+          <Link to="/category/all" className="sk-btn-ghost text-sm hidden sm:inline-flex">View Shop →</Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+          {loading
+            ? Array.from({ length: 8 }).map((_, i) => <ProductSkeleton key={i} />)
+            : showProducts.slice(0, 8).map((p) => <ProductCard key={p.id} p={p} />)}
+        </div>
       </div>
     </div>
   );

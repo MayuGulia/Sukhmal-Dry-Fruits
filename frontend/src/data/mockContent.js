@@ -1,4 +1,6 @@
 // FAQs, timeline, blog posts, policies content
+import { verifiedImg } from './verifiedImages';
+
 const img = (id) => `https://images.unsplash.com/${id}?w=800&auto=format&fit=crop`;
 
 export const FAQS = [
@@ -81,12 +83,34 @@ export const POLICIES = {
 };
 
 // Static metadata for Home/Festival pages (real products/hampers come from /api/catalog/*)
+
+/** Circular “Shop by Category” tiles — keep in sync with homeBrand.js */
+export { SHOP_CATEGORY_TILES, INSTAGRAM_POSTS } from './homeBrand';
+
+/** Home scroller tiles; `tag` matches hamper tags for Festival page filtering */
 export const FESTIVALS_META = [
-  { key: 'diwali',    name: 'Diwali',    hue: '#E8A11A', copy: 'Light up celebrations with our signature Diwali hampers.' },
-  { key: 'rakhi',     name: 'Rakhi',     hue: '#B4587A', copy: 'Sisterly love, sweetened with premium dry fruits.' },
-  { key: 'eid',       name: 'Eid',       hue: '#4E8C4E', copy: 'Elegant Ajwa & Medjool hampers for the holy month.' },
-  { key: 'christmas', name: 'Christmas', hue: '#8C1F28', copy: 'Warm, spiced gifting for the festive season.' },
-  { key: 'new-year',  name: 'New Year',  hue: '#3E2715', copy: 'Ring in the new year with premium indulgence.' },
+  { key: 'diwali',    name: 'Diwali Gifts',    tag: 'Diwali',    hue: '#E8A11A', copy: 'Light up celebrations with our signature Diwali hampers.', image: '/products/kaju-320-n-1.jpg', to: '/festival-collections#diwali' },
+  { key: 'wedding',   name: 'Wedding Gifts',   tag: 'Wedding',   hue: '#BDAA7E', copy: 'Elegant hampers for the wedding season.', image: '/products/anjeer-jumbo-1.jpg', to: '/wedding-gifts' },
+  { key: 'birthday',  name: 'Birthday Gifts',  tag: 'Birthday',  hue: '#B4587A', copy: 'Sweet surprises packed with premium nuts.', image: '/products/badam-cf-1.jpg', to: '/gift-hampers' },
+  { key: 'corporate', name: 'Corporate Gifts', tag: 'Corporate', hue: '#3E2715', copy: 'Branded hampers for every occasion.', image: '/products/walnut-premium-1.jpg', to: '/corporate-gifts' },
+  { key: 'rakhi',     name: 'Rakhi Gifts',     tag: 'Rakhi',     hue: '#B4587A', copy: 'Sisterly love, sweetened with premium dry fruits.', image: '/products/pista-irani-1.jpg', to: '/festival-collections#rakhi' },
+  { key: 'eid',       name: 'Eid Gifts',       tag: 'Eid',       hue: '#4E8C4E', copy: 'Elegant Ajwa & Medjool hampers for the holy month.', image: '/products/medjoul-dates-1.jpg', to: '/festival-collections#eid' },
+];
+
+export const HERO_TRUST = [
+  { key: 'natural', label: '100% Natural', sub: 'No Preservatives' },
+  { key: 'handpicked', label: 'Handpicked Quality', sub: 'Finest from Around the World' },
+  { key: 'packaging', label: 'Premium Packaging', sub: 'Made for Gifting' },
+  { key: 'delivery', label: 'Express Delivery', sub: 'Across India' },
+];
+
+export const WHY_CHOOSE = [
+  { key: 'trust', label: '30+ Years of Trust', sub: 'Since 1994' },
+  { key: 'natural', label: '100% Natural', sub: 'No preservatives' },
+  { key: 'quality', label: 'Premium Quality', sub: 'Grade-A only' },
+  { key: 'hygiene', label: 'Hygienically Packed', sub: 'Vacuum-sealed' },
+  { key: 'delivery', label: 'Fast & Express Delivery', sub: 'Pan-India' },
+  { key: 'love', label: 'Customer Satisfaction', sub: '50,000+ happy homes' },
 ];
 
 export const TESTIMONIALS = [
@@ -97,4 +121,10 @@ export const TESTIMONIALS = [
   { name: 'Sanya Kapoor', city: 'Pune',      rating: 5, verified: true, text: 'Beautiful gifting for my daughter wedding welcome. Guests loved the personal card touch. Highly recommend!', avatar: 'https://randomuser.me/api/portraits/women/25.jpg' },
 ];
 
-export const INSTAGRAM_POSTS = Array.from({ length: 6 }).map((_, i) => `https://loremflickr.com/600/600/driedfruit,nuts,gift?lock=${300 + i * 17}`);
+export {
+  AI_PREVIEW_IMG,
+  BYOH_BANNER_IMG,
+  WEDDING_PROMO_IMG,
+  CORP_PROMO_IMG,
+  HERO_IMG,
+} from './homeBrand';

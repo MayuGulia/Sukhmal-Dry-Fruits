@@ -60,10 +60,11 @@ export const CartProvider = ({ children }) => {
     if (coupon?.code === 'WELCOME10') discount = Math.round(subtotal * 0.10);
     if (coupon?.code === 'FESTIVE500' && subtotal >= 1500) discount = 500;
     if (coupon?.code === 'BULK25' && subtotal >= 10000) discount = Math.round(subtotal * 0.25);
-    const shipping = subtotal - discount >= 799 ? 0 : (subtotal > 0 ? 79 : 0);
+    const freeShippingThreshold = 999;
+    const shipping = subtotal - discount >= freeShippingThreshold ? 0 : (subtotal > 0 ? 79 : 0);
     const gst = Math.round((subtotal - discount) * 0.05);
     const total = Math.max(0, subtotal - discount + shipping + gst);
-    return { subtotal, discount, shipping, gst, total, freeShippingThreshold: 799 };
+    return { subtotal, discount, shipping, gst, total, freeShippingThreshold };
   }, [items, coupon]);
 
   const count = items.reduce((s, x) => s + x.qty, 0);

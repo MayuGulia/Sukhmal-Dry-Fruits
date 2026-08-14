@@ -9,6 +9,7 @@ import WhatsAppFloat from './WhatsAppFloat';
 
 export default function AppLayout({ children }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col">
       <TopUtilityBar />

@@ -48,11 +48,34 @@ const KEYWORDS = {
   'build-hamper-promo': 'gift,basket,fruit,ribbon',
 };
 
+const LOCAL = {
+  'royal-gold': '/brand/hamper-royal-gold.png',
+  diwali: '/brand/hamper-diwali-delight.png',
+  'wedding-c': '/brand/hamper-wedding-classic.png',
+  'corp-elite': '/brand/hamper-corporate-elite.png',
+  birthday: '/brand/hamper-birthday-bliss.png',
+  rakhi: '/brand/hamper-rakhi-special.png',
+  eid: '/brand/hamper-eid-mubarak.png',
+  christmas: '/brand/hamper-christmas-cheer.png',
+  'new-year': '/brand/hamper-new-year-glow.png',
+  'gift-hampers': '/brand/hamper-royal-gold.png',
+  'hero-main': '/brand/hero-luxury-hamper-v2.png',
+  'diwali-hero': '/brand/festival-diwali-banner.png',
+  'rakhi-hero': '/brand/festival-rakhi-banner.png',
+  'eid-hero': '/brand/festival-eid-banner.png',
+  'christmas-hero': '/brand/festival-christmas-banner.png',
+  'new-year-hero': '/brand/festival-newyear-banner.png',
+  'wedding-promo': '/brand/wedding-gifts-banner.png',
+  'corp-promo': '/brand/corporate-gifts-banner.png',
+  'build-hamper-promo': '/brand/byoh-lifestyle.png',
+};
+
 const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
 
-// nonce ensures each call for same key gets slightly different image (loremflickr caches by URL)
+// Local brand photos first. Remote loremflickr is a last-resort fallback only.
 export function verifiedImg(keyOrIndex, w = 800) {
   const key = String(keyOrIndex);
+  if (LOCAL[key]) return LOCAL[key];
   const kw = KEYWORDS[key] || 'driedfruit,nuts,food';
   const nonce = hash(key) % 1000;
   return `https://loremflickr.com/${w}/${w}/${kw}?lock=${nonce}`;
