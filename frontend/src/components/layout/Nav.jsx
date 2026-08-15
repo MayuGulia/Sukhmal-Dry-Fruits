@@ -43,7 +43,7 @@ export default function Nav() {
   ];
 
   return (
-    <div className="hidden lg:block bg-cream-100 border-b border-line relative z-30">
+    <div className="hidden lg:block bg-white border-b border-line relative z-30">
       <div className="sk-container flex items-center gap-4 xl:gap-5 h-12">
         <div ref={wrapRef} className="relative shrink-0">
           <button

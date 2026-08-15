@@ -3709,201 +3709,247 @@
  ],
  "hampers": [
   {
-   "id": "h_royal_gold",
-   "slug": "royal-gold-hamper",
-   "name": "Royal Gold Hamper",
-   "tier": "Luxury",
-   "weight": "1.2 kg",
-   "price": 2499,
-   "mrp": 2999,
-   "tags": [
-    "Wedding",
-    "Luxury"
-   ],
-   "img_key": "royal-gold",
-   "contents": [
-    "Californian Almonds 250g",
-    "Kashmiri Walnuts 200g",
-    "Medjool Dates 250g",
-    "Roasted Cashews 250g",
-    "Dried Apricots 150g",
-    "Gift Card + Wooden Basket"
-   ],
-   "description": "Our signature luxury hamper, elegantly packed in a wooden basket with premium selections from every corner of our catalog."
-  },
-  {
-   "id": "h_diwali_delight",
-   "slug": "diwali-delight-hamper",
-   "name": "Diwali Delight Hamper",
-   "tier": "Premium",
-   "weight": "900 g",
-   "price": 1799,
-   "mrp": 2199,
-   "tags": [
-    "Festival",
-    "Diwali"
-   ],
-   "img_key": "diwali",
-   "contents": [
-    "Almonds 200g",
-    "Cashews 200g",
-    "Pistachios 150g",
-    "Raisins 200g",
-    "Anjeer 150g",
-    "Diyas + Gift Card"
-   ],
-   "description": "The festive favourite — assorted premium nuts and dry fruits with decorative diyas."
-  },
-  {
-   "id": "h_wedding_classic",
-   "slug": "wedding-classic-hamper",
-   "name": "Wedding Classic Hamper",
-   "tier": "Deluxe",
-   "weight": "1.5 kg",
-   "price": 3499,
-   "mrp": 3999,
-   "tags": [
-    "Wedding"
-   ],
-   "img_key": "wedding-c",
-   "contents": [
-    "Almonds 300g",
-    "Cashews 300g",
-    "Pistachios 250g",
-    "Walnuts 250g",
-    "Medjool Dates 200g",
-    "Wooden Box + Ribbon"
-   ],
-   "description": "A generous wedding hamper — perfect as a guest welcome or thank-you gift."
-  },
-  {
-   "id": "h_corporate_elite",
-   "slug": "corporate-elite-hamper",
-   "name": "Corporate Elite Hamper",
-   "tier": "Premium",
-   "weight": "800 g",
-   "price": 1499,
-   "mrp": 1899,
-   "tags": [
-    "Corporate"
-   ],
-   "img_key": "corp-elite",
-   "contents": [
-    "Almonds 200g",
-    "Cashews 200g",
-    "Pistachios 100g",
-    "Cranberries 100g",
-    "Branded Box"
-   ],
-   "description": "Professional gifting for teams, clients, and events — with optional logo branding."
-  },
-  {
-   "id": "h_birthday_bliss",
-   "slug": "birthday-bliss-hamper",
-   "name": "Birthday Bliss Hamper",
+   "id": "h_silver_crystal_tray",
+   "slug": "silver-crystal-tray",
+   "name": "Silver Crystal Tray",
    "tier": "Premium",
    "weight": "700 g",
-   "price": 1299,
-   "mrp": 1599,
-   "tags": [
-    "Birthday"
+   "price": 3299,
+   "mrp": 3299,
+   "tags": ["Wedding", "Luxury", "Festival"],
+   "image": "/brand/hampers/hamper-silver-tray-hero.png",
+   "images": [
+    "/brand/hampers/hamper-silver-tray-hero.png",
+    "/brand/hampers/hamper-silver-tray-overhead.png",
+    "/brand/hampers/hamper-silver-tray-detail.png"
    ],
-   "img_key": "birthday",
    "contents": [
-    "Almonds 150g",
-    "Cashews 150g",
-    "Chocolate-covered Dates",
-    "Personalized Card"
+    "Badam 350g",
+    "Kaju 350g",
+    "Silver crystal tray"
    ],
-   "description": "A thoughtful, personalised birthday gift with a signature card."
+   "description": "350g Badam and 350g Kaju presented in a silver mirrored tray with crystal-knob boxes. Tray value ₹2200."
   },
   {
-   "id": "h_rakhi_special",
-   "slug": "rakhi-special-hamper",
-   "name": "Rakhi Special Hamper",
-   "tier": "Deluxe",
-   "weight": "1 kg",
-   "price": 1999,
-   "mrp": 2499,
-   "tags": [
-    "Festival",
-    "Rakhi"
+   "id": "h_pearl_namkeen_basket",
+   "slug": "pearl-namkeen-basket",
+   "name": "Pearl Namkeen Basket",
+   "tier": "Luxury",
+   "weight": "2.2 kg",
+   "price": 4399,
+   "mrp": 4399,
+   "tags": ["Wedding", "Festival", "Luxury"],
+   "image": "/brand/hampers/hamper-tan-rope-hero.png",
+   "images": [
+    "/brand/hampers/hamper-tan-rope-hero.png",
+    "/brand/hampers/hamper-tan-rope-angle.png",
+    "/brand/hampers/hamper-tan-rope-detail.png"
    ],
-   "img_key": "rakhi",
    "contents": [
-    "Almonds 200g",
-    "Cashews 200g",
-    "Pistachios 150g",
-    "Anjeer 150g",
-    "Rakhi + Roli-Chawal",
-    "Gift Card"
+    "Pista 500g",
+    "Kaju 500g",
+    "Badam 500g",
+    "Roasted Namkeen 3 boxes",
+    "Basket"
    ],
-   "description": "The complete Rakhi hamper — with rakhi, roli-chawal, and premium dry fruits."
+   "description": "500g Pista, 500g Kaju, 500g Badam and 3 boxes of roasted namkeen in a tan rope basket with pearls and pompoms."
   },
   {
-   "id": "h_eid_mubarak",
-   "slug": "eid-mubarak-hamper",
-   "name": "Eid Mubarak Hamper",
-   "tier": "Premium",
-   "weight": "900 g",
-   "price": 1899,
-   "mrp": 2299,
-   "tags": [
-    "Festival",
-    "Eid"
-   ],
-   "img_key": "eid",
-   "contents": [
-    "Ajwa Dates 200g",
-    "Almonds 200g",
-    "Pistachios 150g",
-    "Anjeer 150g",
-    "Gift Card"
-   ],
-   "description": "Celebrate the holy month with our premium Eid selection featuring Ajwa dates."
-  },
-  {
-   "id": "h_christmas_cheer",
-   "slug": "christmas-cheer-hamper",
-   "name": "Christmas Cheer Hamper",
-   "tier": "Deluxe",
-   "weight": "1.1 kg",
-   "price": 2299,
-   "mrp": 2799,
-   "tags": [
-    "Festival",
-    "Christmas"
-   ],
-   "img_key": "christmas",
-   "contents": [
-    "Assorted Nuts Tin",
-    "Dried Cranberries",
-    "Chocolate Almonds",
-    "Xmas Card"
-   ],
-   "description": "Christmas cheer in a beautifully wrapped tin with festive assortments."
-  },
-  {
-   "id": "h_new_year_glow",
-   "slug": "new-year-glow-hamper",
-   "name": "New Year Glow Hamper",
+   "id": "h_navy_peacock_box",
+   "slug": "navy-peacock-box",
+   "name": "Navy Peacock Box",
    "tier": "Premium",
    "weight": "1 kg",
-   "price": 1799,
-   "mrp": 2199,
-   "tags": [
-    "Festival",
-    "New Year"
+   "price": 3399,
+   "mrp": 3399,
+   "tags": ["Wedding", "Luxury", "Corporate", "Festival"],
+   "image": "/brand/hampers/hamper-navy-crocodile-closed-hero.png",
+   "images": [
+    "/brand/hampers/hamper-navy-crocodile-closed-hero.png",
+    "/brand/hampers/hamper-navy-crocodile-open.png",
+    "/brand/hampers/hamper-navy-crocodile-overhead.png"
    ],
-   "img_key": "new-year",
    "contents": [
-    "Almonds 250g",
-    "Cashews 200g",
-    "Dates 200g",
-    "Berries 150g",
-    "Gift Card"
+    "Kaju 250g",
+    "Badam 250g",
+    "Pista 250g",
+    "Kishmish 250g",
+    "Decorative box"
    ],
-   "description": "Start the new year with premium indulgence and elegant presentation."
+   "description": "250g each of Kaju, Badam, Pista and Kishmish in a navy gift box with a peacock lid."
+  },
+  {
+   "id": "h_ganesha_blessing_box",
+   "slug": "ganesha-blessing-box",
+   "name": "Ganesha Blessing Box",
+   "tier": "Deluxe",
+   "weight": "500 g",
+   "price": 1699,
+   "mrp": 1699,
+   "tags": ["Festival", "Diwali", "Rakhi", "Wedding"],
+   "image": "/brand/hampers/hamper-ganesha-goldbox-hero.png",
+   "images": [
+    "/brand/hampers/hamper-ganesha-goldbox-hero.png",
+    "/brand/hampers/hamper-ganesha-goldbox-overhead.png",
+    "/brand/hampers/hamper-sage-window-hero.png"
+   ],
+   "contents": [
+    "Kaju 250g",
+    "Badam 250g",
+    "Ganesh ji",
+    "Diya"
+   ],
+   "description": "250g Kaju, 250g Badam, Ganesh ji and a diya in a sage-and-gold window box."
+  },
+  {
+   "id": "h_classic_four_nut_basket",
+   "slug": "classic-four-nut-basket",
+   "name": "Classic Four Nut Basket",
+   "tier": "Premium",
+   "weight": "1 kg",
+   "price": 3299,
+   "mrp": 3299,
+   "tags": ["Festival", "Birthday", "Wedding"],
+   "image": "/brand/hampers/hamper-classic-basket-hero.png",
+   "images": [
+    "/brand/hampers/hamper-classic-basket-hero.png",
+    "/brand/hampers/hamper-classic-basket-angle.png",
+    "/brand/hampers/hamper-classic-basket-detail.png"
+   ],
+   "contents": [
+    "Kaju 250g",
+    "Badam 250g",
+    "Pista 250g",
+    "Kishmish 250g",
+    "Basket"
+   ],
+   "description": "250g each of Kaju, Badam, Pista and Kishmish in a round wicker basket with pearls and flowers."
+  },
+  {
+   "id": "h_orchard_mixed_basket",
+   "slug": "orchard-mixed-basket",
+   "name": "Orchard Mixed Basket",
+   "tier": "Premium",
+   "weight": "1.5 kg",
+   "price": 3299,
+   "mrp": 3299,
+   "tags": ["Festival", "Birthday", "Wedding"],
+   "image": "/brand/hampers/hamper-orchard-basket-hero.png",
+   "images": [
+    "/brand/hampers/hamper-orchard-basket-hero.png",
+    "/brand/hampers/hamper-orchard-basket-detail.png",
+    "/brand/hampers/hamper-orchard-basket-angle.png"
+   ],
+   "contents": [
+    "Kaju 250g",
+    "Badam 250g",
+    "Pista 250g",
+    "Raisins 250g",
+    "Mix Seeds 250g",
+    "Apricot 250g",
+    "Basket"
+   ],
+   "description": "250g each of Kaju, Badam, Pista, Raisins, Mix Seeds and Apricot in a festive woven basket."
+  },
+  {
+   "id": "h_grand_celebration_basket",
+   "slug": "grand-celebration-basket",
+   "name": "Grand Celebration Basket",
+   "tier": "Luxury",
+   "weight": "3 kg",
+   "price": 6399,
+   "mrp": 6399,
+   "tags": ["Wedding", "Luxury", "Festival", "Corporate"],
+   "image": "/brand/hampers/hamper-grand-basket-hero.png",
+   "images": [
+    "/brand/hampers/hamper-grand-basket-hero.png",
+    "/brand/hampers/hamper-grand-basket-overhead.png",
+    "/brand/hampers/hamper-grand-basket-detail.png"
+   ],
+   "contents": [
+    "Roasted Namkeen 750g",
+    "Kaju 500g",
+    "Badam 500g",
+    "Pista 500g",
+    "Kishmish 500g",
+    "Walnut 250g",
+    "Basket"
+   ],
+   "description": "750g roasted namkeen, 500g each of Kaju, Badam, Pista and Kishmish, plus 250g Walnut in a large round basket."
+  },
+  {
+   "id": "h_pink_tulle_basket",
+   "slug": "pink-tulle-basket",
+   "name": "Pink Tulle Basket",
+   "tier": "Premium",
+   "weight": "1.5 kg",
+   "price": 3599,
+   "mrp": 3599,
+   "tags": ["Birthday", "Festival", "Wedding"],
+   "image": "/brand/hampers/hamper-pink-tulle-hero.png",
+   "images": [
+    "/brand/hampers/hamper-pink-tulle-hero.png",
+    "/brand/hampers/hamper-pink-tulle-angle.png",
+    "/brand/hampers/hamper-pink-tulle-front.png"
+   ],
+   "contents": [
+    "Kaju 250g",
+    "Badam 250g",
+    "Pista 250g",
+    "Kishmish 250g",
+    "Akhrot 250g",
+    "Roasted Namkeen",
+    "Basket"
+   ],
+   "description": "250g each of Kaju, Badam, Pista, Kishmish and Akhrot, plus roasted namkeen, in a rope basket with pink tulle."
+  },
+  {
+   "id": "h_royal_copper_tray",
+   "slug": "royal-copper-tray",
+   "name": "Royal Copper Tray",
+   "tier": "Luxury",
+   "weight": "2 kg",
+   "price": 4299,
+   "mrp": 4299,
+   "tags": ["Wedding", "Luxury", "Festival", "Diwali", "Eid"],
+   "image": "/brand/hampers/hamper-copper-tray-hero.png",
+   "images": [
+    "/brand/hampers/hamper-copper-tray-hero.png",
+    "/brand/hampers/hamper-copper-tray-overhead.png",
+    "/brand/hampers/hamper-copper-tray-detail.png"
+   ],
+   "contents": [
+    "Cashew 500g",
+    "Almond 500g",
+    "Raisins 500g",
+    "Pistachio 500g",
+    "Copper tray"
+   ],
+   "description": "500g each of Cashew, Almond, Raisins and Pistachio arranged on an ornate round copper tray."
+  },
+  {
+   "id": "h_gold_elephant_stand",
+   "slug": "gold-elephant-stand",
+   "name": "Gold Elephant Stand",
+   "tier": "Luxury",
+   "weight": "1 kg",
+   "price": 3999,
+   "mrp": 3999,
+   "tags": ["Wedding", "Luxury", "Festival", "Diwali"],
+   "image": "/brand/hampers/hamper-gold-elephant-hero.png",
+   "images": [
+    "/brand/hampers/hamper-gold-elephant-hero.png",
+    "/brand/hampers/hamper-gold-elephant-profile.png",
+    "/brand/hampers/hamper-gold-elephant-detail.png"
+   ],
+   "contents": [
+    "Kaju 250g",
+    "Badam 250g",
+    "Pista 250g",
+    "Kishmish 250g",
+    "Gold elephant stand"
+   ],
+   "description": "250g each of Kaju, Badam, Pista and Kishmish presented on an ornate gold elephant stand."
   }
  ]
 }

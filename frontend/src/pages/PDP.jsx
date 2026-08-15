@@ -169,7 +169,7 @@ function ProductGallery({ images, name, outOfStock }) {
         >
           {images.map((src, i) => (
             <div key={src + i} className="relative min-w-full snap-center aspect-square">
-              <img src={src} alt={`${name} ${i + 1}`} className="w-full h-full object-cover" draggable={false} />
+              <img src={src} alt={`${name} ${i + 1}`} className="w-full h-full object-contain p-4 bg-cream-200" draggable={false} decoding="async" />
             </div>
           ))}
         </div>
@@ -207,8 +207,9 @@ function ProductGallery({ images, name, outOfStock }) {
           <img
             src={images[idx]}
             alt={name}
-            className="w-full h-full object-cover cursor-zoom-in transition-transform duration-500 group-hover:scale-[1.02]"
+            className="w-full h-full object-contain p-6 cursor-zoom-in transition-transform duration-500 group-hover:scale-[1.02]"
             onClick={() => setLightbox(true)}
+            decoding="async"
           />
           {outOfStock && (
             <div className="absolute inset-0 bg-black/50 grid place-items-center">

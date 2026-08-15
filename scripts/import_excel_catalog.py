@@ -1,12 +1,11 @@
 """
-Import Sukhmal products from Excel workbooks into frontend mock catalog.
+Import Sukhmal products from Product_Listings_Master.xlsx into the frontend catalog.
 
-Sources:
-  - Dry_Fruits_Price_List_excelsheet.xlsx (prices / categories)
-  - Product_Listings_Master.xlsx (copy + embedded images)
+Source of truth (products only):
+  - Product_Listings_Master.xlsx  (copy, prices, SEO, allergens, Image 1–5)
 
 Outputs:
-  - frontend/public/products/<slug>-{1,2}.jpg  (hi-res embeds)
+  - frontend/public/products/<slug>-{1..5}.jpg
   - frontend/src/data/mockCatalog.js
 """
 
@@ -21,13 +20,20 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import openpyxl
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
-PRICE_XLSX = ROOT / "Dry_Fruits_Price_List_excelsheet.xlsx"
-MASTER_XLSX = ROOT / "Product_Listings_Master.xlsx"
+MASTER_XLSX = ROOT / "data" / "Product_Listings_Master.xlsx"
+MASTER_IMAGES_XLSX = MASTER_XLSX
 OUT_IMG = ROOT / "frontend" / "public" / "products"
 OUT_CATALOG = ROOT / "frontend" / "src" / "data" / "mockCatalog.js"
+
+# Excel Image 1–3 are often 140×140 unique shots; Image 4–5 are 1024px.
+# We keep all five, enhance the small ones so the gallery stays clear.
+MIN_NATIVE_SIDE = 400
+TARGET_SIDE = 1024
+JPEG_QUALITY = 92
+CANVAS_COLOR = (247, 241, 232)  # warm cream — matches storefront
 
 CATEGORY_MAP = {
     "Cashew (Kaju)": "nuts",
@@ -154,7 +160,7 @@ def hash_rating(slug: str) -> tuple[float, int]:
 
 
 def round_mrp(price: int) -> int:
-    """Slightly higher display MRP ending in 99."""
+    """Slightly higher display MRP ending in 99 (UI-only; not a sheet column)."""
     if not price:
         return price
     target = int(round(price * 1.18))
@@ -199,31 +205,24 @@ def load_master_rows():
                 "price_250": int(row[9]) if row[9] is not None else None,
                 "price_500": int(row[10]) if row[10] is not None else None,
                 "price_1kg": int(row[11]) if row[11] is not None else None,
+                "seo_keywords": clean_text(row[17]) if len(row) > 17 else "",
+                "status": clean_text(row[18]) if len(row) > 18 else "",
             }
         )
     wb.close()
     return rows
 
 
-def load_price_printed():
-    """Printed Price (₹/Kg) from filterable sheet, keyed by product name."""
-    wb = openpyxl.load_workbook(PRICE_XLSX, data_only=True)
-    ws = wb["All Products (Filterable)"]
-    out = {}
-    for r in range(2, (ws.max_row or 1) + 1):
-        name = ws.cell(r, 2).value
-        printed = ws.cell(r, 3).value
-        if name and printed is not None:
-            out[clean_text(name)] = int(printed)
-    wb.close()
-    return out
+def extract_row_images():
+    """Return dict excel_row_0idx -> list of (col, zip_path, data, format) for ALL sheet images.
 
-
-def extract_hires_images():
-    """Return dict excel_row_0idx -> list of (col, zip_path) for hi-res images only."""
+    Prefers Product_Listings_Master.xlsx.backup when present (original PNG quality).
+    """
     NS = {"xdr": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"}
     by_row = defaultdict(list)
-    with zipfile.ZipFile(MASTER_XLSX) as z:
+    source = MASTER_IMAGES_XLSX
+    print(f"  image source: {source.name}")
+    with zipfile.ZipFile(source) as z:
         rels_root = ET.fromstring(z.read("xl/drawings/_rels/drawing1.xml.rels"))
         rid_to_media = {}
         for rel in rels_root:
@@ -236,6 +235,8 @@ def extract_hires_images():
         droot = ET.fromstring(z.read("xl/drawings/drawing1.xml"))
         for anc in droot:
             from_el = anc.find("xdr:from", NS)
+            if from_el is None:
+                continue
             col = int(from_el.find("xdr:col", NS).text)
             row = int(from_el.find("xdr:row", NS).text)
             blip = anc.find(
@@ -251,28 +252,111 @@ def extract_hires_images():
                 continue
             data = z.read(media)
             im = Image.open(BytesIO(data))
-            if im.size[0] >= 400:
-                by_row[row].append((col, media, data, im.format or "PNG"))
-    # sort by column so Image order is stable
+            by_row[row].append((col, media, data, im.format or "PNG"))
     for row in by_row:
         by_row[row].sort(key=lambda x: x[0])
     return by_row
 
 
+def _to_rgb(im: Image.Image) -> Image.Image:
+    if im.mode in ("RGBA", "P"):
+        bg = Image.new("RGB", im.size, (255, 255, 255))
+        rgba = im.convert("RGBA")
+        bg.paste(rgba, mask=rgba.split()[-1])
+        return bg
+    if im.mode != "RGB":
+        return im.convert("RGB")
+    return im
+
+
+def enhance_sheet_image(im: Image.Image) -> Image.Image:
+    """Normalize every sheet embed to a crisp TARGET_SIDE square.
+
+    Native hi-res shots are kept full-bleed.
+    Small Excel embeds (unique alternate angles at ~140px) are step-upscaled,
+    sharpened, and centered on a cream canvas so they read clearly in the gallery
+    instead of being stretched blurry across the viewport.
+    """
+    im = _to_rgb(im)
+    side = max(im.size)
+
+    if side >= MIN_NATIVE_SIDE:
+        if side != TARGET_SIDE:
+            scale = TARGET_SIDE / side
+            im = im.resize(
+                (max(1, int(im.size[0] * scale)), max(1, int(im.size[1] * scale))),
+                Image.Resampling.LANCZOS,
+            )
+        canvas = Image.new("RGB", (TARGET_SIDE, TARGET_SIDE), CANVAS_COLOR)
+        canvas.paste(im, ((TARGET_SIDE - im.size[0]) // 2, (TARGET_SIDE - im.size[1]) // 2))
+        return canvas
+
+    # --- small unique sheet shot: gentle multi-step upscale + plate ---
+    # Cap magnification so edges stay readable (~5× → ~700px on 1024 plate)
+    target_photo = min(TARGET_SIDE - 80, max(side * 5, 560))
+    while max(im.size) * 2 <= target_photo:
+        im = im.resize((im.size[0] * 2, im.size[1] * 2), Image.Resampling.LANCZOS)
+        im = im.filter(ImageFilter.UnsharpMask(radius=1.2, percent=110, threshold=2))
+    if max(im.size) < target_photo:
+        scale = target_photo / max(im.size)
+        im = im.resize(
+            (max(1, int(im.size[0] * scale)), max(1, int(im.size[1] * scale))),
+            Image.Resampling.LANCZOS,
+        )
+    im = im.filter(ImageFilter.UnsharpMask(radius=1.6, percent=135, threshold=2))
+    im = ImageEnhance.Contrast(im).enhance(1.08)
+    im = ImageEnhance.Color(im).enhance(1.06)
+    im = ImageEnhance.Sharpness(im).enhance(1.25)
+
+    canvas = Image.new("RGB", (TARGET_SIDE, TARGET_SIDE), CANVAS_COLOR)
+    x = (TARGET_SIDE - im.size[0]) // 2
+    y = (TARGET_SIDE - im.size[1]) // 2
+    # soft drop shadow under the photo plate
+    shadow = Image.new("RGBA", (TARGET_SIDE, TARGET_SIDE), (0, 0, 0, 0))
+    sh = Image.new("RGBA", (im.size[0] + 8, im.size[1] + 8), (0, 0, 0, 36))
+    shadow.paste(sh, (x + 6, y + 8))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=10))
+    canvas = Image.alpha_composite(canvas.convert("RGBA"), shadow).convert("RGB")
+    canvas.paste(im, (x, y))
+    return canvas
+
+
 def save_product_images(slug: str, embeds: list) -> list[str]:
-    """Save hi-res embeds as JPEG under /products/<slug>-N.jpg. Returns public paths."""
+    """Save all sheet embeds (Image 1–5) as clear 1024px JPEGs.
+
+    Display order: largest product shot first (card/PDP hero), then remaining
+    sheet images by column, with Image 5 (nutrition, col 16) last.
+    """
     paths = []
     OUT_IMG.mkdir(parents=True, exist_ok=True)
-    for i, (_col, _media, data, fmt) in enumerate(embeds, start=1):
-        im = Image.open(BytesIO(data))
-        if im.mode in ("RGBA", "P"):
-            im = im.convert("RGB")
+
+    def max_side(item):
+        return max(Image.open(BytesIO(item[2])).size)
+
+    nutrition = [e for e in embeds if e[0] >= 16]
+    others = [e for e in embeds if e[0] < 16]
+    # Hero = sharpest non-nutrition shot; then other angles by sheet column; nutrition last
+    others_sorted = sorted(others, key=lambda e: (-max_side(e), e[0]))
+    if others_sorted:
+        hero, rest = others_sorted[0], sorted(others_sorted[1:], key=lambda e: e[0])
+        ordered = [hero] + rest + sorted(nutrition, key=lambda e: e[0])
+    else:
+        ordered = sorted(embeds, key=lambda e: (-max_side(e), e[0]))
+
+    for i, (_col, _media, data, _fmt) in enumerate(ordered, start=1):
+        im = enhance_sheet_image(Image.open(BytesIO(data)))
         fname = f"{slug}-{i}.jpg"
         dest = OUT_IMG / fname
-        im.save(dest, "JPEG", quality=88, optimize=True)
+        im.save(
+            dest,
+            "JPEG",
+            quality=JPEG_QUALITY,
+            optimize=True,
+            progressive=True,
+            subsampling=0,
+        )
         paths.append(f"/products/{fname}")
     return paths
-
 
 def js_string(s: str) -> str:
     return json.dumps(s, ensure_ascii=False)
@@ -308,6 +392,12 @@ def emit_product(obj: dict) -> str:
         parts.append(f"    allergen: {js_string(obj['allergen'])},")
     if obj.get("bestFor"):
         parts.append(f"    bestFor: {js_string(obj['bestFor'])},")
+    if obj.get("seoTitle"):
+        parts.append(f"    seoTitle: {js_string(obj['seoTitle'])},")
+    if obj.get("seoKeywords"):
+        parts.append(f"    seoKeywords: {js_string(obj['seoKeywords'])},")
+    if obj.get("status"):
+        parts.append(f"    status: {js_string(obj['status'])},")
     if obj.get("sku"):
         parts.append(f"    sku: {js_string(obj['sku'])},")
     parts.append("  }")
@@ -355,16 +445,17 @@ def main():
     master = load_master_rows()
     print(f"  {len(master)} products")
 
-    print("Loading printed prices…")
-    printed = load_price_printed()
+    print("Mapping all embedded product images (Image 1–5)…")
+    embeds = extract_row_images()
+    print(f"  rows with images: {len(embeds)}")
+    print(
+        "  image counts:",
+        {n: sum(1 for v in embeds.values() if len(v) == n) for n in sorted({len(v) for v in embeds.values()})},
+    )
 
-    print("Mapping hi-res embedded images…")
-    embeds = extract_hires_images()
-    print(f"  rows with hi-res: {len(embeds)}")
-
-    # Clear old product images
+    # Clear old product images (keep _media archive if present)
     OUT_IMG.mkdir(parents=True, exist_ok=True)
-    for old in OUT_IMG.glob("*"):
+    for old in OUT_IMG.iterdir():
         if old.is_file():
             old.unlink()
 
@@ -396,14 +487,8 @@ def main():
             {"w": "1kg", "price": p1kg},
         ]
 
-        # Prefer printed kg as MRP basis for 250g display: printed/4 rounded to 99, else +18%
-        printed_kg = printed.get(name)
-        if printed_kg and printed_kg > p1kg:
-            mrp_250 = max(round_mrp(p250), int(round(printed_kg / 4 / 100) * 100 + 99))
-            if mrp_250 <= p250:
-                mrp_250 = round_mrp(p250)
-        else:
-            mrp_250 = round_mrp(p250)
+        # MRP is display-only (not a sheet column) — modest strikethrough above sheet price
+        mrp_250 = round_mrp(p250)
 
         rating, reviews = hash_rating(slug)
         tagline = one_line(row["short"] or row["seo_title"] or row["best_for"], 110)
@@ -415,8 +500,9 @@ def main():
         img_embeds = embeds.get(row0, [])
         images = save_product_images(slug, img_embeds) if img_embeds else []
         if not images:
-            issues.append(f"No hi-res image for {name} (row {row['excel_row']})")
-            # leave empty — PDP has fallback; prefer not inventing Unsplash for real catalog
+            issues.append(f"No images for {name} (row {row['excel_row']})")
+        elif len(images) < 5 and name != "Makhana":
+            issues.append(f"Expected 5 images for {name}, got {len(images)} (row {row['excel_row']})")
 
         natural = any(h in name.lower() for h in NATURAL_HINTS)
         sku = f"SK-{str(row['sno']).zfill(3)}" if row["sno"] is not None else f"SK-{slug[:12].upper()}"
@@ -441,28 +527,56 @@ def main():
                 "description": description,
                 "allergen": one_line(row["allergen"], 160),
                 "bestFor": one_line(row["best_for"], 120),
+                "seoTitle": one_line(row["seo_title"], 160),
+                "seoKeywords": one_line(row["seo_keywords"], 240),
+                "status": row["status"] or "Ready",
                 "sku": sku,
             }
         )
 
     product_block = ",\n".join(emit_product(p) for p in products)
 
+    def cover_for(cat_slug: str) -> str:
+        for p in products:
+            if p["category"] == cat_slug and p["images"]:
+                return p["images"][0]
+        for p in products:
+            if p["images"]:
+                return p["images"][0]
+        return "/products/placeholder.jpg"
+
+    cat_defs = [
+        ("dry-fruits", "Dry Fruits", "Sun-dried premium selections"),
+        ("nuts", "Nuts", "Crunchy, hand-picked wholesomeness"),
+        ("seeds", "Seeds", "Nutrient-packed daily essentials"),
+        ("dates", "Dates", "Nature's candy — rich & syrupy"),
+        ("berries", "Berries", "Antioxidant-rich sweet-tart bites"),
+        ("gift-hampers", "Gift Hampers", "Curated for every celebration"),
+    ]
+    cat_lines = []
+    for slug, name, tagline in cat_defs:
+        cover = cover_for(slug if slug != "gift-hampers" else "nuts")
+        count = cat_counts.get(slug, 0)
+        if slug == "gift-hampers":
+            cat_lines.append(
+                f"  {{ slug: '{slug}', name: '{name}', tagline: {js_string(tagline)}, image: {js_string(cover)} }},"
+            )
+        else:
+            cat_lines.append(
+                f"  {{ slug: '{slug}', name: '{name}', tagline: {js_string(tagline)}, image: {js_string(cover)}, count: {count} }},"
+            )
+
     catalog = f"""import {{ verifiedImg }} from './verifiedImages';
 
 /**
- * Sukhmal catalog — sourced from Excel price list + Product_Listings_Master.
- * Product images live under /public/products (extracted hi-res embeds).
+ * Sukhmal catalog — sourced only from Product_Listings_Master.xlsx.
+ * Product images: all sheet embeds (Image 1–5); small embeds enhanced for clarity.
  * Gift hampers retained from curated mock set (not present in Excel).
  * Regenerated by: scripts/import_excel_catalog.py
  */
 
 export const CATEGORIES = [
-  {{ slug: 'dry-fruits',   name: 'Dry Fruits',   tagline: 'Sun-dried premium selections',        image: verifiedImg('dry-fruits') }},
-  {{ slug: 'nuts',         name: 'Nuts',         tagline: 'Crunchy, hand-picked wholesomeness', image: verifiedImg('nuts') }},
-  {{ slug: 'seeds',        name: 'Seeds',        tagline: 'Nutrient-packed daily essentials',    image: verifiedImg('seeds') }},
-  {{ slug: 'dates',        name: 'Dates',        tagline: 'Nature’s candy — rich & syrupy', image: verifiedImg('dates') }},
-  {{ slug: 'berries',      name: 'Berries',      tagline: 'Antioxidant-rich sweet-tart bites',   image: verifiedImg('berries') }},
-  {{ slug: 'gift-hampers', name: 'Gift Hampers', tagline: 'Curated for every celebration',       image: verifiedImg('gift-hampers') }},
+{chr(10).join(cat_lines)}
 ];
 
 export const PRODUCTS = [

@@ -197,20 +197,20 @@ def main():
     
     # Test hampers
     success, resp = tester.test(
-        "List hampers - GET /api/catalog/hampers (expect 9)",
+        "List hampers - GET /api/catalog/hampers (expect 10)",
         "GET", "/catalog/hampers", 200
     )
     if success and resp:
         data = resp.json()
-        if len(data) == 9:
-            print(f"   ✓ Got 9 hampers")
+        if len(data) == 10:
+            print(f"   ✓ Got 10 hampers")
         else:
-            print(f"   ⚠ Expected 9 hampers, got {len(data)}")
+            print(f"   ⚠ Expected 10 hampers, got {len(data)}")
     
     # Test hamper detail
     success, resp = tester.test(
-        "Get hamper by slug - GET /api/catalog/hamper/royal-gold-hamper",
-        "GET", "/catalog/hamper/royal-gold-hamper", 200
+        "Get hamper by slug - GET /api/catalog/hamper/silver-crystal-tray",
+        "GET", "/catalog/hamper/silver-crystal-tray", 200
     )
     if success and resp:
         data = resp.json()

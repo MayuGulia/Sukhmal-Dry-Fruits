@@ -6,12 +6,14 @@
 
 :root {
   /* Sukhmal Dry Fruits Korner — tokens from approved UI screens */
-  --sk-brown-900: #3C2415;   /* utility bar, footer, primary CTA, nav text */
+  --sk-espresso:  #1F1610;   /* luxury CTA, top bar, footer */
+  --sk-brown-900: #3C2415;   /* primary brown, nav text */
   --sk-brown-800: #4A2E1A;   /* newsletter band / hover */
   --sk-brown-700: #6A3E2A;   /* accent brown */
   --sk-brown-600: #7d4e35;
   --sk-brown-500: #8a5a3f;
-  --sk-gold-500:  #C5A059;   /* metallic gold — seals, icons, accents */
+  --sk-gold-600:  #C59B27;   /* warm gold — "Love.", outlined badges */
+  --sk-gold-500:  #C59B27;   /* metallic gold — seals, icons, accents */
   --sk-gold-400:  #D4AF6A;   /* brighter gold for icons on dark */
   --sk-gold-300:  #E4C79A;
   --sk-cream-100: #FAF7F2;   /* page / header bg */
@@ -70,6 +72,45 @@ html, body, #root {
   transition: all .15s ease;
 }
 .sk-btn-gold:hover { background: var(--sk-gold-400); }
+
+.sk-btn-hamper {
+  display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+  padding: .7rem 1.2rem; border-radius: 999px;
+  background: var(--sk-espresso); color: #fff; font-weight: 600; font-size: .875rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.sk-btn-hamper:hover {
+  transform: scale(1.04);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  background: #2a1e16;
+}
+
+.sk-gold-ring {
+  display: grid; place-items: center;
+  border-radius: 999px;
+  border: 1.5px solid var(--sk-gold-600);
+  color: var(--sk-gold-300);
+}
+
+@keyframes sk-play-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.45); }
+  70% { box-shadow: 0 0 0 18px rgba(255,255,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+}
+.sk-play-pulse { animation: sk-play-pulse 2.2s ease-out infinite; }
+
+.sk-wizard-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #E8E4DF;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.045);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.sk-wizard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+}
 
 .sk-btn-outline {
   display: inline-flex; align-items: center; justify-content: center; gap: .5rem;

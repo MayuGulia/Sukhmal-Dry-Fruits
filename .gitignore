@@ -1,101 +1,39 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# IDE and editors
-.idea/
-.vscode/
-
 # Dependencies
 node_modules/
-/node_modules
-/.pnp
+.pnp
 .pnp.js
-.yarn/install-state.gz
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
 
-# Testing
-/coverage
-
-# Next.js
-/.next/
-/out/
-next-env.d.ts
-*.tsbuildinfo
-
-# Production builds
-/build
+# Builds
+frontend/build/
 dist/
-dist
-
-# Environment files (comprehensive coverage)
-
-*token.json*
-*credentials.json*
-
-# Excel source is 127MB — over GitHub's 100MB file limit. Catalog already lives in frontend/src/data/mockCatalog.js
-Product_Listings_Master.xlsx
-
-# Local junk / generated
-frontend/.design-crops/
-frontend/frontend/
-frontend/..jpg
-frontend/public/brand/_ref/
-frontend/public/brand/_ref_f/
-frontend/public/brand/_ref_w/
-frontend/src/data/_import_products.json
+.cache/
 .netlify/
+.vercel/
 
-# Logs and debug files
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-dump.rdb
-
-# System files
-.DS_Store
+# Environment / secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+credentials.json
 *.pem
+*.key
 
 # Python
 __pycache__/
-*pyc*
+*.pyc
 venv/
 .venv/
+.python_pkgs/
 
-# Development tools
-chainlit.md
-.chainlit
-.ipynb_checkpoints/
-.ac
+# Source spreadsheets (catalog already lives in frontend/src/data/mockCatalog.js)
+data/Product_Listings_Master.xlsx
 
-# Deployment
-.vercel
-
-# Data and databases
-agenthub/agents/youtube/db
-
-# Archive files and large assets
-**/*.zip
-**/*.tar.gz
-**/*.tar
-**/*.tgz
-*.pack
-*.deb
-*.dylib
-
-# Build caches
-.cache/
-
-memory/test_credentials.md
-
-# Mobile development
-android-sdk/
-.env
-.env.*
-*.env
-credentials.json
-*.key
-.credentials
+# Local / OS
+.DS_Store
+.idea/
+.vscode/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

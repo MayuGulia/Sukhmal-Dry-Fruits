@@ -3,6 +3,7 @@ import { X, ChevronRight, Heart, Truck, User, LogOut, Gift } from 'lucide-react'
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCategories } from '@/lib/catalog';
+import { BrandLockup } from '@/components/brand/BrandSeal';
 
 const STATIC = [
   { to: '/gift-hampers', label: 'Gift Hampers' },
@@ -11,20 +12,6 @@ const STATIC = [
   { to: '/festival-collections', label: 'Festival Collections' },
   { to: '/offers', label: 'Offers' },
 ];
-
-function BrandSeal({ size = 40 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden className="shrink-0">
-      <circle cx="32" cy="32" r="31" fill="var(--sk-brown-900)" stroke="var(--sk-gold-400)" strokeWidth="2" />
-      <circle cx="32" cy="32" r="26" stroke="var(--sk-gold-500)" strokeWidth="1.25" opacity="0.85" />
-      <circle cx="32" cy="32" r="22.5" stroke="var(--sk-gold-300)" strokeWidth="0.75" opacity="0.55" />
-      <path
-        d="M38.5 20.5c-2.2-1.8-5.1-2.4-7.8-1.5-3.4 1.1-5.6 4.2-5.6 7.7 0 3.2 1.7 5.7 4.8 7.1l6.2 2.8c2.1.9 3.2 2.1 3.2 3.8 0 2.3-2 3.9-4.7 3.9-2.1 0-3.9-.8-5.2-2.3l-2.6 2.7c1.9 2.1 4.7 3.3 7.8 3.3 5.1 0 8.7-3.1 8.7-7.6 0-3.5-2-5.9-5.6-7.5l-5.5-2.5c-1.9-.9-2.9-2-2.9-3.5 0-2 1.7-3.4 4.1-3.4 1.7 0 3.2.6 4.3 1.8l2.8-2.8z"
-        fill="var(--sk-gold-400)"
-      />
-    </svg>
-  );
-}
 
 export default function HamburgerDrawer({ open, onClose }) {
   const { user, isAuthed, logout } = useAuth();
@@ -62,13 +49,7 @@ export default function HamburgerDrawer({ open, onClose }) {
         }`}
       >
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-line bg-white/80">
-          <div className="flex items-center gap-2.5">
-            <BrandSeal size={40} />
-            <div>
-              <div className="font-display font-bold text-brand-900 leading-tight">SUKHMAL</div>
-              <div className="text-[9px] tracking-[.22em] text-brand-700 uppercase font-semibold">Dry Fruits Korner</div>
-            </div>
-          </div>
+          <BrandLockup to="/" sealSize={42} compact />
           <button
             type="button"
             onClick={onClose}

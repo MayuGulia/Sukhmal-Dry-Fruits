@@ -58,6 +58,18 @@ function filterHampers({ tag } = {}) {
   return list;
 }
 
+const HAMPER_SLUG_ALIASES = {
+  'royal-gold-hamper': 'gold-elephant-stand',
+  'diwali-delight-hamper': 'ganesha-blessing-box',
+  'wedding-classic-hamper': 'royal-copper-tray',
+  'corporate-elite-hamper': 'navy-peacock-box',
+  'birthday-bliss-hamper': 'pink-tulle-basket',
+  'rakhi-special-hamper': 'ganesha-blessing-box',
+  'eid-mubarak-hamper': 'royal-copper-tray',
+  'christmas-cheer-hamper': 'grand-celebration-basket',
+  'new-year-glow-hamper': 'gold-elephant-stand',
+};
+
 export function useCategories() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -134,21 +146,31 @@ export function useProduct(slug) {
   return { data, loading, error };
 }
 
+const REAL_HAMPER_SLUGS = new Set(MOCK_HAMPERS.map((h) => h.slug));
+
+function onlyRealHampers(rows) {
+  if (!Array.isArray(rows) || !rows.length) return null;
+  const real = rows.filter((h) => REAL_HAMPER_SLUGS.has(h.slug));
+  return real.length ? real : null;
+}
+
 export function useHampers({ tag } = {}) {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState(() => filterHampers({ tag }));
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let m = true;
     setLoading(true);
+    const fallback = filterHampers({ tag });
     const params = {};
     if (tag) params.tag = tag;
     api
       .get('/catalog/hampers', { params })
       .then((r) => {
-        if (m) setData(r.data);
+        if (!m) return;
+        setData(onlyRealHampers(r.data) || fallback);
       })
       .catch(() => {
-        if (m) setData(filterHampers({ tag }));
+        if (m) setData(fallback);
       })
       .finally(() => {
         if (m) setLoading(false);
@@ -168,13 +190,17 @@ export function useHamper(slug) {
     let m = true;
     setLoading(true);
     setError(null);
+    const resolved = HAMPER_SLUG_ALIASES[slug] || slug;
+    const fallback = MOCK_HAMPERS.find((h) => h.slug === resolved || h.slug === slug) || null;
     api
-      .get(`/catalog/hamper/${slug}`)
+      .get(`/catalog/hamper/${resolved}`)
       .then((r) => {
-        if (m) setData(r.data);
+        if (!m) return;
+        const row = r.data;
+        if (row && REAL_HAMPER_SLUGS.has(row.slug)) setData(row);
+        else setData(fallback);
       })
       .catch((e) => {
-        const fallback = MOCK_HAMPERS.find((h) => h.slug === slug) || null;
         if (m) {
           if (fallback) setData(fallback);
           else setError(e);

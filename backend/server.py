@@ -284,8 +284,10 @@ class Hamper(BaseModel):
     price: float
     mrp: float = 0
     image: str
+    images: List[str] = Field(default_factory=list)
     tags: List[str] = Field(default_factory=list)
     contents: List[str] = Field(default_factory=list)
+    description: str = ""
     stock: int = 100
 
 
@@ -328,28 +330,54 @@ def _img_url(key: str, w: int = 800, seed: Optional[str] = None) -> str:
 def _enrich_product(p: Dict[str, _Any]) -> Dict[str, _Any]:
     if not p:
         return p
-    base_key = p.get("img_key", "nuts")
     slug = p.get("slug", "x")
-    p["images"] = [
-        _img_url(base_key, 800, seed=f"{slug}-1"),
-        _img_url(base_key, 800, seed=f"{slug}-2"),
-        _img_url(base_key, 800, seed=f"{slug}-3"),
-    ]
+    stored = [u for u in (p.get("images") or []) if isinstance(u, str) and u.startswith("/")]
+    if stored:
+        p["images"] = stored
+        return p
+    p["images"] = [f"/products/{slug}-{i}.jpg" for i in range(1, 6)]
     return p
 
 
 def _enrich_hamper(h: Dict[str, _Any]) -> Dict[str, _Any]:
     if not h:
         return h
-    img_key = h.get("img_key", "royal-gold")
-    h["image"] = _img_url(img_key, 900)
+    stored = [u for u in (h.get("images") or []) if isinstance(u, str) and u.startswith("/")]
+    existing = h.get("image")
+    if isinstance(existing, str) and existing.startswith("/"):
+        h["image"] = existing
+    elif stored:
+        h["image"] = stored[0]
+    else:
+        img_key = h.get("img_key", "royal-gold")
+        h["image"] = _img_url(img_key, 900)
+    if stored:
+        h["images"] = stored
+    elif h.get("image"):
+        h["images"] = [h["image"]]
     return h
+
+
+_CATEGORY_LOCAL = {
+    "nuts": "/products/kaju-320-n-1.jpg",
+    "dry-fruits": "/products/kishmish-indian-1.jpg",
+    "seeds": "/products/makhana-1.jpg",
+    "dates": "/products/medjoul-dates-1.jpg",
+    "berries": "/products/cranberries-1.jpg",
+    "gift-hampers": "/brand/hampers/hamper-copper-tray-hero.png",
+    "snacks": "/products/roasted-namkeen-1.jpg",
+    "wellness": "/products/chia-seeds-1.jpg",
+}
 
 
 def _enrich_category(c: Dict[str, _Any]) -> Dict[str, _Any]:
     if not c:
         return c
-    c["image"] = _img_url(c.get("img_key", c.get("slug", "nuts")), 800)
+    existing = c.get("image")
+    if isinstance(existing, str) and existing.startswith("/"):
+        return c
+    slug = c.get("slug", "nuts")
+    c["image"] = _CATEGORY_LOCAL.get(slug, "/products/kaju-320-n-1.jpg")
     return c
 
 
@@ -524,28 +552,35 @@ def _load_seed():
         return _json.load(f)
 
 
+async def _refresh_hampers(seed: Dict[str, _Any]):
+    await db.hampers.delete_many({})
+    now = now_iso()
+    hampers = seed.get("hampers") or []
+    for h in hampers:
+        h["created_at"] = now
+    if hampers:
+        await db.hampers.insert_many(hampers)
+    return len(hampers)
+
+
 async def _do_seed(force: bool = False):
     seed = _load_seed()
+    hamper_count = await _refresh_hampers(seed)
     if force:
         await db.products.delete_many({})
         await db.categories.delete_many({})
-        await db.hampers.delete_many({})
     if await db.products.count_documents({}) > 0 and not force:
-        return {"seeded": False, "reason": "already exists"}
+        return {"seeded": False, "reason": "already exists", "hampers": hamper_count}
     now = now_iso()
     for p in seed["products"]:
         p["created_at"] = now
     for c in seed["categories"]:
         c["created_at"] = now
-    for h in seed["hampers"]:
-        h["created_at"] = now
     if seed["products"]:
         await db.products.insert_many(seed["products"])
     if seed["categories"]:
         await db.categories.insert_many(seed["categories"])
-    if seed["hampers"]:
-        await db.hampers.insert_many(seed["hampers"])
-    return {"seeded": True, "counts": {"products": len(seed["products"]), "categories": len(seed["categories"]), "hampers": len(seed["hampers"])}}
+    return {"seeded": True, "counts": {"products": len(seed["products"]), "categories": len(seed["categories"]), "hampers": hamper_count}}
 
 
 @api_router.post("/seed/catalog")
@@ -556,6 +591,9 @@ async def seed_catalog(force: bool = False):
 @app.on_event("startup")
 async def _auto_seed_on_startup():
     try:
+        seed = _load_seed()
+        hamper_count = await _refresh_hampers(seed)
+        logger.info(f"Hampers refreshed from seed: {hamper_count}")
         if await db.products.count_documents({}) == 0:
             r = await _do_seed()
             logger.info(f"Auto-seed complete: {r}")

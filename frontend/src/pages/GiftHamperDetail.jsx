@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Award, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Gift, Heart, Leaf, Loader,
-  Minus, Package, Play, Plus, ShieldCheck, ShoppingBag, Star, Truck,
+  Minus, Package, Plus, ShieldCheck, ShoppingBag, Star, Truck,
 } from 'lucide-react';
 import { useHamper, useHampers } from '@/lib/catalog';
 import Breadcrumb from '@/components/shared/Breadcrumb';
@@ -10,12 +10,6 @@ import { inr, cn } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { PremiumHamperCard } from '@/pages/GiftHampers';
-
-const TIERS = [
-  { key: 'Deluxe', weight: '2kg', priceMul: 1 },
-  { key: 'Premium', weight: '3kg', priceMul: 1.25 },
-  { key: 'Luxury', weight: '5kg', priceMul: 1.55 },
-];
 
 const DETAIL_BULLETS = [
   'Perfect for weddings and engagements',
@@ -66,17 +60,22 @@ export default function GiftHamperDetail() {
   const [msg, setMsg] = useState('');
   const [date, setDate] = useState('');
   const [qty, setQty] = useState(1);
-  const [tierIdx, setTierIdx] = useState(0);
   const [imgIdx, setImgIdx] = useState(0);
   const [toast, setToast] = useState('');
   const { add } = useCart();
   const { has, toggle } = useWishlist();
 
   const items = useMemo(() => parseContents(h?.contents || []), [h]);
-  const totalWeightLabel = useMemo(() => {
-    if (h?.weight) return h.weight.replace(/\s/g, '') || h.weight;
-    return TIERS[tierIdx]?.weight || '—';
-  }, [h, tierIdx]);
+  const totalWeightLabel = h?.weight || '—';
+  const gallery = useMemo(() => {
+    const imgs = (h?.images || []).filter(Boolean);
+    if (imgs.length) return imgs;
+    return h?.image ? [h.image] : [];
+  }, [h]);
+
+  useEffect(() => {
+    setImgIdx(0);
+  }, [slug]);
 
   if (loading || !h) {
     return (
@@ -87,14 +86,12 @@ export default function GiftHamperDetail() {
     );
   }
 
-  const tier = TIERS[tierIdx];
-  const price = Math.round(h.price * tier.priceMul);
-  const mrp = Math.round((h.mrp || h.price) * tier.priceMul);
+  const price = h.price;
+  const mrp = h.mrp || h.price;
   const disc = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
   const rating = h.rating ?? 4.8;
   const reviews = h.reviews ?? 78;
   const wished = has(h.id);
-  const gallery = [h.image, h.image, h.image, h.image];
   const bars = ratingBars(reviews);
 
   const addToCart = () => {
@@ -104,9 +101,9 @@ export default function GiftHamperDetail() {
         name: h.name,
         image: h.image,
         slug: h.slug,
-        meta: { message: msg, deliveryDate: date, type: 'hamper', tier: tier.key },
+        meta: { message: msg, deliveryDate: date, type: 'hamper' },
       },
-      { qty, variant: { w: `${tier.key} (${tier.weight})`, price }, source: 'hamper' },
+      { qty, variant: { w: h.weight, price }, source: 'hamper' },
     );
     setToast('Hamper added to cart');
     setTimeout(() => setToast(''), 2800);
@@ -121,8 +118,8 @@ export default function GiftHamperDetail() {
       {/* Gallery + buy box */}
       <div className="sk-container py-6 md:py-10 grid md:grid-cols-2 gap-8 md:gap-12">
         <div>
-          <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-cream-200 relative group">
-            <img src={gallery[imgIdx]} alt={h.name} className="w-full h-full object-cover" />
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-cream-200 relative group">
+            <img src={gallery[imgIdx] || gallery[0]} alt={h.name} className="w-full h-full object-cover" />
             <button
               type="button"
               aria-label="Wishlist"
@@ -134,6 +131,7 @@ export default function GiftHamperDetail() {
             >
               <Heart size={18} fill={wished ? 'currentColor' : 'none'} />
             </button>
+            {gallery.length > 1 && (
             <button
               type="button"
               aria-label="Previous image"
@@ -142,6 +140,8 @@ export default function GiftHamperDetail() {
             >
               <ChevronLeft size={18} />
             </button>
+            )}
+            {gallery.length > 1 && (
             <button
               type="button"
               aria-label="Next image"
@@ -150,11 +150,7 @@ export default function GiftHamperDetail() {
             >
               <ChevronRight size={18} />
             </button>
-            <div className="absolute inset-0 grid place-items-center pointer-events-none">
-              <span className="h-14 w-14 rounded-full bg-black/35 text-white grid place-items-center backdrop-blur-[2px]">
-                <Play size={22} fill="currentColor" className="ml-0.5" />
-              </span>
-            </div>
+            )}
           </div>
           <div className="hidden md:flex mt-3 gap-2">
             {gallery.map((im, i) => (
@@ -205,23 +201,9 @@ export default function GiftHamperDetail() {
           <div className="text-[12px] text-ink-500 mt-1.5">Inclusive of all taxes</div>
 
           <div className="mt-7">
-            <div className="text-[13px] font-semibold text-brand-900 mb-2.5">Select Size</div>
-            <div className="flex flex-wrap gap-2">
-              {TIERS.map((t, i) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setTierIdx(i)}
-                  className={cn(
-                    'px-4 py-2.5 rounded-full border-2 text-sm font-medium transition',
-                    tierIdx === i
-                      ? 'border-brand-900 text-brand-900 bg-white shadow-sk-sm'
-                      : 'border-line-strong text-ink-600 bg-white hover:border-brand-700',
-                  )}
-                >
-                  {t.key} ({t.weight})
-                </button>
-              ))}
+            <div className="text-[13px] font-semibold text-brand-900 mb-2.5">Pack</div>
+            <div className="inline-flex px-4 py-2.5 rounded-full border-2 border-brand-900 text-sm font-medium text-brand-900 bg-white shadow-sk-sm">
+              {h.tier} · {h.weight}
             </div>
           </div>
 

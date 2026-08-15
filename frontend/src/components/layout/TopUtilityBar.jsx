@@ -14,7 +14,7 @@ export default function TopUtilityBar() {
   const { count } = useCart();
 
   return (
-    <div className="hidden lg:block bg-brand-900 text-cream-200 text-[12px] leading-none">
+    <div className="hidden lg:block bg-[var(--sk-espresso)] text-cream-200 text-[12px] leading-none">
       <div className="sk-container flex items-center justify-between h-9">
         <div className="flex items-center gap-5 min-w-0">
           {LEFT.map(({ Icon, label }) => (

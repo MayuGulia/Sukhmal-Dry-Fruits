@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
+import { useWishlist } from '@/contexts/WishlistContext';
 import { verifiedImg } from '@/data/verifiedImages';
 import {
   ArrowLeft, ArrowRight, Sparkles, Plus, Minus, Check, X, Gift, ShieldCheck,
   Crown, Heart, Pencil, Truck, Package, Leaf, Star, Box, ShoppingBag,
-  PartyPopper, Briefcase, Cake, HandHeart, Flower2, LayoutGrid, Sparkle,
+  PartyPopper, Briefcase, Cake, HandHeart, Flower2, LayoutGrid, Sparkle, Hand,
 } from 'lucide-react';
 
 const STEPS = ['budget', 'hamper', 'products', 'gift-card', 'preview', 'confirm'];
@@ -81,23 +82,13 @@ const PRODUCT_TABS = [
 ];
 
 const HAMPER_CATS = [
-  { key: 'all', label: 'All Hampers', Icon: LayoutGrid },
+  { key: 'all', label: 'All Hampers', productLabel: 'All Products', Icon: LayoutGrid },
   { key: 'bestsellers', label: 'Bestsellers', Icon: Star },
   { key: 'premium', label: 'Premium Hampers', Icon: Crown },
   { key: 'luxury', label: 'Luxury Hampers', Icon: Sparkle },
   { key: 'wooden', label: 'Wooden Hampers', Icon: Box },
   { key: 'basket', label: 'Basket Hampers', Icon: ShoppingBag },
   { key: 'box', label: 'Box Hampers', Icon: Gift },
-];
-
-const PRODUCT_CATS = [
-  { key: 'all', label: 'All Products', Icon: LayoutGrid },
-  { key: 'bestsellers', label: 'Bestsellers', Icon: Star },
-  { key: 'premium', label: 'Premium', Icon: Crown },
-  { key: 'nuts', label: 'Nuts', Icon: Leaf },
-  { key: 'dry-fruits', label: 'Dry Fruits', Icon: Flower2 },
-  { key: 'seeds', label: 'Seeds', Icon: Sparkle },
-  { key: 'berries', label: 'Berries', Icon: Heart },
 ];
 
 const OCCASIONS = [
@@ -110,18 +101,18 @@ const OCCASIONS = [
 ];
 
 const MOCK_PRODUCTS = [
-  { id: 'mp1', name: 'California Almonds', price: 299, weight: '250g', category: 'nuts', bestseller: true, img: verifiedImg('almonds', 400) },
-  { id: 'mp2', name: 'Premium Cashews', price: 349, weight: '250g', category: 'nuts', bestseller: true, img: verifiedImg('cashews', 400) },
-  { id: 'mp3', name: 'Pistachios (Roasted)', price: 399, weight: '250g', category: 'nuts', premium: true, img: verifiedImg('pistachios', 400) },
-  { id: 'mp4', name: 'Walnut Kernels', price: 379, weight: '250g', category: 'nuts', img: verifiedImg('walnuts', 400) },
-  { id: 'mp5', name: 'Premium Medjool Dates', price: 449, weight: '250g', category: 'dates', bestseller: true, premium: true, img: verifiedImg('medjool', 400) },
-  { id: 'mp6', name: 'Golden Raisins', price: 199, weight: '250g', category: 'dry-fruits', img: verifiedImg('raisins', 400) },
-  { id: 'mp7', name: 'Dried Cranberries', price: 279, weight: '200g', category: 'berries', img: verifiedImg('cranberries', 400) },
-  { id: 'mp8', name: 'Blueberry Delight', price: 329, weight: '200g', category: 'berries', premium: true, img: verifiedImg('blueberries', 400) },
-  { id: 'mp9', name: 'Pumpkin Seeds', price: 249, weight: '250g', category: 'seeds', img: verifiedImg('pumpkin', 400) },
-  { id: 'mp10', name: 'Chia Seeds', price: 229, weight: '250g', category: 'seeds', img: verifiedImg('chia', 400) },
-  { id: 'mp11', name: 'Ajwa Dates', price: 599, weight: '250g', category: 'dates', premium: true, img: verifiedImg('ajwa', 400) },
-  { id: 'mp12', name: 'Dark Chocolate Almonds', price: 399, weight: '200g', category: 'chocolate', bestseller: true, img: verifiedImg('almonds', 420) },
+  { id: 'mp1', name: 'California Almonds', price: 299, weight: '250g', category: 'nuts', bestseller: true, img: '/products/badam-cf-1.jpg' },
+  { id: 'mp2', name: 'Premium Cashews', price: 349, weight: '250g', category: 'nuts', bestseller: true, img: '/products/kaju-320-n-1.jpg' },
+  { id: 'mp3', name: 'Pistachios (Roasted)', price: 399, weight: '250g', category: 'nuts', premium: true, img: '/products/pista-1.jpg' },
+  { id: 'mp4', name: 'Walnut Kernels', price: 379, weight: '250g', category: 'nuts', img: '/products/walnut-premium-1.jpg' },
+  { id: 'mp5', name: 'Premium Medjool Dates', price: 449, weight: '250g', category: 'dates', bestseller: true, premium: true, img: '/products/medjoul-dates-1.jpg' },
+  { id: 'mp6', name: 'Golden Raisins', price: 199, weight: '250g', category: 'dry-fruits', img: '/products/kishmish-indian-1.jpg' },
+  { id: 'mp7', name: 'Dried Cranberries', price: 279, weight: '200g', category: 'berries', img: '/products/cranberries-1.jpg' },
+  { id: 'mp8', name: 'Blueberry Delight', price: 329, weight: '200g', category: 'berries', premium: true, img: '/products/blue-berry-1.jpg' },
+  { id: 'mp9', name: 'Pumpkin Seeds', price: 249, weight: '250g', category: 'seeds', img: '/products/pumpkin-seeds-1.jpg' },
+  { id: 'mp10', name: 'Chia Seeds', price: 229, weight: '250g', category: 'seeds', img: '/products/chia-seeds-1.jpg' },
+  { id: 'mp11', name: 'Ajwa Dates', price: 599, weight: '250g', category: 'dates', premium: true, img: '/products/medjoul-dates-1.jpg' },
+  { id: 'mp12', name: 'Dark Chocolate Almonds', price: 399, weight: '200g', category: 'chocolate', bestseller: true, img: '/products/badam-roasted-1.jpg' },
 ];
 
 function loadState() {
@@ -175,21 +166,19 @@ function Stepper({ idx }) {
             <div className="flex flex-col items-center min-w-[4.25rem]">
               <div
                 className={`w-9 h-9 rounded-full grid place-items-center font-semibold text-sm transition-colors ${
-                  i === idx
-                    ? 'bg-[var(--sk-brown-900)] text-white shadow-md'
-                    : i < idx
-                      ? 'bg-[var(--sk-brown-900)] text-white'
-                      : 'bg-white text-[var(--sk-ink-400)] border border-[var(--sk-line-strong)]'
+                  i <= idx
+                    ? 'bg-[var(--sk-espresso)] text-white shadow-sm'
+                    : 'bg-white text-[var(--sk-ink-400)] border border-[#E8E4DF]'
                 }`}
               >
                 {i < idx ? <Check size={14} strokeWidth={3} /> : i + 1}
               </div>
-              <div className={`text-[11px] mt-1.5 ${i === idx ? 'text-[var(--sk-brown-900)] font-semibold' : 'text-[var(--sk-ink-500)]'}`}>
+              <div className={`text-[11px] mt-1.5 ${i === idx ? 'text-[var(--sk-espresso)] font-bold' : i < idx ? 'text-[var(--sk-espresso)] font-medium' : 'text-[var(--sk-ink-400)]'}`}>
                 {LABELS[i]}
               </div>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`w-7 lg:w-10 h-[2px] mb-5 ${i < idx ? 'bg-[var(--sk-brown-900)]' : 'bg-[var(--sk-line-strong)]'}`} />
+              <div className={`w-7 lg:w-10 h-[2px] mb-5 ${i < idx ? 'bg-[var(--sk-espresso)]' : 'bg-[#E8E4DF]'}`} />
             )}
           </React.Fragment>
         ))}
@@ -197,12 +186,12 @@ function Stepper({ idx }) {
 
       <div className="md:hidden mt-5 max-w-sm mx-auto">
         <div className="flex justify-between text-sm">
-          <span className="text-[var(--sk-brown-900)] font-semibold">Step {idx + 1} of 6</span>
+          <span className="text-[var(--sk-espresso)] font-semibold">Step {idx + 1} of 6</span>
           <span className="text-[var(--sk-ink-500)]">{LABELS[idx]}</span>
         </div>
-        <div className="h-2 mt-2 rounded-full bg-white overflow-hidden border border-[var(--sk-line)]">
+        <div className="h-2 mt-2 rounded-full bg-white overflow-hidden border border-[#E8E4DF]">
           <div
-            className="h-full bg-[var(--sk-brown-900)] transition-all duration-300"
+            className="h-full bg-[var(--sk-espresso)] transition-all duration-300"
             style={{ width: `${((idx + 1) / 6) * 100}%` }}
           />
         </div>
@@ -223,31 +212,35 @@ function FilterSidebar({
 }) {
   return (
     <aside className="space-y-4 hidden lg:block">
-      <div className="rounded-xl border border-[var(--sk-line)] bg-[var(--sk-cream-200)] p-3.5">
-        <div className="flex items-start gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-white grid place-items-center text-[var(--sk-brown-900)] shrink-0">
+      <div className="rounded-2xl border border-[#E8E4DF] bg-white p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-[#FDF6E7] grid place-items-center text-[var(--sk-gold-600)] shrink-0">
             <Gift size={16} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] text-[var(--sk-ink-500)]">Your Selected Budget</div>
-            <div className="font-display font-bold text-[var(--sk-brown-900)] text-lg leading-tight">{inr(budget)}</div>
-            <button
-              type="button"
-              onClick={onChangeBudget}
-              className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--sk-gold-400)]"
-            >
-              <Pencil size={11} /> Change
-            </button>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[12px] text-[var(--sk-ink-500)]">Your Selected Budget</div>
+              <button
+                type="button"
+                onClick={onChangeBudget}
+                className="text-[12px] font-semibold text-[var(--sk-gold-600)] hover:underline shrink-0"
+              >
+                Change
+              </button>
+            </div>
+            <div className="font-display font-bold text-[var(--sk-espresso)] text-xl leading-tight mt-0.5">{inr(budget)}</div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-[var(--sk-line)] bg-white p-3">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--sk-ink-400)] px-2 mb-1">
+      <div className="rounded-2xl border border-[#E8E4DF] bg-white p-3.5">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--sk-ink-400)] px-2 mb-1.5">
           Shop by Category
         </div>
         <nav className="space-y-0.5">
-          {cats.map(({ key, label, Icon }) => {
+          {cats.map((c) => {
+            const { key, Icon } = c;
+            const label = productMode && c.productLabel ? c.productLabel : c.label;
             const active = catKey === key;
             return (
               <button
@@ -256,11 +249,11 @@ function FilterSidebar({
                 onClick={() => onCat(key)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-left transition-colors ${
                   active
-                    ? 'bg-[var(--sk-cream-300)] text-[var(--sk-brown-900)] font-semibold'
-                    : 'text-[var(--sk-ink-600)] hover:bg-[var(--sk-cream-100)]'
+                    ? 'bg-[#FDF6E7] text-[var(--sk-espresso)] font-semibold'
+                    : 'text-[var(--sk-ink-600)] hover:bg-[#FAFAF8]'
                 }`}
               >
-                <Icon size={14} className={active ? 'text-[var(--sk-brown-900)]' : 'text-[var(--sk-ink-400)]'} />
+                <Icon size={14} className={active ? 'text-[var(--sk-gold-600)]' : 'text-[var(--sk-gold-600)]/70'} />
                 {label}
               </button>
             );
@@ -268,8 +261,8 @@ function FilterSidebar({
         </nav>
       </div>
 
-      <div className="rounded-xl border border-[var(--sk-line)] bg-white p-3">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--sk-ink-400)] px-2 mb-1">
+      <div className="rounded-2xl border border-[#E8E4DF] bg-white p-3.5">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--sk-ink-400)] px-2 mb-1.5">
           Shop by Occasion
         </div>
         <nav className="space-y-0.5">
@@ -282,21 +275,16 @@ function FilterSidebar({
                 onClick={() => onOccasion(active ? null : key)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-left transition-colors ${
                   active
-                    ? 'bg-[var(--sk-cream-300)] text-[var(--sk-brown-900)] font-semibold'
-                    : 'text-[var(--sk-ink-600)] hover:bg-[var(--sk-cream-100)]'
+                    ? 'bg-[#FDF6E7] text-[var(--sk-espresso)] font-semibold'
+                    : 'text-[var(--sk-ink-600)] hover:bg-[#FAFAF8]'
                 }`}
               >
-                <Icon size={14} className={active ? 'text-[var(--sk-brown-900)]' : 'text-[var(--sk-ink-400)]'} />
+                <Icon size={14} className="text-[var(--sk-gold-600)]" />
                 {label}
               </button>
             );
           })}
         </nav>
-        {productMode && (
-          <p className="text-[10px] text-[var(--sk-ink-400)] px-2 mt-2 leading-snug">
-            Occasion filters personalise suggestions — all products stay available.
-          </p>
-        )}
       </div>
     </aside>
   );
@@ -320,40 +308,33 @@ function HamperSidebar({
   disableContinue,
 }) {
   return (
-    <aside className="sk-card p-5 h-fit sticky top-4">
-      <div className="flex items-center gap-2 font-display font-bold text-[var(--sk-brown-900)] text-lg tracking-wide">
-        <Gift size={18} /> YOUR HAMPER
+    <aside className="bg-white rounded-2xl border border-[#E8E4DF] p-5 h-fit sticky top-24 shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center gap-2 font-bold text-[var(--sk-espresso)] text-[13px] tracking-[0.14em] uppercase">
+        <Gift size={16} className="text-[var(--sk-gold-600)]" /> YOUR HAMPER
       </div>
 
-      <div className="mt-4 space-y-2 text-sm">
-        <div className="flex justify-between">
+      <div className="mt-4 text-sm divide-y divide-[#E8E4DF] border-y border-[#E8E4DF]">
+        <div className="flex justify-between py-2.5">
           <span className="text-[var(--sk-ink-500)]">Budget</span>
-          <b className="text-[var(--sk-brown-900)]">{inr(budget)}</b>
+          <b className="text-[var(--sk-espresso)]">{inr(budget)}</b>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between py-2.5">
           <span className="text-[var(--sk-ink-500)]">Spent</span>
-          <b className="text-[var(--sk-brown-900)]">{inr(spent)}</b>
+          <b className="text-[var(--sk-espresso)]">{inr(spent)}</b>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center py-2.5">
           <span className="text-[var(--sk-ink-500)]">Remaining</span>
-          <b className={overBudget ? 'text-[var(--sk-red-500)]' : 'text-[var(--sk-green-500)]'}>
+          <b className={overBudget ? 'text-[var(--sk-red-500)]' : 'text-[#3A7D44]'}>
             {overBudget ? `−${inr(Math.abs(remaining))}` : inr(remaining)}
           </b>
         </div>
       </div>
 
-      <div className="mt-3 h-1.5 rounded-full bg-[var(--sk-cream-300)] overflow-hidden">
-        <div
-          className={`h-full transition-all ${overBudget ? 'bg-[var(--sk-red-500)]' : 'bg-[var(--sk-brown-900)]'}`}
-          style={{ width: `${Math.min(100, (spent / Math.max(budget, 1)) * 100)}%` }}
-        />
-      </div>
-
-      <div className="mt-4 border-t border-[var(--sk-line)] pt-3">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-semibold text-[var(--sk-brown-900)]">Products Added ({itemCount})</span>
+      <div className="mt-4">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-sm font-semibold text-[var(--sk-espresso)]">Products Added ({itemCount})</span>
           {chosen.length > 0 && onEditProducts && (
-            <button type="button" onClick={onEditProducts} className="text-[12px] text-[var(--sk-gold-400)] font-semibold">
+            <button type="button" onClick={onEditProducts} className="text-[12px] text-[var(--sk-gold-600)] font-semibold hover:underline">
               Edit
             </button>
           )}
@@ -361,32 +342,25 @@ function HamperSidebar({
         {chosen.length === 0 ? (
           <p className="text-[12px] text-[var(--sk-ink-400)] py-2">No products yet — add from the grid.</p>
         ) : (
-          <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
             {chosen.map((p) => (
-              <div key={p.id} className="flex items-center gap-2 text-[13px]">
-                <div className="w-9 h-9 rounded-full overflow-hidden bg-[var(--sk-cream-200)] shrink-0">
+              <div key={p.id} className="flex items-start gap-2.5">
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#F7F3EC] shrink-0">
                   <img src={p.img} alt="" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[var(--sk-brown-900)] font-medium truncate">{p.name}</div>
-                  <div className="text-[11px] text-[var(--sk-ink-500)]">{p.weight} · {inr(p.price)}</div>
+                  <div className="text-[13px] text-[var(--sk-espresso)] font-semibold truncate leading-tight">{p.name}</div>
+                  <div className="text-[11px] text-[var(--sk-ink-500)] mt-0.5">{p.weight}</div>
+                  <div className="text-[13px] font-semibold text-[var(--sk-espresso)] mt-0.5">{inr(p.price)}</div>
                 </div>
-                <div className="inline-flex items-center border border-[var(--sk-line-strong)] rounded-md">
-                  <button type="button" aria-label="Decrease" onClick={() => setQty(p.id, p.qty - 1)} className="p-1 hover:bg-[var(--sk-cream-200)]">
-                    <Minus size={11} />
-                  </button>
-                  <span className="text-xs w-4 text-center font-semibold">{p.qty}</span>
-                  <button type="button" aria-label="Increase" onClick={() => setQty(p.id, p.qty + 1)} className="p-1 hover:bg-[var(--sk-cream-200)]">
-                    <Plus size={11} />
-                  </button>
-                </div>
+                <span className="text-sm font-bold text-[var(--sk-espresso)] w-4 text-center pt-0.5">{p.qty}</span>
                 <button
                   type="button"
                   aria-label={`Remove ${p.name}`}
                   onClick={() => setQty(p.id, 0)}
-                  className="text-[var(--sk-red-500)] p-1 hover:bg-red-50 rounded"
+                  className="text-[var(--sk-ink-400)] hover:text-[var(--sk-red-500)] p-0.5 mt-0.5"
                 >
-                  <X size={13} />
+                  <X size={14} />
                 </button>
               </div>
             ))}
@@ -394,31 +368,31 @@ function HamperSidebar({
         )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-[var(--sk-line)] space-y-1.5 text-sm">
+      <div className="mt-4 pt-3 border-t border-[#E8E4DF] space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-[var(--sk-ink-500)]">Total Items</span>
-          <b className="text-[var(--sk-brown-900)]">{itemCount}</b>
+          <b className="text-[var(--sk-espresso)]">{itemCount}</b>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between items-baseline">
           <span className="text-[var(--sk-ink-500)]">Total Amount</span>
-          <b className="text-[var(--sk-brown-900)] text-base">{inr(spent)}</b>
+          <b className="text-[var(--sk-espresso)] text-lg font-display">{inr(spent)}</b>
         </div>
       </div>
 
       {showGiftCard && cardStyleObj && (
-        <div className="mt-4 pt-3 border-t border-[var(--sk-line)]">
+        <div className="mt-4 pt-3 border-t border-[#E8E4DF]">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-semibold text-[var(--sk-brown-900)]">Gift Card</span>
+            <span className="text-sm font-semibold text-[var(--sk-espresso)]">Gift Card</span>
             {onEditGift && (
-              <button type="button" onClick={onEditGift} className="text-[12px] text-[var(--sk-gold-400)] font-semibold">Edit</button>
+              <button type="button" onClick={onEditGift} className="text-[12px] text-[var(--sk-gold-600)] font-semibold">Edit</button>
             )}
           </div>
           <div className="flex items-center gap-2.5">
-            <div className={`w-12 h-10 rounded-md ${cardStyleObj.tone} border border-[var(--sk-line)] grid place-items-center shrink-0`}>
+            <div className={`w-12 h-10 rounded-md ${cardStyleObj.tone} border border-[#E8E4DF] grid place-items-center shrink-0`}>
               {cardStyleObj.custom ? <Pencil size={12} /> : <Gift size={12} style={{ color: cardStyleObj.accent }} />}
             </div>
             <div className="min-w-0">
-              <div className="text-[13px] font-semibold text-[var(--sk-brown-900)] truncate">{cardStyleObj.name}</div>
+              <div className="text-[13px] font-semibold text-[var(--sk-espresso)] truncate">{cardStyleObj.name}</div>
               <div className="text-[11px] text-[var(--sk-ink-500)] truncate">
                 {message ? 'Personalized Message' : 'No message yet'}
               </div>
@@ -438,17 +412,41 @@ function HamperSidebar({
           type="button"
           disabled={disableContinue}
           onClick={onContinue}
-          className="sk-btn-primary w-full mt-5 !py-3"
+          className="sk-btn-hamper w-full mt-5 !py-3.5 text-[15px] disabled:opacity-40 disabled:hover:transform-none disabled:hover:shadow-none"
         >
           {continueLabel} <ArrowRight size={14} />
         </button>
       )}
 
-      <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-[var(--sk-ink-500)]">
-        <ShieldCheck size={12} className="text-[var(--sk-green-500)]" />
+      <div className="mt-4 flex items-center justify-center gap-1.5 text-[12px] text-[var(--sk-ink-400)]">
+        <ShieldCheck size={13} className="text-[#3A7D44]" />
         Secure & Safe Checkout
       </div>
     </aside>
+  );
+}
+
+function WizardTrustStrip() {
+  const items = [
+    { Ic: Leaf, label: '100% Natural', sub: 'No Preservatives' },
+    { Ic: Star, label: 'Premium Quality', sub: 'Finest from Around the World' },
+    { Ic: Hand, label: 'Handpicked with Care', sub: 'Hygienically Packed' },
+    { Ic: Truck, label: 'Express Delivery', sub: 'Across India' },
+  ];
+  return (
+    <div className="border-t border-[#E8E4DF] bg-white">
+      <div className="sk-container py-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        {items.map(({ Ic, label, sub }) => (
+          <div key={label} className="flex items-center gap-3 justify-center text-center md:text-left md:justify-start">
+            <Ic size={22} strokeWidth={1.5} className="text-[var(--sk-espresso)] shrink-0" />
+            <div>
+              <div className="text-[13px] font-semibold text-[var(--sk-espresso)] leading-tight">{label}</div>
+              <div className="text-[11px] text-[var(--sk-ink-400)] mt-0.5">{sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -468,8 +466,7 @@ export default function BuildHamper() {
     ...loadState(),
   }));
   const [catTab, setCatTab] = useState('all');
-  const [hamperCat, setHamperCat] = useState('all');
-  const [productSideCat, setProductSideCat] = useState('all');
+  const [sideCat, setSideCat] = useState('all');
   const [occasion, setOccasion] = useState(null);
   const [sortBy, setSortBy] = useState('popularity');
   const [loading, setLoading] = useState(false);
@@ -478,6 +475,7 @@ export default function BuildHamper() {
   const [done, setDone] = useState(false);
   const [previewThumb, setPreviewThumb] = useState(0);
   const { add } = useCart();
+  const { has, toggle } = useWishlist();
 
   const setPersist = (patch) => {
     setState((s) => {
@@ -535,19 +533,19 @@ export default function BuildHamper() {
 
   const filteredHampers = useMemo(() => {
     let list = [...STYLES];
-    if (hamperCat === 'bestsellers') list = list.filter((_, i) => i < 2);
-    else if (hamperCat === 'premium') list = list.filter((s) => s.price >= 2499);
-    else if (hamperCat !== 'all') list = list.filter((s) => s.category === hamperCat);
+    if (sideCat === 'bestsellers') list = list.filter((_, i) => i < 2);
+    else if (sideCat === 'premium' || sideCat === 'luxury') list = list.filter((s) => s.price >= 2499);
+    else if (sideCat !== 'all') list = list.filter((s) => s.category === sideCat);
     if (sortBy === 'price-asc') list.sort((a, b) => a.price - b.price);
     if (sortBy === 'price-desc') list.sort((a, b) => b.price - a.price);
     return list;
-  }, [hamperCat, sortBy]);
+  }, [sideCat, sortBy]);
 
   const filteredProducts = useMemo(() => {
     let list = [...MOCK_PRODUCTS];
-    if (productSideCat === 'bestsellers') list = list.filter((p) => p.bestseller);
-    else if (productSideCat === 'premium') list = list.filter((p) => p.premium || p.bestseller);
-    else if (productSideCat !== 'all') list = list.filter((p) => p.category === productSideCat || (productSideCat === 'dry-fruits' && p.category === 'dates'));
+    if (sideCat === 'bestsellers') list = list.filter((p) => p.bestseller);
+    else if (sideCat === 'premium' || sideCat === 'luxury') list = list.filter((p) => p.premium || p.bestseller || p.price >= 399);
+    // wooden / basket / box keep the full product set — those are hamper-style filters
 
     if (catTab === 'premium') list = list.filter((p) => p.premium || p.bestseller || p.price >= 399);
     else if (catTab === 'dry-fruits') list = list.filter((p) => p.category === 'dry-fruits' || p.category === 'dates');
@@ -555,8 +553,9 @@ export default function BuildHamper() {
 
     if (sortBy === 'price-asc') list.sort((a, b) => a.price - b.price);
     if (sortBy === 'price-desc') list.sort((a, b) => b.price - a.price);
+    if (sortBy === 'popularity') list.sort((a, b) => Number(!!b.bestseller) - Number(!!a.bestseller) || b.price - a.price);
     return list;
-  }, [catTab, productSideCat, sortBy]);
+  }, [catTab, sideCat, sortBy]);
 
   const goto = (n) => nav(`/build-hamper/${STEPS[n]}`);
 
@@ -638,16 +637,19 @@ export default function BuildHamper() {
 
   const previewImages = [styleObj.img, LIFE_BOX, LIFE_TRAY];
   const showRightSidebar = idx >= 2 && idx <= 4;
-  const showLeftFilters = idx === 1 || idx === 2;
+  const showLeftFilters = idx >= 1 && idx <= 4;
 
   return (
-    <div className="bg-[var(--sk-cream-100)] min-h-[70vh]">
-      <section className="relative overflow-hidden border-b border-[var(--sk-line)] bg-gradient-to-b from-[var(--sk-cream-200)] to-[var(--sk-cream-100)]">
+    <div className="bg-[#FAFAF8] min-h-[70vh]">
+      <section className="relative overflow-hidden border-b border-[#E8E4DF] bg-white">
         <div className="sk-container py-7 md:py-9 text-center relative z-10">
-          <h1 className="font-display text-3xl md:text-4xl text-[var(--sk-brown-900)] font-bold">
+          <div className="mx-auto mb-3 w-11 h-11 rounded-full bg-[#FDF6E7] grid place-items-center text-[var(--sk-gold-600)]">
+            <Gift size={20} />
+          </div>
+          <h1 className="font-display text-[28px] md:text-[32px] text-[var(--sk-espresso)] font-bold leading-tight">
             Build Your Own Hamper
           </h1>
-          <p className="text-[var(--sk-ink-600)] mt-2 max-w-xl mx-auto text-sm md:text-base">
+          <p className="text-[var(--sk-ink-500)] mt-2 max-w-xl mx-auto text-sm md:text-[15px]">
             {subtitles[idx]}
           </p>
           <Stepper idx={idx} />
@@ -657,11 +659,11 @@ export default function BuildHamper() {
       <div
         className={`sk-container py-8 md:py-10 ${
           showLeftFilters && showRightSidebar
-            ? 'grid lg:grid-cols-[220px_1fr_280px] gap-6'
+            ? 'grid lg:grid-cols-[240px_minmax(0,1fr)_300px] gap-6'
             : showLeftFilters
-              ? 'grid lg:grid-cols-[220px_1fr] gap-6'
+              ? 'grid lg:grid-cols-[240px_minmax(0,1fr)] gap-6'
               : showRightSidebar
-                ? 'grid lg:grid-cols-[1fr_280px] gap-6'
+                ? 'grid lg:grid-cols-[minmax(0,1fr)_300px] gap-6'
                 : ''
         }`}
       >
@@ -669,12 +671,12 @@ export default function BuildHamper() {
           <FilterSidebar
             budget={state.budget}
             onChangeBudget={() => goto(0)}
-            cats={idx === 1 ? HAMPER_CATS : PRODUCT_CATS}
-            catKey={idx === 1 ? hamperCat : productSideCat}
-            onCat={idx === 1 ? setHamperCat : setProductSideCat}
+            cats={HAMPER_CATS}
+            catKey={sideCat}
+            onCat={setSideCat}
             occasion={occasion}
             onOccasion={setOccasion}
-            productMode={idx === 2}
+            productMode={idx >= 2}
           />
         )}
 
@@ -839,29 +841,37 @@ export default function BuildHamper() {
           {step === 'products' && (
             <div>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex gap-2 overflow-x-auto sk-scroll-x pb-1 flex-1 min-w-0">
-                  {PRODUCT_TABS.map((t) => (
-                    <button
-                      key={t.key}
-                      type="button"
-                      onClick={() => setCatTab(t.key)}
-                      className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                        catTab === t.key
-                          ? 'bg-[var(--sk-brown-900)] text-white'
-                          : 'bg-white text-[var(--sk-brown-900)] border border-[var(--sk-line-strong)] hover:bg-[var(--sk-cream-200)]'
-                      }`}
-                    >
-                      {t.icon && <Crown size={12} className="text-[var(--sk-gold-400)]" />}
-                      {t.label}
-                    </button>
-                  ))}
+                <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1 flex-1 min-w-0 items-center">
+                  {PRODUCT_TABS.map((t) => {
+                    const active = catTab === t.key;
+                    const premium = t.key === 'premium';
+                    return (
+                      <React.Fragment key={t.key}>
+                        {premium && <span className="hidden sm:block w-px h-5 bg-[#E8E4DF] mx-1 shrink-0" />}
+                        <button
+                          type="button"
+                          onClick={() => setCatTab(t.key)}
+                          className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-[7px] rounded-full text-sm font-medium transition-colors ${
+                            premium
+                              ? 'bg-white text-[var(--sk-gold-600)] border border-[var(--sk-gold-600)]'
+                              : active
+                                ? 'bg-[var(--sk-espresso)] text-white'
+                                : 'bg-white text-[var(--sk-espresso)] border border-[#E8E4DF] hover:bg-[#FAFAF8]'
+                          } ${premium && active ? 'bg-[#FDF6E7]' : ''}`}
+                        >
+                          {t.icon && <Crown size={13} />}
+                          {t.label}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
-                <label className="text-sm text-[var(--sk-ink-600)] flex items-center gap-2 shrink-0">
+                <label className="text-sm text-[var(--sk-ink-500)] flex items-center gap-2 shrink-0">
                   Sort by:
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="sk-input !py-1.5 !px-3 !w-auto text-sm"
+                    className="bg-white border border-[#E8E4DF] rounded-lg text-sm text-[var(--sk-espresso)] py-1.5 px-3 outline-none focus:border-[var(--sk-espresso)]"
                   >
                     <option value="popularity">Popularity</option>
                     <option value="price-asc">Price: Low to High</option>
@@ -870,54 +880,84 @@ export default function BuildHamper() {
                 </label>
               </div>
 
+              <div className="lg:hidden mt-4">
+                <button
+                  type="button"
+                  onClick={() => goto(0)}
+                  className="w-full rounded-2xl border border-[#E8E4DF] bg-white p-3 flex items-center justify-between text-sm"
+                >
+                  <span className="text-[var(--sk-ink-500)]">Your Selected Budget</span>
+                  <span className="font-bold text-[var(--sk-espresso)]">{inr(state.budget)} · <span className="text-[var(--sk-gold-600)] font-semibold">Change</span></span>
+                </button>
+              </div>
+
               <div className="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                 {filteredProducts.map((p) => {
                   const qty = state.items[p.id] || 0;
                   const added = qty > 0;
+                  const wished = has(p.id);
                   return (
-                    <div key={p.id} className="sk-card overflow-hidden flex flex-col">
-                      <div className="relative aspect-square bg-[var(--sk-cream-200)]">
-                        <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
+                    <div key={p.id} className="sk-wizard-card overflow-hidden flex flex-col">
+                      <div className="relative aspect-square bg-[#F7F3EC] p-4">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+                          <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
+                        </div>
                         {p.bestseller && (
-                          <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                          <span className="absolute top-2.5 left-2.5 text-[10px] font-bold tracking-wide bg-[var(--sk-espresso)] text-white px-2.5 py-1 rounded-full">
                             Bestseller
                           </span>
                         )}
                         {p.premium && !p.bestseller && (
-                          <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide bg-[var(--sk-gold-400)] text-white px-2 py-0.5 rounded-full">
+                          <span className="absolute top-2.5 left-2.5 text-[10px] font-bold tracking-wide bg-[var(--sk-gold-600)] text-white px-2.5 py-1 rounded-full">
                             Premium
                           </span>
                         )}
-                        <span className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 grid place-items-center text-[var(--sk-ink-400)]">
-                          <Heart size={14} />
-                        </span>
+                        <button
+                          type="button"
+                          aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
+                          onClick={() => toggle(p.id)}
+                          className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white grid place-items-center shadow-sm text-[var(--sk-espresso)]"
+                        >
+                          <Heart size={14} strokeWidth={1.75} fill={wished ? 'currentColor' : 'none'} className={wished ? 'text-red-500' : ''} />
+                        </button>
                       </div>
-                      <div className="p-3 flex flex-col flex-1">
-                        <div className="font-display font-bold text-[var(--sk-brown-900)] text-sm leading-snug line-clamp-2">{p.name}</div>
-                        <div className="text-[12px] text-[var(--sk-ink-600)] mt-1 font-semibold">
-                          {inr(p.price)} <span className="font-normal text-[var(--sk-ink-400)]">/ {p.weight}</span>
+                      <div className="p-3.5 flex flex-col flex-1">
+                        <div className="font-display font-bold text-[var(--sk-espresso)] text-[15px] md:text-base leading-snug line-clamp-2">{p.name}</div>
+                        <div className="text-[14px] text-[#555555] mt-1">
+                          {inr(p.price)} <span className="text-[var(--sk-ink-400)]">/ {p.weight}</span>
                         </div>
 
-                        {added ? (
-                          <div className="mt-auto pt-3 flex items-center gap-2">
-                            <div className="inline-flex items-center gap-1 border border-[var(--sk-line-strong)] rounded-lg flex-1 justify-center">
-                              <button type="button" aria-label="Decrease" onClick={() => setQty(p.id, qty - 1)} className="p-1.5 hover:bg-[var(--sk-cream-200)] rounded-l-lg"><Minus size={12} /></button>
-                              <span className="text-sm w-5 text-center font-semibold">{qty}</span>
-                              <button type="button" aria-label="Increase" onClick={() => addOne(p)} className="p-1.5 hover:bg-[var(--sk-cream-200)] rounded-r-lg"><Plus size={12} /></button>
-                            </div>
-                            <span className="shrink-0 text-[11px] font-bold text-white bg-[var(--sk-brown-900)] px-2.5 py-2 rounded-lg inline-flex items-center gap-0.5">
-                              Added <Check size={12} strokeWidth={3} />
-                            </span>
+                        <div className="mt-auto pt-3 flex items-center gap-2">
+                          <div className="inline-flex items-center border border-[#E8E4DF] rounded-full bg-white">
+                            <button
+                              type="button"
+                              aria-label="Decrease"
+                              disabled={qty === 0}
+                              onClick={() => setQty(p.id, qty - 1)}
+                              className="p-1.5 pl-2.5 disabled:opacity-30"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <span className="text-sm w-5 text-center font-bold text-[var(--sk-espresso)]">{qty}</span>
+                            <button
+                              type="button"
+                              aria-label="Increase"
+                              onClick={() => addOne(p)}
+                              className="p-1.5 pr-2.5"
+                            >
+                              <Plus size={12} />
+                            </button>
                           </div>
-                        ) : (
                           <button
                             type="button"
-                            onClick={() => addOne(p)}
-                            className="mt-auto pt-3 w-full text-sm font-semibold py-2 rounded-lg bg-[var(--sk-brown-900)] text-white hover:bg-[var(--sk-brown-700)] transition-colors"
+                            onClick={() => { if (!added) addOne(p); }}
+                            className={`flex-1 text-[13px] font-semibold py-2 rounded-full inline-flex items-center justify-center gap-1 bg-[var(--sk-espresso)] text-white ${
+                              added ? 'opacity-90 cursor-default' : 'hover:bg-[#2a1e16]'
+                            }`}
                           >
-                            Add
+                            {added ? <>Added <Check size={13} strokeWidth={3} /></> : 'Add'}
                           </button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -936,14 +976,14 @@ export default function BuildHamper() {
               )}
 
               <div className="mt-8 flex gap-3 lg:hidden">
-                <button type="button" onClick={() => goto(1)} className="sk-btn-outline flex-1 !py-2.5">
+                <button type="button" onClick={() => goto(1)} className="sk-btn-outline flex-1 !py-2.5 !rounded-full">
                   <ArrowLeft size={14} /> Back
                 </button>
                 <button
                   type="button"
                   disabled={overBudget || chosen.length === 0}
                   onClick={() => goto(3)}
-                  className="sk-btn-primary flex-1 !py-2.5"
+                  className="sk-btn-hamper flex-1 !py-2.5"
                 >
                   Continue <ArrowRight size={14} />
                 </button>
@@ -1340,6 +1380,7 @@ export default function BuildHamper() {
           </div>
         )}
       </div>
+      <WizardTrustStrip />
     </div>
   );
 }

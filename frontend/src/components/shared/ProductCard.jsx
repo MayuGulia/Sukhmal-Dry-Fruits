@@ -50,16 +50,18 @@ export default function ProductCard({ p, variant = 'default' }) {
   const variants = p.variants?.length
     ? p.variants
     : [{ w: p.weight || '250g', price: p.price }];
-  const [vi, setVi] = useState(0);
+  const preferredIdx = Math.max(0, variants.findIndex((v) => /500/i.test(String(v.w))));
+  const [vi, setVi] = useState(preferredIdx >= 0 ? preferredIdx : 0);
   const selected = variants[Math.min(vi, variants.length - 1)] || variants[0];
   const price = selected?.price ?? p.price;
   const subtitle = shortSubtitle(p);
 
   if (labeled) {
+    const pack = variants.find((v) => /500/i.test(String(v.w))) || variants[0];
     return (
-      <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full">
-        <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-cream-200">
-          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+      <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full h-full bg-white">
+        <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-[#F4EDE3]">
+          <img src={p.images[0]} alt={p.name} className="w-full h-full object-contain p-3 group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" decoding="async" />
           {p.bestseller && <span className="sk-pill sk-pill-brown absolute top-2 left-2 !py-1 !px-2.5">Bestseller</span>}
           <button
             onClick={(e) => { e.preventDefault(); toggle(p.id); }}
@@ -74,19 +76,19 @@ export default function ProductCard({ p, variant = 'default' }) {
             to={`/product/${p.slug}`}
             className="font-display font-bold text-[15px] md:text-base text-brand-900 leading-tight line-clamp-2"
           >
-            {p.name}{p.variants?.[0]?.w ? ` (${p.variants[0].w})` : ''}
+            {p.name}{pack?.w ? ` (${pack.w})` : ''}
           </Link>
           <div className="flex items-center gap-1 text-[12px] text-ink-600">
             <Star size={13} className="sk-star fill-current" />
-            <span className="font-medium text-brand-900">{p.rating}</span>
+            <span className="font-medium text-brand-900">{Number(p.rating).toFixed(1)}</span>
             <span>({p.reviews})</span>
           </div>
           <div className="mt-auto pt-2.5 space-y-2.5">
-            <div className="font-display font-bold text-brand-900 text-[1.15rem] leading-none tracking-tight">{inr(p.price)}</div>
+            <div className="font-display font-bold text-brand-900 text-[1.2rem] leading-none tracking-tight">{inr(pack?.price ?? p.price)}</div>
             <button
-              onClick={() => add(p, { qty: 1, variant: p.variants?.[0] })}
+              onClick={() => add(p, { qty: 1, variant: pack })}
               data-testid={`add-cart-${p.slug}`}
-              className="sk-btn-primary w-full !py-2.5 !rounded-[10px] text-[13px] tracking-wide"
+              className="w-full !py-2.5 !rounded-[10px] text-[13px] tracking-wide font-semibold text-white bg-[var(--sk-espresso)] hover:bg-[#2a1e16] transition-colors"
             >
               Add to Cart
             </button>
@@ -102,8 +104,9 @@ export default function ProductCard({ p, variant = 'default' }) {
         <img
           src={p.images[0]}
           alt={p.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-contain p-2 md:p-3 group-hover:scale-[1.03] transition-transform duration-500"
           loading="lazy"
+          decoding="async"
         />
         <button
           onClick={(e) => { e.preventDefault(); toggle(p.id); }}
@@ -216,8 +219,14 @@ export function TrustStrip({ overlay = false }) {
     <div className={`grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-2 ${overlay ? 'py-4 md:py-5' : 'py-6'}`}>
       {items.map(({ Ic, label, sub }) => (
         <div key={label} className="flex items-center gap-3 justify-center px-2">
-          <div className={`shrink-0 grid place-items-center ${overlay ? 'text-[var(--sk-gold-300)]' : 'text-[var(--sk-gold-400)]'}`}>
-            <Ic size={overlay ? 22 : 24} strokeWidth={1.5} />
+          <div
+            className={`shrink-0 h-11 w-11 grid place-items-center rounded-full border-[1.5px] ${
+              overlay
+                ? 'border-[var(--sk-gold-600)] text-[var(--sk-gold-300)]'
+                : 'border-[var(--sk-gold-600)] text-[var(--sk-gold-600)]'
+            }`}
+          >
+            <Ic size={overlay ? 18 : 20} strokeWidth={1.6} />
           </div>
           <div className="min-w-0">
             <div className={`font-semibold text-sm md:text-[15px] leading-tight ${overlay ? 'text-white' : 'text-brand-900'}`}>{label}</div>

@@ -15,6 +15,7 @@ module.exports = {
     extend: {
       colors: {
         brand: {
+          950: 'var(--sk-espresso)',
           900: 'var(--sk-brown-900)',
           800: 'var(--sk-brown-800)',
           700: 'var(--sk-brown-700)',
@@ -22,6 +23,7 @@ module.exports = {
           500: 'var(--sk-brown-500)',
         },
         gold: {
+          600: 'var(--sk-gold-600)',
           500: 'var(--sk-gold-500)',
           400: 'var(--sk-gold-400)',
           300: 'var(--sk-gold-300)',

@@ -58,7 +58,7 @@ const LOCAL = {
   eid: '/brand/hamper-eid-mubarak.png',
   christmas: '/brand/hamper-christmas-cheer.png',
   'new-year': '/brand/hamper-new-year-glow.png',
-  'gift-hampers': '/brand/hamper-royal-gold.png',
+  'gift-hampers': '/brand/hampers/hamper-copper-tray-hero.png',
   'hero-main': '/brand/hero-luxury-hamper-v2.png',
   'diwali-hero': '/brand/festival-diwali-banner.png',
   'rakhi-hero': '/brand/festival-rakhi-banner.png',

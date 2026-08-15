@@ -27,11 +27,11 @@ const WEIGHTS = ['500g', '1kg', '2kg', '3kg+'];
 const QUALITIES = ['Premium', 'Deluxe', 'Luxury'];
 
 const SIDEBAR_CATS = [
-  { label: 'Birthday', key: 'Birthday', count: 24 },
-  { label: 'Wedding', key: 'Wedding', count: 18 },
-  { label: 'Corporate', key: 'Corporate', count: 30 },
-  { label: 'Festival', key: 'Festival', count: 28 },
-  { label: 'Luxury', key: 'Luxury', count: 16 },
+  { label: 'Birthday', key: 'Birthday' },
+  { label: 'Wedding', key: 'Wedding' },
+  { label: 'Corporate', key: 'Corporate' },
+  { label: 'Festival', key: 'Festival' },
+  { label: 'Luxury', key: 'Luxury' },
 ];
 
 const TRUST = [
@@ -188,8 +188,7 @@ export function PremiumHamperCard({ h }) {
         </div>
         <div className="mt-auto pt-3 flex items-end justify-between gap-2">
           <div className="font-display font-bold text-brand-900 text-lg md:text-xl leading-none">
-            {inr(h.price)}{' '}
-            <span className="text-[12px] font-sans font-medium text-ink-500">Onwards</span>
+            {inr(h.price)}
           </div>
           <button
             type="button"
@@ -294,7 +293,15 @@ export default function GiftHampers() {
                   onChange={() => toggleArr(sideCats, c.key, setSideCats)}
                 />
                 <span className="flex-1">{c.label} Hampers</span>
-                <span className="text-[11px] text-ink-400">({c.count})</span>
+                <span className="text-[11px] text-ink-400">
+                  (
+                  {hampers.filter((h) =>
+                    c.key === 'Luxury'
+                      ? h.tier === 'Luxury' || (h.tags || []).includes('Luxury')
+                      : (h.tags || []).includes(c.key),
+                  ).length}
+                  )
+                </span>
               </label>
             </li>
           ))}
