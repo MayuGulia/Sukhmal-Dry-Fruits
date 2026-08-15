@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, ChevronRight, Heart, Truck, User, LogOut, Gift } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCategories } from '@/lib/catalog';
 import { BrandLockup } from '@/components/brand/BrandSeal';
@@ -16,6 +16,7 @@ const STATIC = [
 export default function HamburgerDrawer({ open, onClose }) {
   const { user, isAuthed, logout } = useAuth();
   const { data: cats } = useCategories();
+  const nav = useNavigate();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -72,6 +73,7 @@ export default function HamburgerDrawer({ open, onClose }) {
                 onClick={() => {
                   logout();
                   onClose();
+                  nav('/login');
                 }}
                 className="sk-btn-ghost text-[13px] shrink-0"
               >

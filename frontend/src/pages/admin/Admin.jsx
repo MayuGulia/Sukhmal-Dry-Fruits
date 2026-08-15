@@ -1,46 +1,207 @@
-import React, { useState } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import {
+  LayoutDashboard, ShoppingBag, Package, Sparkles, Wallet, Settings, LogOut,
+  Search, Heart, ExternalLink, ChevronDown, CalendarDays,
+  User, Truck, Leaf, Award, Hand, MapPin,
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Package, ShoppingBag, Boxes, Users, Tag, LogOut, TrendingUp, Search, Plus, Edit3, Trash2 } from 'lucide-react';
-import { PRODUCTS as MOCK_PRODUCTS, HAMPERS as MOCK_HAMPERS } from '@/data/mockCatalog';
-import { useProducts, useHampers } from '@/lib/catalog';
+import { BrandLockup } from '@/components/brand/BrandSeal';
 import { inr } from '@/lib/utils';
+import { adminApi } from '@/lib/adminApi';
+import { subscribeCatalog, productInStock } from '@/lib/commerceStore';
+import { AiInventoryBar } from './AiInventoryBar';
 
 const SIDE = [
   { to: '/admin', label: 'Dashboard', Ic: LayoutDashboard, end: true },
-  { to: '/admin/products', label: 'Products', Ic: Package },
   { to: '/admin/orders', label: 'Orders', Ic: ShoppingBag },
-  { to: '/admin/inventory', label: 'Inventory', Ic: Boxes },
-  { to: '/admin/customers', label: 'Customers', Ic: Users },
-  { to: '/admin/offers', label: 'Coupons / Offers', Ic: Tag },
+  { to: '/admin/products', label: 'Products', Ic: Package },
+  { to: '/admin/ai-inventory', label: 'AI Inventory', Ic: Sparkles },
+  { to: '/admin/payments', label: 'Payments', Ic: Wallet },
+  { to: '/admin/settings', label: 'Settings', Ic: Settings },
 ];
 
-// Admin guard — silent redirect for non-admin. Never reveal admin surface exists.
+const STATUS_OPTS = ['pending', 'confirmed', 'in_preparation', 'dispatched', 'delivered', 'cancelled', 'pending_cod'];
+const RANGE_OPTS = [
+  { id: 'today', label: 'Today' },
+  { id: 'week', label: 'This week' },
+  { id: 'month', label: 'This month' },
+];
+
+function rangeDates(id) {
+  const to = new Date();
+  const from = new Date();
+  if (id === 'week') from.setDate(from.getDate() - 7);
+  else if (id === 'month') from.setDate(1);
+  else from.setHours(0, 0, 0, 0);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+function formatLong(d = new Date()) {
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, ' ');
+}
+
+function statusLabel(s) {
+  return String(s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function payLabel(m) {
+  if (m === 'cod') return 'Cod';
+  if (m === 'whatsapp') return 'Whatsapp';
+  if (m === 'razorpay') return 'Razorpay';
+  return m || '—';
+}
+
 export function AdminLayout() {
-  const { isAuthed, isAdmin, logout, loading } = useAuth();
+  const { isAuthed, isAdmin, logout, loading, user } = useAuth();
   const nav = useNavigate();
-  const loc = useLocation();
-  // Silent redirect: send to customer login with returnTo, no message that admin exists.
-  React.useEffect(() => {
+  const [q, setQ] = useState('');
+  const [hits, setHits] = useState(null);
+  const [menu, setMenu] = useState(false);
+
+  useEffect(() => {
     if (loading) return;
-    if (!isAuthed || !isAdmin) nav('/login', { replace: true, state: { from: loc.pathname } });
-  }, [isAuthed, isAdmin, loading, nav, loc.pathname]);
-  if (!isAuthed || !isAdmin) return null;
+    if (!isAuthed || !isAdmin) nav('/', { replace: true });
+  }, [isAuthed, isAdmin, loading, nav]);
+
+  useEffect(() => {
+    if (!q.trim()) {
+      setHits(null);
+      return undefined;
+    }
+    const t = setTimeout(() => {
+      adminApi.search(q).then(setHits).catch(() => setHits(null));
+    }, 220);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  if (loading || !isAuthed || !isAdmin) return null;
+
   return (
-    <div className="min-h-screen bg-cream-100">
-      <div className="grid md:grid-cols-[240px_1fr] min-h-screen">
-        <aside className="bg-brand-900 text-white p-4 md:min-h-screen">
-          <div className="flex items-center gap-2 mb-6"><div className="w-9 h-9 rounded-full bg-gold-500 grid place-items-center font-display font-bold">S</div><div><div className="font-display text-lg">Sukhmal</div><div className="text-[10px] tracking-widest opacity-70">ADMIN CONSOLE</div></div></div>
+    <div className="min-h-screen bg-[#FDFCFB] text-brand-900">
+      <div className="bg-[var(--sk-espresso)] text-cream-200 text-[12px]">
+        <div className="sk-container flex items-center justify-between h-9">
+          <div className="hidden md:flex items-center gap-5 min-w-0">
+            {[
+              [Truck, 'Free Delivery on Orders Above ₹999'],
+              [Leaf, '100% Natural'],
+              [Award, 'Premium Quality'],
+              [Hand, 'Handpicked with Care'],
+            ].map(([Icon, label]) => (
+              <span key={label} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <Icon size={13} className="text-gold-400" /> {label}
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-5 ml-auto">
+            <Link to="/store-locator" className="inline-flex items-center gap-1.5 hover:text-white">
+              <MapPin size={13} className="text-gold-400" /> Store Locator
+            </Link>
+            <button
+              type="button"
+              onClick={() => { logout(); nav('/login'); }}
+              className="inline-flex items-center gap-1.5 hover:text-white"
+            >
+              <LogOut size={13} className="text-gold-400" /> Logout
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-line">
+        <div className="sk-container flex items-center h-[4.75rem] gap-4">
+          <BrandLockup sealSize={52} showTagline />
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="relative flex-1 max-w-2xl mx-auto"
+          >
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search for orders, products, customers..."
+              className="sk-input !rounded-full !py-3 pr-14 pl-6 w-full shadow-sk-sm"
+            />
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-[var(--sk-espresso)] text-gold-300 grid place-items-center">
+              <Search size={16} />
+            </span>
+            {hits && (
+              <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white border border-line rounded-xl shadow-sk-lg overflow-hidden z-50 text-sm">
+                {['orders', 'products', 'customers'].map((k) => (
+                  <div key={k} className="border-b border-line last:border-0">
+                    <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-ink-500 bg-cream-100">{k}</div>
+                    {(hits[k] || []).length === 0 && <div className="px-3 py-2 text-ink-400">No matches</div>}
+                    {(hits[k] || []).map((row, i) => (
+                      <div key={i} className="px-3 py-2 hover:bg-cream-100">
+                        {k === 'orders' && <span>#{row.orderId} · {row.recipientName}</span>}
+                        {k === 'products' && <span>{row.name}</span>}
+                        {k === 'customers' && <span>{row.name} · {row.phone}</span>}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </form>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link to="/wishlist" className="p-2 text-brand-900" aria-label="Wishlist"><Heart size={20} /></Link>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--sk-espresso)] text-white text-sm font-semibold px-4 py-2.5 hover:bg-brand-800"
+            >
+              Visit Website <ExternalLink size={14} />
+            </Link>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenu((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-2 text-sm font-semibold"
+              >
+                <User size={16} /> Admin <ChevronDown size={14} />
+              </button>
+              {menu && (
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-line rounded-xl shadow-sk-md overflow-hidden z-50">
+                  <div className="px-3 py-2 text-[12px] text-ink-500 border-b border-line">{user?.email}</div>
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 text-sm hover:bg-cream-100"
+                    onClick={() => { logout(); nav('/login'); }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="sk-container grid grid-cols-1 lg:grid-cols-[210px_1fr] gap-0 min-h-[calc(100vh-8rem)]">
+        <aside className="py-6 pr-4 border-r border-line hidden lg:block">
           <nav className="space-y-1">
             {SIDE.map(({ to, label, Ic, end }) => (
-              <NavLink key={to} to={to} end={end} className={({ isActive }) => `flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium ${isActive ? 'bg-white/15 text-white' : 'text-cream-200/80 hover:bg-white/10 hover:text-white'}`}><Ic size={16} /> {label}</NavLink>
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium ${
+                    isActive ? 'bg-[#F3EBE1] text-[var(--sk-brown-900)]' : 'text-ink-600 hover:bg-cream-100'
+                  }`
+                }
+              >
+                <Ic size={18} strokeWidth={1.75} /> {label}
+              </NavLink>
             ))}
+            <button
+              type="button"
+              onClick={() => { logout(); nav('/login'); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium text-ink-600 hover:bg-cream-100 w-full"
+            >
+              <LogOut size={18} strokeWidth={1.75} /> Logout
+            </button>
           </nav>
-          <div className="absolute bottom-4 md:static md:mt-8">
-            <button onClick={() => { logout(); nav('/'); }} className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-cream-200/80 hover:text-white hover:bg-white/10"><LogOut size={16} /> Log out</button>
-          </div>
         </aside>
-        <main className="p-6 md:p-8">
+        <main className="py-6 lg:pl-8 pb-16">
           <Outlet />
         </main>
       </div>
@@ -49,154 +210,126 @@ export function AdminLayout() {
 }
 
 export function AdminDashboard() {
-  const { data: PRODUCTS } = useProducts({ limit: 200 });
-  const { data: HAMPERS } = useHampers();
-  const stats = [
-    { l: 'Total Revenue (MTD)', v: '₹12,45,600', c: '+18%', Ic: TrendingUp },
-    { l: 'Orders (MTD)', v: '412', c: '+22%', Ic: ShoppingBag },
-    { l: 'Products Live', v: `${PRODUCTS.length + HAMPERS.length}`, c: '', Ic: Package },
-    { l: 'Customers', v: '3,241', c: '+156', Ic: Users },
+  const [range, setRange] = useState('today');
+  const [stats, setStats] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const reload = () => {
+    const { from, to } = rangeDates(range);
+    adminApi.stats(from, to).then(setStats);
+    adminApi.orders({ status: statusFilter, from, to }).then(setOrders);
+    adminApi.products({ limit: 6, activeOnly: false }).then(setProducts);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    reload();
+    return subscribeCatalog(reload);
+  }, [range, statusFilter]);
+
+  const cards = [
+    { l: 'Revenue Today', v: inr(stats?.revenueToday || 0) },
+    { l: 'Revenue Month', v: inr(stats?.revenueMonth || 0) },
+    { l: 'Total Orders', v: String(stats?.totalOrders ?? 0) },
+    { l: 'Pending', v: String(stats?.pending ?? 0) },
+    { l: 'In Stock', v: String(stats?.inStock ?? 0) },
+    { l: 'Out of Stock', v: String(stats?.outOfStock ?? 0) },
   ];
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6"><h1 className="font-display text-2xl font-bold text-brand-900">Dashboard</h1><div className="text-sm text-ink-500">Jan 2025</div></div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {stats.map((s) => (
-          <div key={s.l} className="sk-card p-5"><s.Ic size={22} className="text-brand-900" /><div className="text-[12px] text-ink-500 mt-2">{s.l}</div><div className="font-display font-bold text-brand-900 text-2xl mt-1">{s.v}</div>{s.c && <div className="text-[12px] text-[var(--sk-green-500)] font-semibold">{s.c} vs last month</div>}</div>
-        ))}
-      </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="sk-card p-5"><div className="font-display font-bold text-brand-900 text-lg mb-3">Recent Orders</div><div className="space-y-2">{['ord_a1','ord_a2','ord_a3','ord_a4'].map((o, i) => (<div key={o} className="flex items-center justify-between text-sm py-1.5 border-b border-line last:border-0"><span className="font-mono text-brand-900">{o}</span><span className="sk-pill">{i % 2 === 0 ? 'confirmed' : 'shipped'}</span><span className="font-semibold">{inr(1200 + i * 400)}</span></div>))}</div></div>
-        <div className="sk-card p-5"><div className="font-display font-bold text-brand-900 text-lg mb-3">Low Stock Alerts</div><div className="space-y-2">{PRODUCTS.slice(0, 4).map((p, i) => (<div key={p.id} className="flex items-center justify-between text-sm py-1.5 border-b border-line last:border-0"><span className="text-brand-900">{p.name}</span><span className={`sk-pill ${i < 2 ? 'bg-red-100 text-red-500' : 'bg-cream-300 text-brand-900'}`}>{i < 2 ? 'Out of stock' : `${8 + i * 3} left`}</span></div>))}</div></div>
-      </div>
-    </div>
-  );
-}
 
-export function AdminProducts() {
-  const { data: PRODUCTS } = useProducts({ limit: 200 });
-  const [q, setQ] = useState('');
-  const list = PRODUCTS.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <div>
-      <div className="flex items-center justify-between mb-4"><h1 className="font-display text-2xl font-bold text-brand-900">Products</h1><button className="sk-btn-primary text-sm"><Plus size={14} /> Add Product</button></div>
-      <div className="sk-card mb-4 p-3"><div className="relative max-w-sm"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products..." className="sk-input pl-9 !py-2" /></div></div>
-      <div className="sk-card overflow-hidden">
-        <div className="grid grid-cols-[60px_1fr_100px_80px_80px_100px] gap-3 items-center px-4 py-3 border-b border-line text-[11px] uppercase tracking-widest text-ink-500 bg-cream-200"><div>Img</div><div>Product</div><div>Category</div><div>Price</div><div>Stock</div><div>Actions</div></div>
-        {list.map((p) => (
-          <div key={p.id} className="grid grid-cols-[60px_1fr_100px_80px_80px_100px] gap-3 items-center px-4 py-3 border-b border-line last:border-0">
-            <img src={p.images[0]} className="w-10 h-10 rounded-lg object-cover" alt="" />
-            <div><div className="font-semibold text-brand-900 text-sm">{p.name}</div><div className="text-[11px] text-ink-500">{p.slug}</div></div>
-            <div className="text-sm">{p.category}</div>
-            <div className="font-semibold">{inr(p.price)}</div>
-            <div><span className="sk-pill sk-pill-green">In Stock</span></div>
-            <div className="flex gap-2"><button className="text-brand-900"><Edit3 size={14} /></button><button className="text-red-500"><Trash2 size={14} /></button></div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="font-display text-3xl md:text-[2.1rem] font-bold text-brand-900">Admin Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm">
+            <CalendarDays size={15} /> {formatLong()}
+          </span>
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+            className="sk-input !py-2 !w-auto"
+          >
+            {RANGE_OPTS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mt-6">
+        {cards.map((c) => (
+          <div key={c.l} className="rounded-xl border border-line bg-white px-4 py-4">
+            <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-ink-500">{c.l}</div>
+            <div className="font-display font-bold text-2xl mt-2 text-brand-900">{c.v}</div>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
 
-const ADMIN_ORDERS = [
-  { id: 'ord_a1', customer: 'Priya Sharma', total: 1499, status: 'confirmed', date: 'Today 10:15 AM' },
-  { id: 'ord_a2', customer: 'Rakesh Iyer',   total: 2499, status: 'packed',    date: 'Today 09:30 AM' },
-  { id: 'ord_a3', customer: 'Nikita Verma', total: 899,  status: 'shipped',   date: 'Yesterday' },
-  { id: 'ord_a4', customer: 'Arjun Mehta',   total: 3299, status: 'delivered', date: '2 days ago' },
-  { id: 'ord_a5', customer: 'Sanya Kapoor', total: 1099, status: 'return_requested', date: '3 days ago' },
-];
+      <AiInventoryBar onApplied={reload} />
 
-export function AdminOrders() {
-  const [filter, setFilter] = useState('all');
-  const list = ADMIN_ORDERS.filter((o) => filter === 'all' || o.status === filter);
-  return (
-    <div>
-      <h1 className="font-display text-2xl font-bold text-brand-900 mb-4">Orders</h1>
-      <div className="flex flex-wrap gap-2 mb-4">{['all','confirmed','packed','shipped','delivered','return_requested'].map((s) => (<button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-full text-[13px] font-medium ${filter === s ? 'bg-brand-900 text-white' : 'bg-white border border-line-strong text-brand-900'}`}>{s}</button>))}</div>
-      <div className="sk-card overflow-hidden">
-        {list.map((o) => (
-          <div key={o.id} className="grid grid-cols-[1fr_1fr_100px_140px_140px] gap-3 items-center px-4 py-3 border-b border-line last:border-0">
-            <div><div className="font-mono font-semibold text-brand-900 text-sm">{o.id}</div><div className="text-[11px] text-ink-500">{o.date}</div></div>
-            <div className="text-sm text-brand-900">{o.customer}</div>
-            <div className="font-semibold">{inr(o.total)}</div>
-            <span className="sk-pill">{o.status.replace('_',' ')}</span>
-            <select defaultValue={o.status} className="sk-input !py-1.5 !text-sm">{['confirmed','packed','shipped','delivered','cancelled'].map((x) => <option key={x}>{x}</option>)}</select>
+      <section className="mt-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[12px] font-bold tracking-[0.16em] uppercase">Orders</h2>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="sk-input !py-1.5 !w-auto text-sm">
+            <option value="all">All statuses</option>
+            {STATUS_OPTS.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
+          </select>
+        </div>
+        <div className="rounded-xl border border-line bg-white overflow-hidden">
+          <div className="grid grid-cols-[1fr_1.3fr_1fr_0.8fr_1.1fr] gap-2 px-4 py-2.5 text-[11px] uppercase tracking-widest text-ink-500 border-b border-line">
+            <div>Order</div><div>Recipient</div><div>Payment</div><div>Total</div><div>Status</div>
           </div>
-        ))}
-      </div>
+          {orders.map((o) => (
+            <div key={o.orderId} className="grid grid-cols-[1fr_1.3fr_1fr_0.8fr_1.1fr] gap-2 px-4 py-3 border-b border-line last:border-0 items-center text-sm">
+              <div className="font-mono text-brand-900">#{o.orderId}</div>
+              <div>
+                <div className="font-medium">{o.recipientName}</div>
+                <div className="text-[12px] text-ink-500">{o.recipientPhone}</div>
+              </div>
+              <div>{payLabel(o.paymentMethod)}</div>
+              <div className="font-semibold">{inr(o.total)}</div>
+              <select
+                value={o.orderStatus}
+                onChange={(e) => adminApi.setStatus(o.orderId, e.target.value).then(reload)}
+                className="sk-input !py-1.5 !text-[13px]"
+              >
+                {STATUS_OPTS.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
+              </select>
+            </div>
+          ))}
+          {!orders.length && <div className="px-4 py-8 text-center text-ink-500 text-sm">No orders in this range.</div>}
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[12px] font-bold tracking-[0.16em] uppercase">Products ({products.length})</h2>
+          <Link to="/admin/products" className="text-sm font-semibold text-brand-900 hover:text-brand-700">View All Products →</Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          {products.map((p) => {
+            const pack = p.weightVariants?.find((v) => /500/i.test(v.weight)) || p.weightVariants?.[0];
+            const ok = productInStock(p);
+            return (
+              <div key={p.id} className="rounded-xl border border-line bg-white overflow-hidden">
+                <div className="aspect-square bg-cream-200">
+                  <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-contain p-2" />
+                </div>
+                <div className="p-3">
+                  <div className="font-display font-bold text-[14px] leading-tight line-clamp-2">
+                    {p.name}{pack?.weight ? ` (${pack.weight})` : ''}
+                  </div>
+                  <div className="text-sm font-semibold mt-1">{inr(pack?.price ?? p.price)}</div>
+                  <span className={`mt-2 inline-flex text-[10px] font-bold tracking-wide px-2 py-0.5 rounded ${ok ? 'bg-[#D9F0D2] text-[#2E7D32]' : 'bg-red-100 text-red-600'}`}>
+                    {ok ? 'IN STOCK' : 'OUT OF STOCK'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }
 
-export function AdminInventory() {
-  const { data: PRODUCTS } = useProducts({ limit: 200 });
-  return (
-    <div>
-      <h1 className="font-display text-2xl font-bold text-brand-900 mb-4">Inventory</h1>
-      <div className="sk-card overflow-hidden">
-        <div className="grid grid-cols-[60px_1fr_100px_120px_140px] gap-3 items-center px-4 py-3 border-b border-line text-[11px] uppercase tracking-widest text-ink-500 bg-cream-200"><div>Img</div><div>Product</div><div>Stock</div><div>Threshold</div><div>Adjust</div></div>
-        {PRODUCTS.map((p, i) => (
-          <div key={p.id} className="grid grid-cols-[60px_1fr_100px_120px_140px] gap-3 items-center px-4 py-3 border-b border-line last:border-0">
-            <img src={p.images[0]} className="w-10 h-10 rounded-lg object-cover" alt="" />
-            <div className="text-sm font-semibold text-brand-900">{p.name}</div>
-            <div><span className={`sk-pill ${i < 3 ? 'bg-red-100 text-red-500' : 'sk-pill-green'}`}>{i < 3 ? '0' : 20 + i}</span></div>
-            <div className="text-sm text-ink-500">10</div>
-            <div className="flex gap-1"><input type="number" defaultValue={0} className="sk-input !py-1.5 w-16 !text-sm" /><button className="sk-btn-primary text-[12px] !py-1.5 !px-3">Adjust</button></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function AdminCustomers() {
-  const rows = [
-    { name: 'Priya Sharma', email: 'priya@example.com', orders: 12, ltv: 24500 },
-    { name: 'Arjun Mehta', email: 'arjun@example.com', orders: 8, ltv: 32000 },
-    { name: 'Nikita Verma', email: 'nikita@example.com', orders: 5, ltv: 8400 },
-    { name: 'Rakesh Iyer', email: 'rakesh@example.com', orders: 20, ltv: 41000 },
-  ];
-  return (
-    <div>
-      <h1 className="font-display text-2xl font-bold text-brand-900 mb-4">Customers</h1>
-      <div className="sk-card overflow-hidden">
-        <div className="grid grid-cols-4 gap-3 px-4 py-3 border-b border-line text-[11px] uppercase tracking-widest text-ink-500 bg-cream-200"><div>Name</div><div>Email</div><div>Orders</div><div>Lifetime Value</div></div>
-        {rows.map((r) => (
-          <div key={r.email} className="grid grid-cols-4 gap-3 px-4 py-3 border-b border-line last:border-0">
-            <div className="font-semibold text-brand-900">{r.name}</div>
-            <div className="text-sm text-ink-600">{r.email}</div>
-            <div>{r.orders}</div>
-            <div className="font-semibold">{inr(r.ltv)}</div>
-          </div>
-        ))}
-      </div>
-      <div className="text-[12px] text-ink-500 mt-2">Note: PII (payment cards, passwords) is never stored on our servers.</div>
-    </div>
-  );
-}
-
-export function AdminOffers() {
-  const [coupons, setCoupons] = useState([
-    { code: 'WELCOME10', type: '%', value: 10, min: 0, exp: '2025-12-31', active: true },
-    { code: 'FESTIVE500', type: '₹', value: 500, min: 1500, exp: '2025-11-30', active: true },
-    { code: 'BULK25', type: '%', value: 25, min: 10000, exp: '2026-03-31', active: false },
-  ]);
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4"><h1 className="font-display text-2xl font-bold text-brand-900">Coupons / Offers</h1><button className="sk-btn-primary text-sm"><Plus size={14} /> Create Coupon</button></div>
-      <div className="sk-card overflow-hidden">
-        <div className="grid grid-cols-6 gap-3 px-4 py-3 border-b border-line text-[11px] uppercase tracking-widest text-ink-500 bg-cream-200"><div>Code</div><div>Type</div><div>Value</div><div>Min Order</div><div>Expiry</div><div>Status</div></div>
-        {coupons.map((c) => (
-          <div key={c.code} className="grid grid-cols-6 gap-3 px-4 py-3 border-b border-line last:border-0 items-center">
-            <div className="font-mono font-semibold text-brand-900">{c.code}</div>
-            <div>{c.type === '%' ? 'Percent' : 'Flat'}</div>
-            <div>{c.type === '%' ? `${c.value}%` : inr(c.value)}</div>
-            <div>{c.min ? inr(c.min) : 'None'}</div>
-            <div>{c.exp}</div>
-            <div><span className={`sk-pill ${c.active ? 'sk-pill-green' : 'bg-red-100 text-red-500'}`}>{c.active ? 'Active' : 'Inactive'}</span></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

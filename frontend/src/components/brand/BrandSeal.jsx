@@ -1,63 +1,25 @@
-import React, { useId } from 'react';
+import React from 'react';
 import { Leaf } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-/** Gold medallion seal — tree-of-life mark on a metallic disc. */
+export const SUKHMAL_LOGO_SRC = '/brand/sukhmal-logo.png';
+
+/** Official circular Sukhmal Dry Fruits Korner seal. */
 export default function BrandSeal({ size = 68, className = '' }) {
-  const raw = useId();
-  const uid = `sk-seal-${raw.replace(/[^a-zA-Z0-9]/g, '')}`;
-
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 80 80"
-      fill="none"
-      aria-hidden
-      className={`shrink-0 drop-shadow-[0_2px_8px_rgba(31,22,16,0.18)] ${className}`}
+    <span
+      className={`relative inline-block shrink-0 overflow-hidden rounded-full bg-black ring-1 ring-[#C5A059]/55 shadow-[0_2px_10px_rgba(31,22,16,0.22)] ${className}`}
+      style={{ width: size, height: size }}
     >
-      <defs>
-        <linearGradient id={`${uid}-gold`} x1="18" y1="4" x2="62" y2="76" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#F0D78A" />
-          <stop offset="42%" stopColor="#C59B27" />
-          <stop offset="100%" stopColor="#8F6E14" />
-        </linearGradient>
-        <linearGradient id={`${uid}-gold-soft`} x1="40" y1="12" x2="40" y2="68" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#F6E7B4" />
-          <stop offset="100%" stopColor="#C59B27" />
-        </linearGradient>
-      </defs>
-
-      <circle cx="40" cy="40" r="39" fill={`url(#${uid}-gold)`} />
-      <circle cx="40" cy="40" r="36.2" fill="none" stroke="#1F1610" strokeWidth="1.15" opacity="0.28" />
-      <circle cx="40" cy="40" r="32.4" fill="none" stroke="#1F1610" strokeWidth="0.7" opacity="0.22" />
-      <circle cx="40" cy="40" r="29.6" fill={`url(#${uid}-gold-soft)`} opacity="0.35" />
-      <circle cx="40" cy="40" r="29.6" fill="none" stroke="#1F1610" strokeWidth="0.55" opacity="0.18" />
-
-      {/* Almond tree of life */}
-      <g stroke="#1F1610" strokeLinecap="round" strokeLinejoin="round" fill="none">
-        <path d="M40 58.5c0-6.5.15-13.5.15-18.8" strokeWidth="2.15" />
-        <path d="M40.15 48.2c-7.2-3.6-11.4-9.2-13.2-15.4" strokeWidth="1.45" />
-        <path d="M40.15 48.2c7.2-3.6 11.4-9.2 13.2-15.4" strokeWidth="1.45" />
-        <path d="M40.15 42.4c-8.4-1.8-12.6-8.4-12.2-15.2" strokeWidth="1.3" />
-        <path d="M40.15 42.4c8.4-1.8 12.6-8.4 12.2-15.2" strokeWidth="1.3" />
-        <path d="M33.4 38.2c-4.8-4.4-6.2-9.6-4.6-14.2" strokeWidth="1.2" />
-        <path d="M46.9 38.2c4.8-4.4 6.2-9.6 4.6-14.2" strokeWidth="1.2" />
-        <path d="M40.15 36.5c-3.4-6.8-1.6-11.8 2.4-14.6" strokeWidth="1.15" />
-        <path d="M40.15 36.5c3.4-6.8 1.6-11.8-2.4-14.6" strokeWidth="1.15" />
-      </g>
-      <g fill="#1F1610">
-        <circle cx="27.2" cy="30.4" r="1.35" />
-        <circle cx="52.8" cy="30.4" r="1.35" />
-        <circle cx="32.6" cy="24.2" r="1.2" />
-        <circle cx="47.4" cy="24.2" r="1.2" />
-        <circle cx="40.15" cy="21.2" r="1.35" />
-        <circle cx="36.2" cy="29.6" r="1.05" />
-        <circle cx="44.1" cy="29.6" r="1.05" />
-        <circle cx="29.8" cy="36.8" r="1.05" />
-        <circle cx="50.2" cy="36.8" r="1.05" />
-      </g>
-    </svg>
+      <img
+        src={SUKHMAL_LOGO_SRC}
+        alt=""
+        width={size}
+        height={size}
+        draggable="false"
+        className="absolute inset-0 h-full w-full object-cover scale-[1.22] origin-center"
+      />
+    </span>
   );
 }
 

@@ -28,7 +28,7 @@ const MOCK_TAKEN_EMAIL = 'taken@sukhmal.in';
 const modeConfig = {
   login: {
     title: 'Welcome back',
-    sub: 'Log in to continue shopping and checkout faster.',
+    sub: 'Log in or create an account to enter the store.',
     cta: 'Log In',
     hasName: false,
   },
@@ -70,7 +70,7 @@ export function resolveReturnPath(location, searchParams) {
     if (AUTH_PATHS.has(pathname)) continue;
     return path;
   }
-  return '/account';
+  return '/';
 }
 
 function BrandMark({ compact = false }) {
@@ -141,7 +141,7 @@ function SubmitButton({ loading, children, disabled }) {
 }
 
 export default function AuthPage({ mode = 'login' }) {
-  const { login } = useAuth();
+  const { login, signInWithEmail, signUpWithEmail, signInWithGoogle, sendReset, firebaseEnabled } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
   const [searchParams] = useSearchParams();
@@ -166,6 +166,10 @@ export default function AuthPage({ mode = 'login' }) {
   const [resendIn, setResendIn] = useState(mode === 'otp' ? OTP_COOLDOWN_S : 0);
   const [otpFocused, setOtpFocused] = useState(false);
   const otpRef = useRef(null);
+
+  useEffect(() => {
+    if (firebaseEnabled) setTab('email');
+  }, [firebaseEnabled]);
 
   useEffect(() => {
     setMsg({ text: '', tone: 'error' });
@@ -199,9 +203,31 @@ export default function AuthPage({ mode = 'login' }) {
     if (msg.text) setMsg({ text: '', tone: 'error' });
   };
 
-  const finishAuth = (userPayload) => {
-    login(userPayload);
-    nav(returnTo, { replace: true });
+  const finishAuth = (sessionUser) => {
+    nav(sessionUser?.customClaims?.admin ? '/admin' : returnTo, { replace: true });
+  };
+
+  const firebaseError = (err, fallback) => {
+    const code = err?.code || '';
+    if (code === 'auth/email-already-in-use') return MSG.signupTaken;
+    if (code === 'auth/weak-password') return MSG.needPassword;
+    if (code === 'auth/invalid-email') return MSG.needEmail;
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      return 'Google sign-in was cancelled.';
+    }
+    if (code === 'auth/unauthorized-domain') {
+      return 'This domain is not authorised in Firebase. Add it under Authentication → Settings → Authorised domains.';
+    }
+    if (code === 'auth/popup-blocked') {
+      return 'The Google sign-in popup was blocked. Allow popups and try again.';
+    }
+    if (code === 'auth/operation-not-allowed') {
+      return 'This sign-in method is not enabled yet in Firebase Authentication.';
+    }
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-login-credentials') {
+      return fallback;
+    }
+    return fallback;
   };
 
   const delay = (ms = 700) => new Promise((r) => setTimeout(r, ms));
@@ -230,14 +256,24 @@ export default function AuthPage({ mode = 'login' }) {
         return;
       }
       setLoading(true);
-      await delay(900);
-      setLoading(false);
-      setForgotSent(true);
+      try {
+        if (firebaseEnabled) await sendReset(form.email.trim());
+        else await delay(900);
+        setForgotSent(true);
+      } catch {
+        setForgotSent(true);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
-    // ——— OTP verify ———
+    // ——— OTP verify (demo only when Firebase is off) ———
     if (mode === 'otp') {
+      if (firebaseEnabled) {
+        nav('/login', { replace: true, state: returnState });
+        return;
+      }
       if (form.otp.length !== 6) {
         setMsg({ text: MSG.otpInvalid, tone: 'error' });
         return;
@@ -250,10 +286,10 @@ export default function AuthPage({ mode = 'login' }) {
         setMsg({ text: MSG.otpInvalid, tone: 'error' });
         return;
       }
-      finishAuth({
+      finishAuth(login({
         phone: form.phone || phoneFromState || '+919876543210',
         name: 'Guest',
-      });
+      }));
       return;
     }
 
@@ -272,23 +308,42 @@ export default function AuthPage({ mode = 'login' }) {
         return;
       }
       setLoading(true);
-      await delay(900);
-      // Demo path: taken@sukhmal.in → “account exists” (allowed on signup per §5 step 6b)
-      if (form.email.trim().toLowerCase() === MOCK_TAKEN_EMAIL) {
+      try {
+        if (firebaseEnabled) {
+          const session = await signUpWithEmail({
+            email: form.email.trim(),
+            password: form.password,
+            name: form.name.trim(),
+            phone: form.phone.trim() || null,
+          });
+          finishAuth(session);
+          return;
+        }
+        await delay(900);
+        if (form.email.trim().toLowerCase() === MOCK_TAKEN_EMAIL) {
+          setLoading(false);
+          setMsg({ text: MSG.signupTaken, tone: 'error' });
+          return;
+        }
+        finishAuth(login({
+          email: form.email.trim(),
+          phone: form.phone.trim() || null,
+          name: form.name.trim(),
+        }));
+      } catch (err) {
+        setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
+      } finally {
         setLoading(false);
-        setMsg({ text: MSG.signupTaken, tone: 'error' });
-        return;
       }
-      finishAuth({
-        email: form.email.trim(),
-        phone: form.phone.trim() || null,
-        name: form.name.trim(),
-      });
       return;
     }
 
     // ——— Login ———
     if (tab === 'otp') {
+      if (firebaseEnabled) {
+        setMsg({ text: 'Use email, password, or Google to sign in.', tone: 'error' });
+        return;
+      }
       const phone = form.phone.trim();
       if (!phone || phone.replace(/\D/g, '').length < 10) {
         setMsg({ text: MSG.needPhone, tone: 'error' });
@@ -311,23 +366,28 @@ export default function AuthPage({ mode = 'login' }) {
       return;
     }
     setLoading(true);
-    await delay(850);
-    // Demo: password "wrong" → generic failure (no email-exists leak)
-    if (form.password === 'wrong') {
+    try {
+      if (firebaseEnabled) {
+        const session = await signInWithEmail(form.email.trim(), form.password);
+        finishAuth(session);
+        return;
+      }
+      await delay(850);
+      finishAuth(login({
+        email: form.email.trim(),
+        name: form.email.trim().split('@')[0],
+      }));
+    } catch (err) {
+      setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
+    } finally {
       setLoading(false);
-      setMsg({ text: MSG.credentials, tone: 'error' });
-      return;
     }
-    finishAuth({
-      email: form.email.trim(),
-      name: form.email.trim().split('@')[0],
-    });
   };
 
   const maskedPhone = (form.phone || phoneFromState || '').replace(/(\d{2})\d+(\d{2})/, '$1••••••$2');
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] grid md:grid-cols-2 bg-cream-100">
+    <div className="min-h-screen grid md:grid-cols-2 bg-cream-100">
       {/* Brand panel */}
       <aside className="hidden md:block relative overflow-hidden">
         <img
@@ -413,7 +473,7 @@ export default function AuthPage({ mode = 'login' }) {
                   </div>
                 )}
 
-                {mode === 'login' && (
+                {mode === 'login' && !firebaseEnabled && (
                   <div className="mt-5 grid grid-cols-2 rounded-lg bg-cream-200 p-1 border border-line">
                     {[
                       { id: 'email', label: 'Email' },
@@ -599,6 +659,34 @@ export default function AuthPage({ mode = 'login' }) {
                     {mode === 'login' && tab === 'otp' ? 'Send OTP' : cfg.cta}
                   </SubmitButton>
                 </form>
+
+                {firebaseEnabled && (mode === 'login' || mode === 'signup') && tab !== 'otp' && (
+                  <div className="mt-4">
+                    <div className="relative my-4 text-center text-[11px] uppercase tracking-widest text-ink-400">
+                      <span className="bg-cream-100 px-2 relative z-10">or</span>
+                      <span className="absolute left-0 right-0 top-1/2 border-t border-line" />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={async () => {
+                        setLoading(true);
+                        setMsg({ text: '', tone: 'error' });
+                        try {
+                          const session = await signInWithGoogle();
+                          finishAuth(session);
+                        } catch (err) {
+                          setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      className="w-full sk-btn-outline !py-2.5"
+                    >
+                      Continue with Google
+                    </button>
+                  </div>
+                )}
 
                 <div className="mt-5 text-center text-sm text-ink-600">
                   {mode === 'login' && (

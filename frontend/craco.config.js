@@ -71,5 +71,15 @@ module.exports = {
       return webpackConfig;
     },
   },
-  devServer: (devServerConfig) => makeDevServerV5Compatible(devServerConfig),
+  devServer: (devServerConfig) => {
+    const compatible = makeDevServerV5Compatible(devServerConfig);
+    const prevSetup = compatible.setupMiddlewares;
+    compatible.setupMiddlewares = (middlewares, devServer) => {
+      if (devServer?.app) {
+        require('./scripts/registerAiInventoryRoutes').registerAiInventoryRoutes(devServer.app);
+      }
+      return prevSetup ? prevSetup(middlewares, devServer) : middlewares;
+    };
+    return compatible;
+  },
 };

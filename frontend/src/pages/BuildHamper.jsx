@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { verifiedImg } from '@/data/verifiedImages';
+import { api } from '@/lib/api';
+import { saveHamperBuild } from '@/lib/commerceStore';
 import {
   ArrowLeft, ArrowRight, Sparkles, Plus, Minus, Check, X, Gift, ShieldCheck,
   Crown, Heart, Pencil, Truck, Package, Leaf, Star, Box, ShoppingBag,
@@ -101,18 +103,18 @@ const OCCASIONS = [
 ];
 
 const MOCK_PRODUCTS = [
-  { id: 'mp1', name: 'California Almonds', price: 299, weight: '250g', category: 'nuts', bestseller: true, img: '/products/badam-cf-1.jpg' },
-  { id: 'mp2', name: 'Premium Cashews', price: 349, weight: '250g', category: 'nuts', bestseller: true, img: '/products/kaju-320-n-1.jpg' },
-  { id: 'mp3', name: 'Pistachios (Roasted)', price: 399, weight: '250g', category: 'nuts', premium: true, img: '/products/pista-1.jpg' },
-  { id: 'mp4', name: 'Walnut Kernels', price: 379, weight: '250g', category: 'nuts', img: '/products/walnut-premium-1.jpg' },
-  { id: 'mp5', name: 'Premium Medjool Dates', price: 449, weight: '250g', category: 'dates', bestseller: true, premium: true, img: '/products/medjoul-dates-1.jpg' },
-  { id: 'mp6', name: 'Golden Raisins', price: 199, weight: '250g', category: 'dry-fruits', img: '/products/kishmish-indian-1.jpg' },
-  { id: 'mp7', name: 'Dried Cranberries', price: 279, weight: '200g', category: 'berries', img: '/products/cranberries-1.jpg' },
-  { id: 'mp8', name: 'Blueberry Delight', price: 329, weight: '200g', category: 'berries', premium: true, img: '/products/blue-berry-1.jpg' },
-  { id: 'mp9', name: 'Pumpkin Seeds', price: 249, weight: '250g', category: 'seeds', img: '/products/pumpkin-seeds-1.jpg' },
-  { id: 'mp10', name: 'Chia Seeds', price: 229, weight: '250g', category: 'seeds', img: '/products/chia-seeds-1.jpg' },
-  { id: 'mp11', name: 'Ajwa Dates', price: 599, weight: '250g', category: 'dates', premium: true, img: '/products/medjoul-dates-1.jpg' },
-  { id: 'mp12', name: 'Dark Chocolate Almonds', price: 399, weight: '200g', category: 'chocolate', bestseller: true, img: '/products/badam-roasted-1.jpg' },
+  { id: 'mp1', slug: 'badam-cf', name: 'California Almonds', price: 299, weight: '250g', category: 'nuts', bestseller: true, img: '/products/badam-cf-1.jpg' },
+  { id: 'mp2', slug: 'kaju-320-n', name: 'Premium Cashews', price: 349, weight: '250g', category: 'nuts', bestseller: true, img: '/products/kaju-320-n-1.jpg' },
+  { id: 'mp3', slug: 'pista', name: 'Pistachios (Roasted)', price: 399, weight: '250g', category: 'nuts', premium: true, img: '/products/pista-1.jpg' },
+  { id: 'mp4', slug: 'walnut-premium', name: 'Walnut Kernels', price: 379, weight: '250g', category: 'nuts', img: '/products/walnut-premium-1.jpg' },
+  { id: 'mp5', slug: 'medjoul-dates', name: 'Premium Medjool Dates', price: 449, weight: '250g', category: 'dates', bestseller: true, premium: true, img: '/products/medjoul-dates-1.jpg' },
+  { id: 'mp6', slug: 'kishmish-indian', name: 'Golden Raisins', price: 199, weight: '250g', category: 'dry-fruits', img: '/products/kishmish-indian-1.jpg' },
+  { id: 'mp7', slug: 'cranberries', name: 'Dried Cranberries', price: 279, weight: '200g', category: 'berries', img: '/products/cranberries-1.jpg' },
+  { id: 'mp8', slug: 'blue-berry', name: 'Blueberry Delight', price: 329, weight: '200g', category: 'berries', premium: true, img: '/products/blue-berry-1.jpg' },
+  { id: 'mp9', slug: 'pumpkin-seeds', name: 'Pumpkin Seeds', price: 249, weight: '250g', category: 'seeds', img: '/products/pumpkin-seeds-1.jpg' },
+  { id: 'mp10', slug: 'chia-seeds', name: 'Chia Seeds', price: 229, weight: '250g', category: 'seeds', img: '/products/chia-seeds-1.jpg' },
+  { id: 'mp11', slug: 'medjoul-dates', name: 'Ajwa Dates', price: 599, weight: '250g', category: 'dates', premium: true, img: '/products/medjoul-dates-1.jpg' },
+  { id: 'mp12', slug: 'badam-roasted', name: 'Dark Chocolate Almonds', price: 399, weight: '200g', category: 'chocolate', bestseller: true, img: '/products/badam-roasted-1.jpg' },
 ];
 
 function loadState() {
@@ -474,6 +476,8 @@ export default function BuildHamper() {
   const [previewReady, setPreviewReady] = useState(false);
   const [done, setDone] = useState(false);
   const [previewThumb, setPreviewThumb] = useState(0);
+  const [generatedPreview, setGeneratedPreview] = useState(null);
+  const [previewNote, setPreviewNote] = useState('');
   const { add } = useCart();
   const { has, toggle } = useWishlist();
 
@@ -504,18 +508,46 @@ export default function BuildHamper() {
     }
     setPreviewProgress(0);
     setPreviewReady(false);
+    setGeneratedPreview(null);
+    setPreviewNote('');
+    let cancelled = false;
     const iv = setInterval(() => {
       setPreviewProgress((p) => {
         const next = Math.min(100, p + 3 + Math.floor(Math.random() * 4));
-        if (next >= 100) {
-          clearInterval(iv);
-          setPreviewReady(true);
-          return 100;
-        }
+        if (next >= 100) clearInterval(iv);
         return next;
       });
     }, 90);
-    return () => clearInterval(iv);
+    const run = async () => {
+      try {
+        const r = await api.post('/generate-hamper-image', {
+          hamperId: state.style,
+          budget: state.budget,
+          productSelections: chosen.map((p) => ({ productId: p.id, weight: p.variants?.[0]?.w, qty: p.qty })),
+          giftCard: state.card || null,
+        });
+        if (cancelled) return;
+        if (r.data?.url) {
+          setGeneratedPreview(r.data.url);
+          saveHamperBuild({ hamperId: state.style, previewImageUrl: r.data.url, bumpGeneration: true });
+        } else if (r.data?.fallback) {
+          setPreviewNote('Preview generation had trouble, here\'s what\'s inside.');
+        }
+      } catch {
+        if (!cancelled) setPreviewNote('Preview generation had trouble, here\'s what\'s inside.');
+      } finally {
+        if (!cancelled) {
+          setPreviewProgress(100);
+          setPreviewReady(true);
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   const chosen = useMemo(
@@ -635,7 +667,7 @@ export default function BuildHamper() {
     'Your custom hamper is ready.',
   ];
 
-  const previewImages = [styleObj.img, LIFE_BOX, LIFE_TRAY];
+  const previewImages = [generatedPreview, styleObj.img, LIFE_BOX, LIFE_TRAY].filter(Boolean);
   const showRightSidebar = idx >= 2 && idx <= 4;
   const showLeftFilters = idx >= 1 && idx <= 4;
 
@@ -891,49 +923,55 @@ export default function BuildHamper() {
                 </button>
               </div>
 
-              <div className="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+              <div className="mt-5 grid gap-5 md:gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
                 {filteredProducts.map((p) => {
                   const qty = state.items[p.id] || 0;
                   const added = qty > 0;
                   const wished = has(p.id);
+                  const href = `/product/${p.slug || p.id}`;
                   return (
                     <div key={p.id} className="sk-wizard-card overflow-hidden flex flex-col">
-                      <div className="relative aspect-square bg-[#F7F3EC] p-4">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
-                          <img src={p.img} alt={p.name} className="w-full h-full object-cover" />
-                        </div>
+                      <div className="relative aspect-square bg-[#F7F3EC] overflow-hidden">
+                        <Link to={href} className="absolute inset-0 block">
+                          <img src={p.img || p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
+                        </Link>
                         {p.bestseller && (
-                          <span className="absolute top-2.5 left-2.5 text-[10px] font-bold tracking-wide bg-[var(--sk-espresso)] text-white px-2.5 py-1 rounded-full">
+                          <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-bold tracking-wide bg-[var(--sk-espresso)] text-white px-2.5 py-1 rounded-full pointer-events-none">
                             Bestseller
                           </span>
                         )}
                         {p.premium && !p.bestseller && (
-                          <span className="absolute top-2.5 left-2.5 text-[10px] font-bold tracking-wide bg-[var(--sk-gold-600)] text-white px-2.5 py-1 rounded-full">
+                          <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-bold tracking-wide bg-[var(--sk-gold-600)] text-white px-2.5 py-1 rounded-full pointer-events-none">
                             Premium
                           </span>
                         )}
                         <button
                           type="button"
                           aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
-                          onClick={() => toggle(p.id)}
-                          className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white grid place-items-center shadow-sm text-[var(--sk-espresso)]"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
+                          className="absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full bg-white grid place-items-center shadow-sm text-[var(--sk-espresso)]"
                         >
                           <Heart size={14} strokeWidth={1.75} fill={wished ? 'currentColor' : 'none'} className={wished ? 'text-red-500' : ''} />
                         </button>
                       </div>
                       <div className="p-3.5 flex flex-col flex-1">
-                        <div className="font-display font-bold text-[var(--sk-espresso)] text-[15px] md:text-base leading-snug line-clamp-2">{p.name}</div>
+                        <Link to={href} className="font-display font-bold text-[var(--sk-espresso)] text-[15px] md:text-base leading-snug line-clamp-2 hover:underline">
+                          {p.name}
+                        </Link>
                         <div className="text-[14px] text-[#555555] mt-1">
                           {inr(p.price)} <span className="text-[var(--sk-ink-400)]">/ {p.weight}</span>
                         </div>
 
                         <div className="mt-auto pt-3 flex items-center gap-2">
-                          <div className="inline-flex items-center border border-[#E8E4DF] rounded-full bg-white">
+                          <div
+                            className="inline-flex items-center border border-[#E8E4DF] rounded-full bg-white"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <button
                               type="button"
                               aria-label="Decrease"
                               disabled={qty === 0}
-                              onClick={() => setQty(p.id, qty - 1)}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(p.id, qty - 1); }}
                               className="p-1.5 pl-2.5 disabled:opacity-30"
                             >
                               <Minus size={12} />
@@ -942,7 +980,7 @@ export default function BuildHamper() {
                             <button
                               type="button"
                               aria-label="Increase"
-                              onClick={() => addOne(p)}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); addOne(p); }}
                               className="p-1.5 pr-2.5"
                             >
                               <Plus size={12} />
@@ -950,7 +988,7 @@ export default function BuildHamper() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => { if (!added) addOne(p); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!added) addOne(p); }}
                             className={`flex-1 text-[13px] font-semibold py-2 rounded-full inline-flex items-center justify-center gap-1 bg-[var(--sk-espresso)] text-white ${
                               added ? 'opacity-90 cursor-default' : 'hover:bg-[#2a1e16]'
                             }`}
@@ -1158,6 +1196,7 @@ export default function BuildHamper() {
                   <LifestyleChrome variant="preview" />
                   <div className="relative sk-card p-5 md:p-7 shadow-[var(--sk-shadow-md)]">
                     <h2 className="sk-section-title text-xl md:text-2xl">Hamper Preview</h2>
+                    {previewNote && <p className="text-sm text-ink-500 mt-2">{previewNote} <button type="button" className="underline" onClick={() => nav('/build-hamper/preview')}>Try Again</button></p>}
 
                     <div className="mt-5 grid md:grid-cols-[1.1fr_1fr] gap-6">
                       <div>

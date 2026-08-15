@@ -26,7 +26,9 @@ import About from '@/pages/About';
 import Contact from '@/pages/Contact';
 import { StoreLocator, PolicyPage, Blog, BlogArticle, Careers, FAQs, NotFound } from '@/pages/ContentPages';
 import { AccountLayout, Dashboard as AccountDashboard, MyOrders, OrderDetail, ReturnOrder, Addresses, PaymentMethods, Loyalty, ProfileSettings } from '@/pages/account/Account';
-import { AdminLayout, AdminDashboard, AdminProducts, AdminOrders, AdminInventory, AdminCustomers, AdminOffers } from '@/pages/admin/Admin';
+import { AdminLayout, AdminDashboard } from '@/pages/admin/Admin';
+import { AdminProducts, AdminOrders, AdminInventory, AdminPayments, AdminSettings } from '@/pages/admin/AdminPages';
+import { RequireAuth, PublicOnly } from '@/components/auth/AuthGate';
 
 import './App.css';
 
@@ -50,18 +52,23 @@ export default function App() {
             <BrowserRouter>
               <ScrollToTop />
               <Routes>
-                {/* ADMIN — own layout, silent guard */}
-                <Route path="/admin" element={<AdminLayout />}>
+                <Route path="/login" element={<PublicOnly><AuthPage mode="login" /></PublicOnly>} />
+                <Route path="/signup" element={<PublicOnly><AuthPage mode="signup" /></PublicOnly>} />
+                <Route path="/forgot-password" element={<PublicOnly><AuthPage mode="forgot" /></PublicOnly>} />
+
+                <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="products" element={<AdminProducts />} />
                   <Route path="orders" element={<AdminOrders />} />
+                  <Route path="ai-inventory" element={<AdminInventory />} />
                   <Route path="inventory" element={<AdminInventory />} />
-                  <Route path="customers" element={<AdminCustomers />} />
-                  <Route path="offers" element={<AdminOffers />} />
+                  <Route path="payments" element={<AdminPayments />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                  <Route path="customers" element={<Navigate to="/admin/orders" replace />} />
+                  <Route path="offers" element={<Navigate to="/admin/settings" replace />} />
                 </Route>
 
-                {/* CUSTOMER — with global layout */}
-                <Route path="*" element={<Shell><CustomerRoutes /></Shell>} />
+                <Route path="*" element={<RequireAuth><Shell><CustomerRoutes /></Shell></RequireAuth>} />
               </Routes>
             </BrowserRouter>
           </CartProvider>
@@ -78,6 +85,7 @@ function CustomerRoutes() {
       <Route path="/search" element={<Search />} />
       <Route path="/category/:slug" element={<PLP />} />
       <Route path="/product/:slug" element={<PDP />} />
+      <Route path="/products/:slug" element={<PDP />} />
       <Route path="/gift-hampers" element={<GiftHampers />} />
       <Route path="/gift-hampers/:slug" element={<GiftHamperDetail />} />
       <Route path="/wedding-gifts" element={<Wedding />} />
@@ -100,10 +108,7 @@ function CustomerRoutes() {
       <Route path="/wishlist" element={<Wishlist />} />
 
       {/* Auth */}
-      <Route path="/login" element={<AuthPage mode="login" />} />
-      <Route path="/signup" element={<AuthPage mode="signup" />} />
-      <Route path="/forgot-password" element={<AuthPage mode="forgot" />} />
-      <Route path="/verify-otp" element={<AuthPage mode="otp" />} />
+      <Route path="/verify-otp" element={<Navigate to="/login" replace />} />
 
       {/* Account */}
       <Route path="/account" element={<AccountLayout />}>

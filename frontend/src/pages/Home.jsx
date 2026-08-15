@@ -250,7 +250,7 @@ export default function Home() {
               ? Array.from({ length: 6 }).map((_, i) => (
                 <ProductSkeleton key={i} />
               ))
-              : bestSellers.map((p) => (
+              : (Array.isArray(bestSellers) ? bestSellers : []).map((p) => (
                 <ProductCard key={p.id} p={p} variant="labeled" />
               ))}
           </div>
@@ -352,7 +352,7 @@ export default function Home() {
                 type="button"
                 className="sk-btn-primary !bg-[var(--sk-espresso)] mt-5 self-start"
                 data-testid="open-gift-advisor"
-                onClick={() => alert('Gift Advisor opens here (coming soon).')}
+                onClick={() => window.dispatchEvent(new CustomEvent('sk-open-gift-advisor'))}
               >
                 Open Advisor <ChevronRight size={16} />
               </button>

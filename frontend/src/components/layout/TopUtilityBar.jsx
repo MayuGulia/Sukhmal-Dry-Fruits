@@ -1,7 +1,8 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Bot, Truck, MapPin, User, Leaf, Award, Hand, ShoppingBag, Package } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Bot, Truck, MapPin, User, Leaf, Award, Hand, ShoppingBag, Package, LogOut } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const LEFT = [
   { Icon: Truck, label: 'Free Delivery on Orders Above ₹999' },
@@ -12,6 +13,8 @@ const LEFT = [
 
 export default function TopUtilityBar() {
   const { count } = useCart();
+  const { user, isAuthed, logout } = useAuth();
+  const nav = useNavigate();
 
   return (
     <div className="hidden lg:block bg-[var(--sk-espresso)] text-cream-200 text-[12px] leading-none">
@@ -25,7 +28,12 @@ export default function TopUtilityBar() {
           ))}
         </div>
         <div className="flex items-center gap-5 shrink-0">
-          <button type="button" data-testid="top-ai" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+          <button
+            type="button"
+            data-testid="top-ai"
+            onClick={() => window.dispatchEvent(new CustomEvent('sk-open-gift-advisor'))}
+            className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+          >
             <Bot size={13} strokeWidth={1.75} className="text-gold-400" /> AI Assistant
           </button>
           <Link data-testid="top-track" to="/track-order" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
@@ -34,9 +42,25 @@ export default function TopUtilityBar() {
           <Link to="/store-locator" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
             <MapPin size={13} strokeWidth={1.75} className="text-gold-400" /> Store Locator
           </Link>
-          <Link data-testid="top-login" to="/login" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-            <User size={13} strokeWidth={1.75} className="text-gold-400" /> Login / Sign Up
-          </Link>
+          {isAuthed ? (
+            <>
+              <Link data-testid="top-account" to="/account" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+                <User size={13} strokeWidth={1.75} className="text-gold-400" /> {user?.displayName || 'Account'}
+              </Link>
+              <button
+                type="button"
+                data-testid="top-logout"
+                onClick={() => { logout(); nav('/login'); }}
+                className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
+              >
+                <LogOut size={13} strokeWidth={1.75} className="text-gold-400" /> Log out
+              </button>
+            </>
+          ) : (
+            <Link data-testid="top-login" to="/login" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
+              <User size={13} strokeWidth={1.75} className="text-gold-400" /> Login / Sign Up
+            </Link>
+          )}
           <Link to="/cart" data-testid="top-cart" className="relative inline-flex items-center text-cream-200 hover:text-white transition-colors" aria-label="Cart">
             <ShoppingBag size={16} strokeWidth={1.75} className="text-gold-400" />
             <span

@@ -201,8 +201,8 @@ export function AccountLayout() {
   }
   if (!isAuthed) return null;
 
-  const name = user?.displayName || 'Rohan Sharma';
-  const email = user?.email || 'rohan.sharma@example.com';
+  const name = user?.displayName || 'Guest';
+  const email = user?.email || user?.phone || '';
 
   return (
     <div className="min-h-[60vh] bg-[#FBF7F2]">
@@ -251,7 +251,7 @@ export function AccountLayout() {
 
             <button
               type="button"
-              onClick={() => { logout(); nav('/'); }}
+              onClick={() => { logout(); nav('/login'); }}
               className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50"
             >
               <LogOut size={16} /> Logout
@@ -272,7 +272,7 @@ export function AccountLayout() {
 export function Dashboard() {
   const { user } = useAuth();
   const { ids } = useWishlist();
-  const first = (user?.displayName || 'Rohan').split(' ')[0];
+  const first = (user?.displayName || 'there').split(' ')[0];
   const wishlistCount = ids.length || 8;
 
   return (
@@ -1027,15 +1027,15 @@ export function ProfileSettings() {
             <div className="grid md:grid-cols-2 gap-3.5">
               <div className="md:col-span-2">
                 <label className="text-[12px] font-semibold text-ink-500">Full Name</label>
-                <input defaultValue={user?.displayName || 'Rohan Sharma'} className="sk-input mt-1" placeholder="Full name" />
+                <input defaultValue={user?.displayName || ''} className="sk-input mt-1" placeholder="Full name" />
               </div>
               <div>
                 <label className="text-[12px] font-semibold text-ink-500">Email Address</label>
-                <input defaultValue={user?.email || 'rohan.sharma@example.com'} className="sk-input mt-1" placeholder="Email" />
+                <input defaultValue={user?.email || ''} className="sk-input mt-1" placeholder="Email" />
               </div>
               <div>
                 <label className="text-[12px] font-semibold text-ink-500">Phone Number</label>
-                <input defaultValue={user?.phone || '+91 98765 43210'} className="sk-input mt-1" placeholder="Phone" />
+                <input defaultValue={user?.phone || ''} className="sk-input mt-1" placeholder="Phone" />
               </div>
             </div>
             <button

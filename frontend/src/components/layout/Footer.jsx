@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Youtube, ShieldCheck } from 'lucide-react';
 import { BrandLockup } from '@/components/brand/BrandSeal';
+import { useAuth } from '@/contexts/AuthContext';
 
 function PinterestIcon({ size = 14 }) {
   return (
@@ -36,6 +37,7 @@ const PAY = [
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const { isAdmin } = useAuth();
 
   return (
     <footer className="bg-[var(--sk-espresso)] text-white">
@@ -173,6 +175,14 @@ export default function Footer() {
             <Link to="/terms-conditions" className="hover:text-white">
               Terms & Conditions
             </Link>
+            {isAdmin ? (
+              <>
+                <span className="opacity-40">|</span>
+                <Link to="/admin" className="hover:text-white">
+                  Owner Access
+                </Link>
+              </>
+            ) : null}
           </div>
         </div>
       </div>

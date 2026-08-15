@@ -1,6 +1,7 @@
 // Catalog data hooks — fetch from backend /api/catalog/*, fall back to mock data offline
 import { useEffect, useState, useCallback } from 'react';
-import { api } from './api';
+import { api, HAS_BACKEND } from './api';
+import { getLiveProducts, subscribeCatalog } from './commerceStore';
 import {
   CATEGORIES as MOCK_CATEGORIES,
   PRODUCTS as MOCK_PRODUCTS,
@@ -27,11 +28,15 @@ const PRODUCT_SLUG_ALIASES = {
 function findMockProduct(slug) {
   if (!slug) return null;
   const resolved = PRODUCT_SLUG_ALIASES[slug] || slug;
-  return MOCK_PRODUCTS.find((p) => p.slug === resolved || p.slug === slug) || null;
+  const live = getLiveProducts({ activeOnly: false });
+  const fromLive = live.find((p) => p.slug === resolved || p.slug === slug || p.id === slug || p.id === resolved);
+  if (fromLive) return fromLive;
+  return MOCK_PRODUCTS.find((p) => p.slug === resolved || p.slug === slug || p.id === slug) || null;
 }
 
 function filterProducts({ category, q, bestseller, sort, limit = 200 } = {}) {
-  let list = [...MOCK_PRODUCTS];
+  let list = getLiveProducts({ activeOnly: true });
+  if (!list.length) list = [...MOCK_PRODUCTS];
   if (category) list = list.filter((p) => p.category === category);
   if (bestseller) list = list.filter((p) => p.bestseller);
   if (q) {
@@ -70,15 +75,28 @@ const HAMPER_SLUG_ALIASES = {
   'new-year-glow-hamper': 'gold-elephant-stand',
 };
 
+function isCatalogList(value) {
+  return Array.isArray(value);
+}
+
+function isCatalogItem(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 export function useCategories() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(MOCK_CATEGORIES);
+  const [loading, setLoading] = useState(HAS_BACKEND);
   useEffect(() => {
+    if (!HAS_BACKEND) {
+      setData(MOCK_CATEGORIES);
+      setLoading(false);
+      return undefined;
+    }
     let m = true;
     api
       .get('/catalog/categories')
       .then((r) => {
-        if (m) setData(r.data);
+        if (m) setData(isCatalogList(r.data) ? r.data : MOCK_CATEGORIES);
       })
       .catch(() => {
         if (m) setData(MOCK_CATEGORIES);
@@ -94,9 +112,15 @@ export function useCategories() {
 }
 
 export function useProducts({ category, q, bestseller, sort, limit = 200 } = {}) {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => filterProducts({ category, q, bestseller, sort, limit }));
+  const [loading, setLoading] = useState(HAS_BACKEND);
   const fetchIt = useCallback(() => {
+    const fallbackData = filterProducts({ category, q, bestseller, sort, limit });
+    if (!HAS_BACKEND) {
+      setData(fallbackData);
+      setLoading(false);
+      return Promise.resolve();
+    }
     setLoading(true);
     const params = {};
     if (category) params.category = category;
@@ -106,31 +130,39 @@ export function useProducts({ category, q, bestseller, sort, limit = 200 } = {})
     if (limit) params.limit = limit;
     return api
       .get('/catalog/products', { params })
-      .then((r) => setData(r.data))
-      .catch(() => setData(filterProducts({ category, q, bestseller, sort, limit })))
+      .then((r) => setData(isCatalogList(r.data) ? r.data : fallbackData))
+      .catch(() => setData(fallbackData))
       .finally(() => setLoading(false));
   }, [category, q, bestseller, sort, limit]);
   useEffect(() => {
     fetchIt();
+    if (HAS_BACKEND) return undefined;
+    return subscribeCatalog(fetchIt);
   }, [fetchIt]);
   return { data, loading, refetch: fetchIt };
 }
 
 export function useProduct(slug) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => findMockProduct(slug));
+  const [loading, setLoading] = useState(HAS_BACKEND);
   const [error, setError] = useState(null);
   useEffect(() => {
+    const fallback = findMockProduct(slug);
+    if (!HAS_BACKEND) {
+      setData(fallback);
+      setError(fallback ? null : new Error('Product not found'));
+      setLoading(false);
+      return undefined;
+    }
     let m = true;
     setLoading(true);
     setError(null);
     api
       .get(`/catalog/product/${slug}`)
       .then((r) => {
-        if (m) setData(r.data);
+        if (m) setData(isCatalogItem(r.data) ? r.data : fallback);
       })
       .catch((e) => {
-        const fallback = findMockProduct(slug);
         if (m) {
           if (fallback) setData(fallback);
           else setError(e);
@@ -156,11 +188,16 @@ function onlyRealHampers(rows) {
 
 export function useHampers({ tag } = {}) {
   const [data, setData] = useState(() => filterHampers({ tag }));
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(HAS_BACKEND);
   useEffect(() => {
+    const fallback = filterHampers({ tag });
+    if (!HAS_BACKEND) {
+      setData(fallback);
+      setLoading(false);
+      return undefined;
+    }
     let m = true;
     setLoading(true);
-    const fallback = filterHampers({ tag });
     const params = {};
     if (tag) params.tag = tag;
     api
@@ -184,20 +221,26 @@ export function useHampers({ tag } = {}) {
 
 export function useHamper(slug) {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(HAS_BACKEND);
   const [error, setError] = useState(null);
   useEffect(() => {
+    const resolved = HAMPER_SLUG_ALIASES[slug] || slug;
+    const fallback = MOCK_HAMPERS.find((h) => h.slug === resolved || h.slug === slug) || null;
+    if (!HAS_BACKEND) {
+      setData(fallback);
+      setError(fallback ? null : new Error('Hamper not found'));
+      setLoading(false);
+      return undefined;
+    }
     let m = true;
     setLoading(true);
     setError(null);
-    const resolved = HAMPER_SLUG_ALIASES[slug] || slug;
-    const fallback = MOCK_HAMPERS.find((h) => h.slug === resolved || h.slug === slug) || null;
     api
       .get(`/catalog/hamper/${resolved}`)
       .then((r) => {
         if (!m) return;
         const row = r.data;
-        if (row && REAL_HAMPER_SLUGS.has(row.slug)) setData(row);
+        if (isCatalogItem(row) && REAL_HAMPER_SLUGS.has(row.slug)) setData(row);
         else setData(fallback);
       })
       .catch((e) => {

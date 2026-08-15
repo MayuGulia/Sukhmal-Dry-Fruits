@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Heart, ShoppingBag, Menu, X } from 'lucide-react';
+import { Search, Heart, ShoppingBag, Menu, X, User, LogOut } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { BrandLockup, GiftBasketIcon } from '@/components/brand/BrandSeal';
 
 export default function Header({ onOpenDrawer }) {
   const { count } = useCart();
+  const { user, isAuthed, logout } = useAuth();
   const [q, setQ] = useState('');
   const [overlayQ, setOverlayQ] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -53,7 +55,7 @@ export default function Header({ onOpenDrawer }) {
   }, [searchOpen]);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-line">
+    <header className="bg-white/95 backdrop-blur-md border-b border-line">
       {/* Mobile + tablet (&lt; lg / 1024): hamburger | compact logo | search + cart */}
       <div className="lg:hidden relative flex items-center h-16 px-3 sm:px-4">
         <button
@@ -67,7 +69,7 @@ export default function Header({ onOpenDrawer }) {
         </button>
 
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <BrandLockup sealSize={40} compact showTagline={false} />
+          <BrandLockup sealSize={48} compact showTagline={false} />
         </div>
 
         <div className="ml-auto relative z-10 flex items-center gap-0.5">
@@ -100,7 +102,7 @@ export default function Header({ onOpenDrawer }) {
       {/* Desktop (≥ lg / 1024) */}
       <div className="hidden lg:block relative">
         <div className="sk-container flex items-center h-[5.35rem] gap-4">
-          <BrandLockup sealSize={72} />
+          <BrandLockup sealSize={64} />
 
           <form
             onSubmit={submitDesktop}
@@ -125,6 +127,33 @@ export default function Header({ onOpenDrawer }) {
           </form>
 
           <div className="ml-auto flex items-center gap-3.5">
+            {isAuthed ? (
+              <>
+                <Link
+                  to="/account"
+                  className="inline-flex items-center gap-1.5 text-brand-900 hover:text-brand-700 transition-colors text-sm font-semibold"
+                  aria-label="Account"
+                >
+                  <User size={20} strokeWidth={1.75} />
+                  <span className="hidden xl:inline max-w-[120px] truncate">{user?.displayName || 'Account'}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => { logout(); nav('/login'); }}
+                  className="inline-flex items-center text-brand-900 hover:text-brand-700 transition-colors"
+                  aria-label="Log out"
+                >
+                  <LogOut size={20} strokeWidth={1.75} />
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-1.5 text-brand-900 hover:text-brand-700 transition-colors text-sm font-semibold"
+              >
+                <User size={20} strokeWidth={1.75} /> Login
+              </Link>
+            )}
             <Link
               to="/wishlist"
               className="inline-flex items-center text-brand-900 hover:text-brand-700 transition-colors"

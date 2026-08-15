@@ -49,3 +49,14 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 ```
 
 If that variable is empty, the website uses the built-in catalog and still runs.
+
+## Admin dashboard
+
+1. Create the admin account in Firebase (or sign up on the site) as `monikabatra890@gmail.com`.
+2. Log in at `/login`. That email opens `/admin`.
+2. Open **Owner Access** in the footer (the link is not rendered for non-admins).
+3. Visiting `/admin` without the admin custom claim silently returns home.
+
+Local demo stores orders, stock, and AI inventory diffs in the browser. Connecting Firebase, Razorpay, and Gemini (server env only) turns on live payments, Firestore, and the three AI APIs. Empty-hamper photos are still needed before hamper image compositing looks like the real box.
+
+One-time Firebase admin seed: `node scripts/seed-admin.mjs` — then delete the script and service-account JSON.

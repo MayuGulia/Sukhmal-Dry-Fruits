@@ -55,16 +55,19 @@ export default function ProductCard({ p, variant = 'default' }) {
   const selected = variants[Math.min(vi, variants.length - 1)] || variants[0];
   const price = selected?.price ?? p.price;
   const subtitle = shortSubtitle(p);
+  const liveVariant = (p.weightVariants || []).find((v) => v.weight === selected?.w) || p.weightVariants?.[vi];
+  const stock = typeof liveVariant?.stock === 'number' ? liveVariant.stock : (typeof selected?.stock === 'number' ? selected.stock : 20);
+  const oos = stock <= 0;
 
   if (labeled) {
     const pack = variants.find((v) => /500/i.test(String(v.w))) || variants[0];
     return (
       <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full h-full bg-white">
         <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-[#F4EDE3]">
-          <img src={p.images[0]} alt={p.name} className="w-full h-full object-contain p-3 group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" decoding="async" />
+          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" decoding="async" />
           {p.bestseller && <span className="sk-pill sk-pill-brown absolute top-2 left-2 !py-1 !px-2.5">Bestseller</span>}
           <button
-            onClick={(e) => { e.preventDefault(); toggle(p.id); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
             aria-label="Wishlist"
             className="absolute top-2 right-2 h-9 w-9 rounded-full bg-white/95 grid place-items-center shadow-sk-sm text-brand-900"
           >
@@ -86,9 +89,10 @@ export default function ProductCard({ p, variant = 'default' }) {
           <div className="mt-auto pt-2.5 space-y-2.5">
             <div className="font-display font-bold text-brand-900 text-[1.2rem] leading-none tracking-tight">{inr(pack?.price ?? p.price)}</div>
             <button
-              onClick={() => add(p, { qty: 1, variant: pack })}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); add(p, { qty: 1, variant: pack }); }}
+              disabled={typeof pack?.stock === 'number' ? pack.stock <= 0 : false}
               data-testid={`add-cart-${p.slug}`}
-              className="w-full !py-2.5 !rounded-[10px] text-[13px] tracking-wide font-semibold text-white bg-[var(--sk-espresso)] hover:bg-[#2a1e16] transition-colors"
+              className="w-full !py-2.5 !rounded-[10px] text-[13px] tracking-wide font-semibold text-white bg-[var(--sk-espresso)] hover:bg-[#2a1e16] transition-colors disabled:opacity-40"
             >
               Add to Cart
             </button>
@@ -100,16 +104,16 @@ export default function ProductCard({ p, variant = 'default' }) {
 
   return (
     <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full overflow-hidden">
-      <Link to={`/product/${p.slug}`} className="relative block aspect-[5/4] overflow-hidden bg-cream-200">
+      <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-cream-200">
         <img
           src={p.images[0]}
           alt={p.name}
-          className="w-full h-full object-contain p-2 md:p-3 group-hover:scale-[1.03] transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           loading="lazy"
           decoding="async"
         />
         <button
-          onClick={(e) => { e.preventDefault(); toggle(p.id); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
           aria-label="Wishlist"
           className={`absolute top-2.5 right-2.5 drop-shadow-md ${active ? 'text-red-500' : 'text-white'}`}
         >
@@ -133,18 +137,22 @@ export default function ProductCard({ p, variant = 'default' }) {
         <div className="flex flex-wrap gap-1.5 mt-1">
           {variants.slice(0, 3).map((v, i) => {
             const on = i === vi;
+            const vs = (p.weightVariants || []).find((x) => x.weight === v.w);
+            const gone = typeof vs?.stock === 'number' ? vs.stock <= 0 : false;
             return (
               <button
                 key={v.w}
                 type="button"
-                onClick={(e) => { e.preventDefault(); setVi(i); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setVi(i); }}
                 className={`px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${
+                  gone ? 'line-through opacity-60 ' : ''
+                }${
                   on
                     ? 'border-[var(--sk-gold-500)] bg-[rgba(197,160,89,0.12)] text-brand-900'
                     : 'border-line bg-cream-100 text-ink-600 hover:border-line-strong'
                 }`}
               >
-                {v.w}
+                {v.w}{gone ? ' · Out of Stock' : ''}
               </button>
             );
           })}
@@ -159,11 +167,12 @@ export default function ProductCard({ p, variant = 'default' }) {
               Onwards
             </span>
           </div>
-          <button
-            onClick={() => add(p, { qty: 1, variant: selected })}
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); add(p, { qty: 1, variant: selected }); }}
             aria-label="Add to cart"
+            disabled={oos}
             data-testid={`add-cart-${p.slug}`}
-            className="h-10 w-10 rounded-full bg-brand-900 text-white grid place-items-center shrink-0 hover:bg-brand-700 shadow-sk-sm transition-colors"
+            className="h-10 w-10 rounded-full bg-brand-900 text-white grid place-items-center shrink-0 hover:bg-brand-700 shadow-sk-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus size={18} strokeWidth={2.25} />
           </button>

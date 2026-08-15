@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function noPrivilegeFields() {
+      return !request.resource.data.keys().hasAny(['role', 'admin', 'isAdmin', 'customClaims']);
+    }
+
+    match /products/{id} {
+      allow read: if resource.data.isActive == true || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /hampers/{id} {
+      allow read: if resource.data.isActive == true || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /orders/{id} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && noPrivilegeFields();
+      allow update: if (isOwner(uid) && noPrivilegeFields()) || isAdmin();
+      allow delete: if false;
+    }
+    match /hamperBuilds/{id} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
+    }
+    match /auditLog/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /aiPreviews/{id} {
+      allow read, write: if false;
+    }
+    match /chatSessions/{id} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
+    }
+  }
+}

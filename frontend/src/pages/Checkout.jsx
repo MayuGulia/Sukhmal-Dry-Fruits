@@ -4,6 +4,8 @@ import { TrustStrip } from '@/components/shared/ProductCard';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { inr } from '@/lib/utils';
+import { createCheckoutOrder } from '@/lib/commerceStore';
+import { api } from '@/lib/api';
 import {
   Lock, MapPin, CalendarDays, Gift, CreditCard, Landmark, Wallet, Banknote,
   ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Plus, Truck,
@@ -168,8 +170,42 @@ export default function Checkout() {
   const placeOrder = async () => {
     setPlacing(true);
     try {
-      await new Promise((r) => setTimeout(r, 900));
-      const orderId = 'SKF' + Math.random().toString().slice(2, 8);
+      const method = payment === 'cod' ? 'cod' : 'razorpay';
+      let order;
+      try {
+        const r = await api.post('/create-order', {
+          items: items.map((it) => ({ id: it.id, slug: it.slug, qty: it.qty, variant: it.variant })),
+          paymentMethod: method,
+        });
+        order = r.data.order;
+        if (method === 'razorpay' && r.data.razorpayOrderId && window.Razorpay && process.env.REACT_APP_RAZORPAY_KEY_ID) {
+          await new Promise((resolve, reject) => {
+            const rzp = new window.Razorpay({
+              key: process.env.REACT_APP_RAZORPAY_KEY_ID,
+              amount: r.data.amount,
+              currency: 'INR',
+              order_id: r.data.razorpayOrderId,
+              handler: async (resp) => {
+                try {
+                  await api.post('/verify-payment', resp);
+                  resolve();
+                } catch (e) { reject(e); }
+              },
+              modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
+            });
+            rzp.open();
+          });
+        }
+      } catch {
+        const local = createCheckoutOrder({
+          items,
+          paymentMethod: method,
+          address: selectedAddr,
+          totals,
+        });
+        order = local.order;
+      }
+      const orderId = order?.orderId || ('SKF' + Math.random().toString().slice(2, 8));
       const now = new Date();
       const etaStart = new Date(now);
       etaStart.setDate(etaStart.getDate() + 2);
