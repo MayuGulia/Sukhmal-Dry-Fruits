@@ -17,7 +17,7 @@ export const HERO_VIDEO_POSITION = 'center center';
  * (min-h 80vh, object-fit cover). The clip is cropped to that landscape frame —
  * the hero size and aspect are unchanged.
  */
-export const WEDDING_VIDEO_SRC = '/assets/videos/homepage-hero.mp4';
+export const WEDDING_VIDEO_SRC = '/assets/videos/homepage-hero.mp4?v=enhanced';
 export const WEDDING_VIDEO_POSITION = 'center center';
 /** Optional YouTube/Vimeo embed URL — used in the lightbox if set. */
 export const HERO_VIDEO_EMBED = '';
