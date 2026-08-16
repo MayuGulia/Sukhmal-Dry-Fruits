@@ -46,6 +46,7 @@ function HeroBackgroundVideo({ className, fit = 'cover', showToggle = false, tog
       className={className}
       showToggle={showToggle}
       toggleClassName={toggleClassName}
+      crisp
     />
   );
 }
@@ -74,7 +75,7 @@ function HeroCopy({ inverted = true }) {
     <div className={`relative w-full max-w-[18.5rem] sm:max-w-sm md:max-w-md lg:max-w-lg text-left ${inverted ? 'pr-4' : ''}`}>
       {inverted && (
         <div
-          className="pointer-events-none absolute -inset-x-4 -inset-y-6 md:-inset-x-8 md:-inset-y-8 rounded-3xl bg-gradient-to-r from-black/80 via-black/55 to-transparent"
+          className="pointer-events-none absolute -inset-x-4 -inset-y-6 md:-inset-x-8 md:-inset-y-8 rounded-3xl bg-gradient-to-r from-black/55 via-black/28 to-transparent"
           aria-hidden
         />
       )}
@@ -167,8 +168,8 @@ export default function Home() {
               toggleClassName="bottom-28 md:bottom-32 right-4 md:right-6"
               className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-transparent w-full md:w-[62%]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/62 via-black/28 to-transparent w-full md:w-[58%]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/28 via-transparent to-black/10" />
           </div>
 
           <div className="relative z-10 w-full pb-28 md:pb-32 pt-20 md:pt-24">
@@ -252,7 +253,7 @@ export default function Home() {
             cta={<ViewAllLink to="/category/all">View All Best Sellers</ViewAllLink>}
           />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4" data-testid="best-sellers">
-            {loadingBS
+            {loadingBS && !(Array.isArray(bestSellers) && bestSellers.length)
               ? Array.from({ length: 6 }).map((_, i) => (
                 <ProductSkeleton key={i} />
               ))

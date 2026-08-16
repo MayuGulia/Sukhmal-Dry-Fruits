@@ -67,6 +67,7 @@ const BrandVideo = forwardRef(function BrandVideo(
     autoPlay = true,
     showToggle = false,
     toggleClassName = 'bottom-4 right-4',
+    crisp = false,
   },
   ref,
 ) {
@@ -104,22 +105,27 @@ const BrandVideo = forwardRef(function BrandVideo(
       ref={(el) => setRefs(el, videoRef, ref)}
       src={src}
       poster={poster || fallback}
-      className={`${className} ${fit === 'cover' ? 'object-cover' : 'object-contain'} sk-hero-video`}
+      className={`${className} ${fit === 'cover' ? 'object-cover' : 'object-contain'} sk-hero-video ${crisp ? 'sk-hero-video-crisp' : ''}`}
       autoPlay={autoPlay}
       muted
       loop
       playsInline
       preload="auto"
       disablePictureInPicture
+      disableRemotePlayback
+      width={1920}
+      height={1080}
       onError={showFallback}
       style={{
         width: '100%',
         height: '100%',
         objectFit: fit,
         objectPosition: position,
-        transform: 'translateZ(0)',
+        transform: crisp ? 'none' : 'translateZ(0)',
         backfaceVisibility: 'hidden',
-        filter: 'contrast(1.08) saturate(1.12) brightness(1.04)',
+        filter: crisp
+          ? 'contrast(1.14) saturate(1.1) brightness(1.08)'
+          : 'contrast(1.08) saturate(1.12) brightness(1.04)',
       }}
     />
   );

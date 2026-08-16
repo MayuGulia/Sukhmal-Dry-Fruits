@@ -115,7 +115,10 @@ export function useCategories() {
 
 export function useProducts({ category, q, bestseller, sort, limit = 200 } = {}) {
   const [data, setData] = useState(() => filterProducts({ category, q, bestseller, sort, limit }));
-  const [loading, setLoading] = useState(Boolean(db) || HAS_BACKEND);
+  const [loading, setLoading] = useState(() => {
+    const local = filterProducts({ category, q, bestseller, sort, limit });
+    return local.length === 0 && (Boolean(db) || HAS_BACKEND);
+  });
 
   const applyLocal = useCallback((rows) => {
     const source = Array.isArray(rows) && rows.length ? rows : getLiveProducts({ activeOnly: true });
@@ -149,7 +152,7 @@ export function useProducts({ category, q, bestseller, sort, limit = 200 } = {})
       setLoading(false);
       return Promise.resolve();
     }
-    setLoading(true);
+    if (!fallbackData.length) setLoading(true);
     const params = {};
     if (category) params.category = category;
     if (q) params.q = q;
@@ -165,7 +168,7 @@ export function useProducts({ category, q, bestseller, sort, limit = 200 } = {})
 
   useEffect(() => {
     if (db) {
-      setLoading(true);
+      applyLocal(getLiveProducts({ activeOnly: true }));
       return subscribeLiveProducts((rows) => applyLocal(rows), { activeOnly: true });
     }
     fetchIt();

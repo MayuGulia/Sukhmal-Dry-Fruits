@@ -225,6 +225,11 @@ html, body, #root {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+.sk-hero-video-crisp {
+  transform: none;
+  -webkit-transform: none;
+  image-rendering: auto;
+}
 
 /* Dual price-range thumbs — track is click-through, only knobs capture */
 .sk-range {

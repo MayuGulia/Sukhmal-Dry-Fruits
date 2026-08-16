@@ -21,6 +21,23 @@ export function listingImage(p) {
   return imgs[0] || p?.img || p?.image || '';
 }
 
+function usesPackShot(p) {
+  return PACKAGING_LISTING_CATEGORIES.has(p?.category);
+}
+
+function listingImgClass(p) {
+  const fit = usesPackShot(p)
+    ? 'absolute inset-0 w-full h-full object-contain bg-white'
+    : 'w-full h-full object-cover';
+  return `${fit} group-hover:scale-[1.02] transition-transform duration-500`;
+}
+
+function listingWellClass(p) {
+  return usesPackShot(p)
+    ? 'relative block aspect-square overflow-hidden bg-white'
+    : 'relative block aspect-square overflow-hidden bg-cream-200';
+}
+
 function shortSubtitle(p) {
   if (p.subcategory) return p.subcategory;
   const raw = String(p.tagline || '').split(/[—–.]/)[0].trim();
@@ -77,8 +94,8 @@ export default function ProductCard({ p, variant = 'default' }) {
     const pack = variants.find((v) => /500/i.test(String(v.w))) || variants[0];
     return (
       <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full h-full bg-white">
-        <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-[#F4EDE3]">
-          <img src={listingImage(p)} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" decoding="async" />
+        <Link to={`/product/${p.slug}`} className={listingWellClass(p)}>
+          <img src={listingImage(p)} alt={p.name} className={listingImgClass(p)} loading="lazy" decoding="async" />
           {p.bestseller && <span className="sk-pill sk-pill-brown absolute top-2 left-2 !py-1 !px-2.5">Bestseller</span>}
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
@@ -118,18 +135,18 @@ export default function ProductCard({ p, variant = 'default' }) {
 
   return (
     <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full overflow-hidden">
-      <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-cream-200">
+      <Link to={`/product/${p.slug}`} className={listingWellClass(p)}>
         <img
           src={listingImage(p)}
           alt={p.name}
-          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+          className={listingImgClass(p)}
           loading="lazy"
           decoding="async"
         />
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
           aria-label="Wishlist"
-          className={`absolute top-2.5 right-2.5 drop-shadow-md ${active ? 'text-red-500' : 'text-white'}`}
+          className={`absolute top-2.5 right-2.5 drop-shadow-md ${active ? 'text-red-500' : usesPackShot(p) ? 'text-brand-900/80' : 'text-white'}`}
         >
           <Heart size={22} strokeWidth={1.6} fill={active ? 'currentColor' : 'none'} />
         </button>

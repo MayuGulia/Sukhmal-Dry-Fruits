@@ -39,6 +39,32 @@ export function hydrateStorefrontProduct(id, data) {
   };
 }
 
+let liveProductCache = null;
+const liveProductListeners = new Set();
+let liveProductUnsub = null;
+
+function publishLiveProducts(rows) {
+  liveProductCache = rows;
+  liveProductListeners.forEach((fn) => {
+    try { fn(rows); } catch {}
+  });
+}
+
+function ensureLiveProductListener() {
+  if (liveProductUnsub || !db) return;
+  liveProductUnsub = onSnapshot(
+    query(collection(db, 'products'), where('isActive', '==', true)),
+    (snap) => {
+      const rows = snap.docs
+        .map((d) => hydrateStorefrontProduct(d.id, d.data()))
+        .filter((p) => !p.isDeleted && p.isActive !== false);
+      if (rows.length) replaceProductsFromRemote(rows);
+      publishLiveProducts(rows.length ? rows : getLiveProducts({ activeOnly: true }));
+    },
+    () => publishLiveProducts(getLiveProducts({ activeOnly: true })),
+  );
+}
+
 export function subscribeLiveProducts(onRows, { activeOnly = true } = {}) {
   if (!db) {
     const emit = () => onRows(getLiveProducts({ activeOnly }));
@@ -46,21 +72,12 @@ export function subscribeLiveProducts(onRows, { activeOnly = true } = {}) {
     return subscribeCatalog(emit);
   }
 
-  const q = activeOnly
-    ? query(collection(db, 'products'), where('isActive', '==', true))
-    : collection(db, 'products');
-
-  return onSnapshot(
-    q,
-    (snap) => {
-      const rows = snap.docs
-        .map((d) => hydrateStorefrontProduct(d.id, d.data()))
-        .filter((p) => !p.isDeleted && (!activeOnly || p.isActive !== false));
-      if (rows.length) replaceProductsFromRemote(rows);
-      onRows(rows.length ? rows : getLiveProducts({ activeOnly }));
-    },
-    () => onRows(getLiveProducts({ activeOnly })),
-  );
+  onRows(liveProductCache || getLiveProducts({ activeOnly }));
+  liveProductListeners.add(onRows);
+  ensureLiveProductListener();
+  return () => {
+    liveProductListeners.delete(onRows);
+  };
 }
 
 export function subscribeLiveProduct(slug, onRow) {

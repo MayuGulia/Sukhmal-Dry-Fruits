@@ -498,7 +498,7 @@ export default function PLP() {
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div className="text-[13px] md:text-sm text-ink-600">
-              {loading ? (
+              {loading && total === 0 ? (
                 'Loading products…'
               ) : (
                 <>
@@ -558,7 +558,7 @@ export default function PLP() {
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-5">
-            {loading
+            {loading && pageItems.length === 0
               ? Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={i} />)
               : pageItems.map((p) => <ProductCard key={p.id} p={p} />)}
           </div>

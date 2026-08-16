@@ -86,24 +86,36 @@ function mergeCatalogAssets(products) {
   });
 }
 
+let memState = null;
+
 function load() {
+  if (memState) return memState;
   try {
     const raw = localStorage.getItem(LS);
-    if (!raw) return defaultState();
+    if (!raw) {
+      memState = defaultState();
+      return memState;
+    }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.products) || !parsed.products.length) return defaultState();
+    if (!Array.isArray(parsed.products) || !parsed.products.length) {
+      memState = defaultState();
+      return memState;
+    }
     const products = mergeCatalogAssets(parsed.products).map(hydrateProduct);
     const next = { ...defaultState(), ...parsed, products, orders: stripDemoOrders(parsed.orders) };
     if ((parsed.orders || []).length !== next.orders.length) {
       try { localStorage.setItem(LS, JSON.stringify(next)); } catch {}
     }
-    return next;
+    memState = next;
+    return memState;
   } catch {
-    return defaultState();
+    memState = defaultState();
+    return memState;
   }
 }
 
 function save(state) {
+  memState = state;
   try {
     localStorage.setItem(LS, JSON.stringify(state));
   } catch {}
@@ -112,11 +124,15 @@ function save(state) {
 
 export function subscribeCatalog(fn) {
   const handler = () => fn();
+  const onStorage = () => {
+    memState = null;
+    fn();
+  };
   window.addEventListener(EVT, handler);
-  window.addEventListener('storage', handler);
+  window.addEventListener('storage', onStorage);
   return () => {
     window.removeEventListener(EVT, handler);
-    window.removeEventListener('storage', handler);
+    window.removeEventListener('storage', onStorage);
   };
 }
 
