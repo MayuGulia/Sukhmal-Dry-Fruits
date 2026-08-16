@@ -7,35 +7,43 @@ import {
   MapPin, Phone, MessageCircle, Mail, Send, ChevronDown, ArrowRight,
   Lock, Tag, Package, Truck, Users, Play,
 } from 'lucide-react';
+import {
+  STORE_ADDRESS, STORE_EMAIL, STORE_HOURS, STORE_MAPS_URL,
+  STORE_PHONE_DISPLAY, STORE_PHONE_TEL, STORE_PHOTOS, STORE_WHATSAPP,
+} from '@/data/storeInfo';
 
+const STORE_GALLERY = [
+  { src: STORE_PHOTOS[0], alt: 'Sukhmal Dry Fruits Korner storefront' },
+  { src: STORE_PHOTOS[1], alt: "Roasted 'N' Salted wall inside the store" },
+  { src: STORE_PHOTOS[2], alt: 'Hand Mixed Blends wall inside the store' },
+];
 const HERO_IMG = '/brand/contact-hero-hamper.png';
-const STORE_IMG = '/brand/contact-store-interior.png';
 const BULK_IMG = '/brand/contact-bulk-hamper.png';
 
 const CHANNELS = [
   {
     Ic: MapPin,
     title: 'Visit Store',
-    lines: ['702, 7th Floor, Sector 68,', 'Noida, Uttar Pradesh 201307'],
-    action: { label: 'View on Map', href: 'https://maps.google.com/?q=Sector+68+Noida', external: true },
+    lines: [STORE_ADDRESS],
+    action: { label: 'Get Directions', href: STORE_MAPS_URL, external: true },
   },
   {
     Ic: Phone,
     title: 'Call Us',
-    lines: ['+91 88824 45657', 'Mon–Sat, 9:00 AM – 8:00 PM'],
-    action: { label: 'Call Now', href: 'tel:+918882445657' },
+    lines: [STORE_PHONE_DISPLAY, STORE_HOURS],
+    action: { label: 'Call Now', href: `tel:${STORE_PHONE_TEL}` },
   },
   {
     Ic: MessageCircle,
     title: 'WhatsApp',
     lines: ['Quick Support', 'We usually reply within a few minutes'],
-    action: { label: 'Chat Now', href: 'https://wa.me/918882445657', external: true },
+    action: { label: 'Chat Now', href: `https://wa.me/${STORE_WHATSAPP}`, external: true },
   },
   {
     Ic: Mail,
     title: 'Email Us',
-    lines: ['support@sukhmal.in', 'business@sukhmal.in · Response within 24 hours'],
-    action: { label: 'Send Email', href: 'mailto:support@sukhmal.in' },
+    lines: [STORE_EMAIL, 'We reply within 24 hours'],
+    action: { label: 'Send Email', href: `mailto:${STORE_EMAIL}` },
   },
 ];
 
@@ -47,6 +55,37 @@ const BULK_FEATURES = [
 ];
 
 const CONTACT_FAQS = FAQS.slice(0, 6);
+
+function StorePhotoGallery({ stacked = false }) {
+  return (
+    <div
+      className={
+        stacked
+          ? 'flex md:flex-col gap-2 overflow-x-auto md:overflow-visible snap-x snap-mandatory scrollbar-none'
+          : 'grid grid-cols-3 gap-2 md:gap-3'
+      }
+    >
+      {STORE_GALLERY.map((p) => (
+        <figure
+          key={p.src}
+          className={
+            stacked
+              ? 'min-w-[78%] sm:min-w-[60%] md:min-w-0 snap-center rounded-2xl overflow-hidden border border-line shadow-[var(--sk-shadow-md)] aspect-[4/3] md:aspect-[16/10] bg-cream-200'
+              : 'rounded-xl overflow-hidden border border-line aspect-[4/3] bg-cream-200 shadow-[var(--sk-shadow-sm)]'
+          }
+        >
+          <img
+            src={p.src}
+            alt={p.alt}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        </figure>
+      ))}
+    </div>
+  );
+}
 
 export default function Contact() {
   const [form, setForm] = useState({
@@ -134,12 +173,10 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* STORE PHOTO + FORM */}
+      {/* STORE PHOTO GALLERY + FORM */}
       <section id="message" className="sk-container pb-14 md:pb-20">
         <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-stretch">
-          <div className="hidden md:block rounded-2xl overflow-hidden border border-line shadow-[var(--sk-shadow-md)]">
-            <img src={STORE_IMG} alt="Sukhmal store interior" className="w-full h-full min-h-[560px] object-cover" />
-          </div>
+          <StorePhotoGallery stacked />
 
           <form onSubmit={submit} className="bg-white border border-line rounded-2xl p-6 md:p-8 space-y-3.5 shadow-[var(--sk-shadow-md)]">
             {sent ? (
@@ -244,7 +281,7 @@ export default function Contact() {
                 Request Bulk Order <ArrowRight size={16} />
               </Link>
               <a
-                href="https://wa.me/918882445657"
+                href={`https://wa.me/${STORE_WHATSAPP}`}
                 target="_blank"
                 rel="noreferrer"
                 className="sk-btn-outline !text-[var(--sk-green-500)] !border-[var(--sk-green-500)]"
@@ -261,41 +298,33 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* MAP + HOURS */}
+      {/* STORE CARD — no Maps embed */}
       <section id="store" className="sk-container py-14 md:py-20">
         <FlourishTitle title="Visit Our Store" />
-        <div className="grid md:grid-cols-2 gap-5 md:gap-6 -mt-2">
-          <div className="bg-white border border-line rounded-xl overflow-hidden shadow-[var(--sk-shadow-sm)]">
-            <iframe
-              title="Sukhmal store map"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3504.0!2d77.3889!3d28.5651!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390ce5a431866761%3A0x0!2sSector%2068%2C%20Noida!5e0!3m2!1sen!2sin!4v1700000000"
-              className="w-full h-[280px] md:h-[360px] border-0"
-              allowFullScreen=""
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </div>
-          <div className="bg-white border border-line rounded-xl p-6 md:p-8 flex flex-col shadow-[var(--sk-shadow-sm)]">
+        <div className="-mt-2 space-y-5">
+          <StorePhotoGallery />
+          <div className="bg-white border border-line rounded-xl p-6 md:p-8 flex flex-col shadow-[var(--sk-shadow-sm)] max-w-xl">
             <div className="font-display font-bold text-brand-900 text-xl">Sukhmal Dry Fruits Korner</div>
             <div className="mt-4 space-y-3 text-sm text-ink-600">
               <div className="flex gap-2.5">
                 <MapPin size={16} className="shrink-0 mt-0.5 text-brand-900" />
-                <span>702, 7th Floor, Sector 68, Noida, Uttar Pradesh 201307</span>
+                <span>{STORE_ADDRESS}</span>
               </div>
-              <div className="text-[12px] text-ink-500 pl-7">Landmark: Near Haldiram&apos;s / Sector 60 Metro</div>
               <div className="flex gap-2.5">
                 <Phone size={16} className="shrink-0 mt-0.5 text-brand-900" />
-                <span>+91 88824 45657</span>
+                <a href={`tel:${STORE_PHONE_TEL}`} className="hover:underline">{STORE_PHONE_DISPLAY}</a>
+              </div>
+              <div className="flex gap-2.5">
+                <Mail size={16} className="shrink-0 mt-0.5 text-brand-900" />
+                <a href={`mailto:${STORE_EMAIL}`} className="hover:underline">{STORE_EMAIL}</a>
               </div>
               <div>
                 <div className="font-semibold text-brand-900 mb-1">Opening Hours</div>
-                <div>Mon–Sat: 9:00 AM – 8:00 PM</div>
-                <div>Sunday: 10:00 AM – 6:00 PM</div>
+                <div>{STORE_HOURS}</div>
               </div>
-              <div className="text-[12px] text-ink-500">Parking Available: Free parking for customers.</div>
             </div>
             <a
-              href="https://maps.google.com/?q=Sector+68+Noida"
+              href={STORE_MAPS_URL}
               target="_blank"
               rel="noreferrer"
               className="sk-btn-primary mt-auto self-start"

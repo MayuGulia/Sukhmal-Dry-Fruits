@@ -29,7 +29,7 @@ function parseWeight(text) {
   return m ? m[1].replace(/\s+/g, '') : null;
 }
 
-export function resolveInventoryCommand(command, adminEmail = 'monikabatra890@gmail.com') {
+export function resolveInventoryCommand(command, adminEmail = 'sukhmaldryfruitskorner2@gmail.com') {
   const text = (command || '').trim();
   if (!text) return { previewId: null, changes: [], error: 'Type a command first' };
 

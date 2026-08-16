@@ -6,6 +6,13 @@
 [functions]
   directory = "netlify/functions"
 
+[images]
+  remote_images = [
+    "https://firebasestorage\\.googleapis\\.com/.*",
+    "https://.*\\.firebasestorage\\.app/.*",
+    "https://storage\\.googleapis\\.com/.*"
+  ]
+
 [[redirects]]
   from = "/api/admin/ai-inventory/preview"
   to = "/.netlify/functions/ai-inventory"
@@ -25,6 +32,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/enquiry/bulk"
+  to = "/.netlify/functions/enquiry-bulk"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
@@ -33,3 +46,14 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "unsafe-none"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://apis.google.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://checkout.razorpay.com https://api.razorpay.com wss://*.firebaseio.com https://*.cloudfunctions.net https://firestore.googleapis.com; frame-src https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://www.google.com; object-src 'none'; base-uri 'self'"

@@ -22,8 +22,18 @@ export default function AppLayout({ children }) {
       <main className="flex-1">{children}</main>
       <Footer />
       <MobileBottomNav />
-      <GiftAdvisor />
-      <WhatsAppFloat />
+      <div
+        className="fixed left-4 z-50 flex flex-col items-start gap-4 bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6"
+        data-testid="float-gift-advisor"
+      >
+        <GiftAdvisor />
+      </div>
+      <div
+        className="fixed right-4 z-50 flex flex-col items-end gap-4 bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6"
+        data-testid="float-actions"
+      >
+        <WhatsAppFloat />
+      </div>
     </div>
   );
 }

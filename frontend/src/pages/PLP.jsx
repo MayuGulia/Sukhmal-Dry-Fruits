@@ -128,28 +128,69 @@ function FilterSection({ id, title, Icon, open, onToggle, children }) {
 }
 
 function DualPriceSlider({ min, max, onChange }) {
-  const clampMin = (v) => Math.min(Math.max(PRICE_FLOOR, v), max - 50);
-  const clampMax = (v) => Math.max(Math.min(PRICE_CEIL, v), min + 50);
-  const thumb =
-    'absolute w-full appearance-none bg-transparent pointer-events-none ' +
-    '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none ' +
-    '[&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full ' +
-    '[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 ' +
-    '[&::-webkit-slider-thumb]:border-[var(--sk-star)] [&::-webkit-slider-thumb]:shadow-sk-sm ' +
-    '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 ' +
-    '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 ' +
-    '[&::-moz-range-thumb]:border-[var(--sk-star)]';
+  const span = PRICE_CEIL - PRICE_FLOOR;
+  const minPct = ((min - PRICE_FLOOR) / span) * 100;
+  const maxPct = ((max - PRICE_FLOOR) / span) * 100;
+  const minOnTop = min > PRICE_FLOOR + span * 0.45;
+
+  const snap = (n) => Math.round(n / 50) * 50;
+  const commitMin = (raw) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+    onChange({ min: Math.min(Math.max(PRICE_FLOOR, snap(n)), max - 50), max });
+  };
+  const commitMax = (raw) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+    onChange({ min, max: Math.max(Math.min(PRICE_CEIL, snap(n)), min + 50) });
+  };
+
+  const box =
+    'flex items-center h-10 rounded-lg border border-line bg-white px-2.5 focus-within:border-[var(--sk-gold-500)] focus-within:ring-1 focus-within:ring-[var(--sk-gold-500)]/30';
 
   return (
-    <div className="pt-1 px-0.5">
-      <div className="relative h-8 flex items-center">
-        <div className="absolute left-0 right-0 h-1 rounded-full bg-cream-400" />
+    <div className="pt-1 space-y-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+        <label className="block min-w-0">
+          <span className="text-[11px] text-ink-500 font-medium">Min</span>
+          <div className={`${box} mt-1`}>
+            <span className="text-ink-500 text-sm mr-1 shrink-0">₹</span>
+            <input
+              type="number"
+              min={PRICE_FLOOR}
+              max={max - 50}
+              step={50}
+              value={min}
+              aria-label="Minimum price"
+              onChange={(e) => commitMin(e.target.value)}
+              className="w-full min-w-0 bg-transparent outline-none text-sm font-semibold tabular-nums text-brand-900"
+            />
+          </div>
+        </label>
+        <span className="text-ink-400 pb-2.5" aria-hidden>—</span>
+        <label className="block min-w-0">
+          <span className="text-[11px] text-ink-500 font-medium">Max</span>
+          <div className={`${box} mt-1`}>
+            <span className="text-ink-500 text-sm mr-1 shrink-0">₹</span>
+            <input
+              type="number"
+              min={min + 50}
+              max={PRICE_CEIL}
+              step={50}
+              value={max}
+              aria-label="Maximum price"
+              onChange={(e) => commitMax(e.target.value)}
+              className="w-full min-w-0 bg-transparent outline-none text-sm font-semibold tabular-nums text-brand-900"
+            />
+          </div>
+        </label>
+      </div>
+
+      <div className="relative h-8 px-1">
+        <div className="absolute left-1 right-1 top-1/2 -translate-y-1/2 h-1 rounded-full bg-cream-400" />
         <div
-          className="absolute h-1 rounded-full bg-[var(--sk-star)]"
-          style={{
-            left: `${((min - PRICE_FLOOR) / (PRICE_CEIL - PRICE_FLOOR)) * 100}%`,
-            right: `${100 - ((max - PRICE_FLOOR) / (PRICE_CEIL - PRICE_FLOOR)) * 100}%`,
-          }}
+          className="absolute top-1/2 -translate-y-1/2 h-1 rounded-full bg-[var(--sk-star)]"
+          style={{ left: `calc(4px + ${minPct}%)`, right: `calc(4px + ${100 - maxPct}%)` }}
         />
         <input
           type="range"
@@ -158,8 +199,9 @@ function DualPriceSlider({ min, max, onChange }) {
           step={50}
           value={min}
           aria-label="Minimum price"
-          onChange={(e) => onChange({ min: clampMin(Number(e.target.value)), max })}
-          className={thumb}
+          onChange={(e) => commitMin(e.target.value)}
+          className="sk-range absolute inset-0 w-full"
+          style={{ zIndex: minOnTop ? 5 : 3 }}
         />
         <input
           type="range"
@@ -168,16 +210,14 @@ function DualPriceSlider({ min, max, onChange }) {
           step={50}
           value={max}
           aria-label="Maximum price"
-          onChange={(e) => onChange({ min, max: clampMax(Number(e.target.value)) })}
-          className={thumb}
+          onChange={(e) => commitMax(e.target.value)}
+          className="sk-range absolute inset-0 w-full"
+          style={{ zIndex: 4 }}
         />
       </div>
-      <div className="flex items-center justify-between text-[11px] text-ink-500 font-medium">
+      <div className="flex items-center justify-between text-[11px] text-ink-500 font-medium px-0.5">
         <span>₹ {PRICE_FLOOR}</span>
         <span>₹ {PRICE_CEIL}+</span>
-      </div>
-      <div className="text-center text-[12px] text-brand-900 mt-1.5 font-semibold tabular-nums">
-        ₹ {min} – {max >= PRICE_CEIL ? `₹ ${PRICE_CEIL}+` : `₹ ${max}`}
       </div>
     </div>
   );
@@ -368,10 +408,12 @@ export default function PLP() {
     }
 
     list = list.filter((p) => {
-      const pricePoint = Number(p.price) || 0;
-      if (pricePoint < price.min) return false;
-      if (price.max < PRICE_CEIL && pricePoint > price.max) return false;
-      return true;
+      const prices = [
+        Number(p.price) || 0,
+        ...(Array.isArray(p.variants) ? p.variants.map((v) => Number(v.price) || 0) : []),
+      ].filter((n) => n > 0);
+      if (!prices.length) return true;
+      return prices.some((n) => n >= price.min && (price.max >= PRICE_CEIL || n <= price.max));
     });
 
     if (weight.length) {

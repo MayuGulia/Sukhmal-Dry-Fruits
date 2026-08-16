@@ -4,7 +4,8 @@ import { TrustStrip } from '@/components/shared/ProductCard';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { inr } from '@/lib/utils';
-import { createCheckoutOrder } from '@/lib/commerceStore';
+import { attachRazorpayOrderId, createCustomerOrder, saveUserAddresses } from '@/lib/orders';
+import { useUserProfile } from '@/hooks/useAccountData';
 import { api } from '@/lib/api';
 import {
   Lock, MapPin, CalendarDays, Gift, CreditCard, Landmark, Wallet, Banknote,
@@ -17,21 +18,6 @@ const PAY_METHODS = [
   { key: 'nb', label: 'Net Banking', Ic: Landmark, desc: 'All Major Banks' },
   { key: 'wallet', label: 'Wallets', Ic: Wallet, desc: 'Paytm · PhonePe · Amazon Pay' },
   { key: 'cod', label: 'Cash on Delivery', Ic: Banknote, desc: 'Pay when you receive' },
-];
-
-const ADDRESSES = [
-  {
-    id: 'a1', label: 'Default', name: 'Monika Batra',
-    line1: 'B-204, Green Park Extension', line2: 'New Delhi', pincode: '110016', phone: '+91 98765 43210',
-  },
-  {
-    id: 'a2', label: 'Home', name: 'Priya Sharma',
-    line1: '22, Golf Links, Malviya Nagar', line2: 'New Delhi', pincode: '110017', phone: '+91 98765 43210',
-  },
-  {
-    id: 'a3', label: 'Office', name: 'Sukhmal Industries Pvt. Ltd.',
-    line1: 'Okhla Industrial Area, Phase II', line2: 'New Delhi', pincode: '110020', phone: '+91 98765 43210',
-  },
 ];
 
 const STEPS = [
@@ -124,17 +110,24 @@ function OrderSummaryBody({ items, totals, count }) {
 
 export default function Checkout() {
   const { items, totals, clear, count, coupon } = useCart();
-  const { isAuthed, loading: authLoading } = useAuth();
+  const { isAuthed, loading: authLoading, user, refreshSession } = useAuth();
+  const { addresses } = useUserProfile();
   const nav = useNavigate();
   const loc = useLocation();
-  const [address, setAddress] = useState(ADDRESSES[0].id);
+  const [address, setAddress] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState('custom');
   const [customDate, setCustomDate] = useState('');
   const [payment, setPayment] = useState('upi');
   const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState('');
   const [showAddAddr, setShowAddAddr] = useState(false);
   const [giftMsg, setGiftMsg] = useState({ name: '', phone: '', text: '' });
+  const [newAddr, setNewAddr] = useState({ name: '', phone: '', line1: '', line2: '', pincode: '' });
+
+  useEffect(() => {
+    if (!address && addresses[0]?.id) setAddress(addresses[0].id);
+  }, [addresses, address]);
 
   // Guests must log in — never silent auto-login
   useEffect(() => {
@@ -165,57 +158,89 @@ export default function Checkout() {
     );
   }
 
-  const selectedAddr = ADDRESSES.find((a) => a.id === address) || ADDRESSES[0];
+  const selectedAddr = addresses.find((a) => a.id === address) || addresses[0] || null;
+
+  const saveNewAddress = async () => {
+    if (!user?.uid || !newAddr.name.trim() || !newAddr.line1.trim() || !newAddr.pincode.trim()) return;
+    const next = {
+      id: `a_${Date.now()}`,
+      label: 'Home',
+      ...newAddr,
+      isDefault: addresses.length === 0,
+    };
+    await saveUserAddresses(user.uid, [...addresses, next]);
+    setAddress(next.id);
+    setShowAddAddr(false);
+    setNewAddr({ name: '', phone: '', line1: '', line2: '', pincode: '' });
+  };
 
   const placeOrder = async () => {
+    if (!selectedAddr) {
+      setPlaceError('Please add a delivery address.');
+      setShowAddAddr(true);
+      return;
+    }
+    if (user?.email) {
+      let session = user;
+      try { session = await refreshSession?.() || user; } catch {}
+      if (!session?.emailVerified) {
+        setPlaceError('Please verify your email before placing an order. Check your inbox for the verification link.');
+        return;
+      }
+    }
     setPlacing(true);
+    setPlaceError('');
     try {
       const method = payment === 'cod' ? 'cod' : 'razorpay';
-      let order;
-      try {
-        const r = await api.post('/create-order', {
-          items: items.map((it) => ({ id: it.id, slug: it.slug, qty: it.qty, variant: it.variant })),
-          paymentMethod: method,
-        });
-        order = r.data.order;
-        if (method === 'razorpay' && r.data.razorpayOrderId && window.Razorpay && process.env.REACT_APP_RAZORPAY_KEY_ID) {
-          await new Promise((resolve, reject) => {
-            const rzp = new window.Razorpay({
-              key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-              amount: r.data.amount,
-              currency: 'INR',
-              order_id: r.data.razorpayOrderId,
-              handler: async (resp) => {
-                try {
-                  await api.post('/verify-payment', resp);
-                  resolve();
-                } catch (e) { reject(e); }
-              },
-              modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
-            });
-            rzp.open();
+      const created = await createCustomerOrder({
+        user,
+        items,
+        address: selectedAddr,
+        totals,
+        paymentMethod: method,
+        giftMsg,
+        deliveryDate,
+        customDate,
+        coupon: coupon?.code || null,
+      });
+      const orderId = created.orderId;
+
+      if (method === 'razorpay') {
+        try {
+          const r = await api.post('/create-order', {
+            orderId,
+            amount: totals.total,
+            total: totals.total,
+            paymentMethod: 'razorpay',
+            items: items.map((it) => ({ id: it.id, slug: it.slug, qty: it.qty, variant: it.variant })),
           });
+          if (r.data?.razorpayOrderId && window.Razorpay && (r.data.keyId || process.env.REACT_APP_RAZORPAY_KEY_ID)) {
+            await attachRazorpayOrderId(orderId, r.data.razorpayOrderId);
+            await new Promise((resolve, reject) => {
+              const rzp = new window.Razorpay({
+                key: r.data.keyId || process.env.REACT_APP_RAZORPAY_KEY_ID,
+                amount: r.data.amount,
+                currency: r.data.currency || 'INR',
+                order_id: r.data.razorpayOrderId,
+                handler: async (resp) => {
+                  try {
+                    await api.post('/verify-payment', { ...resp, orderId });
+                    resolve();
+                  } catch (e) { reject(e); }
+                },
+                modal: { ondismiss: () => reject(new Error('Payment cancelled')) },
+              });
+              rzp.open();
+            });
+          }
+        } catch (err) {
+          if (err?.message === 'Payment cancelled') throw err;
         }
-      } catch {
-        const local = createCheckoutOrder({
-          items,
-          paymentMethod: method,
-          address: selectedAddr,
-          totals,
-        });
-        order = local.order;
       }
-      const orderId = order?.orderId || ('SKF' + Math.random().toString().slice(2, 8));
-      const now = new Date();
-      const etaStart = new Date(now);
-      etaStart.setDate(etaStart.getDate() + 2);
-      const etaEnd = new Date(now);
-      etaEnd.setDate(etaEnd.getDate() + 4);
-      const fmt = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
       const snap = {
         orderId,
-        placedAt: now.toISOString(),
+        placedAt: new Date().toISOString(),
         paymentMethod: payment,
         paymentLabel: PAY_METHODS.find((m) => m.key === payment)?.label || payment,
         address: selectedAddr,
@@ -234,7 +259,7 @@ export default function Checkout() {
         totals: { ...totals },
         count,
         coupon: coupon?.code || null,
-        eta: `${fmt(etaStart)} – ${fmt(etaEnd)}`,
+        eta: created.eta,
       };
       try {
         sessionStorage.setItem('sk_last_order', JSON.stringify(snap));
@@ -242,6 +267,8 @@ export default function Checkout() {
 
       clear();
       nav(`/order-success/${orderId}`);
+    } catch (err) {
+      setPlaceError(err?.message || 'Could not place the order. Please try again.');
     } finally {
       setPlacing(false);
     }
@@ -249,6 +276,11 @@ export default function Checkout() {
 
   return (
     <div className="pb-28 md:pb-0">
+      {user?.email && !user.emailVerified && (
+        <div className="bg-[var(--sk-gold-100)] border-b border-[var(--sk-gold-300)] text-brand-900 text-sm px-4 py-3 text-center">
+          Please verify your email before placing an order. Check your inbox for the verification link.
+        </div>
+      )}
       <div className="bg-cream-100 border-b border-line">
         <div className="sk-container py-6 md:py-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -306,7 +338,7 @@ export default function Checkout() {
             </div>
 
             <div className="mt-4 grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
-              {ADDRESSES.map((a) => (
+              {addresses.map((a) => (
                 <label
                   key={a.id}
                   className={`rounded-xl border p-3.5 cursor-pointer flex gap-2.5 transition bg-white min-h-[132px] ${
@@ -347,18 +379,23 @@ export default function Checkout() {
               </button>
             </div>
 
+            {addresses.length === 0 && !showAddAddr && (
+              <p className="mt-3 text-sm text-ink-500">No saved addresses yet. Add one to continue.</p>
+            )}
+
             {showAddAddr && (
               <div className="mt-4 grid sm:grid-cols-2 gap-3 p-4 rounded-xl bg-cream-200 border border-line">
-                <input placeholder="Full name" className="sk-input" />
-                <input placeholder="Phone" className="sk-input" />
-                <input placeholder="Address line 1" className="sk-input sm:col-span-2" />
-                <input placeholder="City" className="sk-input" />
-                <input placeholder="Pincode" className="sk-input" />
-                <button type="button" className="sk-btn-primary sm:col-span-2 w-max" onClick={() => setShowAddAddr(false)}>
+                <input placeholder="Full name" className="sk-input" value={newAddr.name} onChange={(e) => setNewAddr((a) => ({ ...a, name: e.target.value }))} />
+                <input placeholder="Phone" className="sk-input" value={newAddr.phone} onChange={(e) => setNewAddr((a) => ({ ...a, phone: e.target.value }))} />
+                <input placeholder="Address line 1" className="sk-input sm:col-span-2" value={newAddr.line1} onChange={(e) => setNewAddr((a) => ({ ...a, line1: e.target.value }))} />
+                <input placeholder="City / line 2" className="sk-input" value={newAddr.line2} onChange={(e) => setNewAddr((a) => ({ ...a, line2: e.target.value }))} />
+                <input placeholder="Pincode" className="sk-input" value={newAddr.pincode} onChange={(e) => setNewAddr((a) => ({ ...a, pincode: e.target.value }))} />
+                <button type="button" className="sk-btn-primary sm:col-span-2 w-max" onClick={saveNewAddress}>
                   Save Address
                 </button>
               </div>
             )}
+            {placeError && <p className="mt-3 text-sm text-red-600">{placeError}</p>}
           </section>
 
           {/* Step 2 — Delivery date */}

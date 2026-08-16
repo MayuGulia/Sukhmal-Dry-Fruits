@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { BrandLockup } from '@/components/brand/BrandSeal';
 import { inr } from '@/lib/utils';
 import { adminApi } from '@/lib/adminApi';
-import { subscribeCatalog, productInStock } from '@/lib/commerceStore';
+import { productInStock } from '@/lib/commerceStore';
 import { AiInventoryBar } from './AiInventoryBar';
 
 const SIDE = [
@@ -21,7 +21,7 @@ const SIDE = [
   { to: '/admin/settings', label: 'Settings', Ic: Settings },
 ];
 
-const STATUS_OPTS = ['pending', 'confirmed', 'in_preparation', 'dispatched', 'delivered', 'cancelled', 'pending_cod'];
+const STATUS_OPTS = ['placed', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled', 'pending_cod'];
 const RANGE_OPTS = [
   { id: 'today', label: 'Today' },
   { id: 'week', label: 'This week' },
@@ -175,6 +175,24 @@ export function AdminLayout() {
         </div>
       </header>
 
+      <div className="sk-container">
+        <nav className="lg:hidden flex gap-2 overflow-x-auto py-3 scrollbar-none border-b border-line">
+          {SIDE.map(({ to, label, Ic, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                `shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[13px] font-medium ${
+                  isActive ? 'bg-[#F3EBE1] text-[var(--sk-brown-900)]' : 'bg-white border border-line text-ink-600'
+                }`
+              }
+            >
+              <Ic size={15} strokeWidth={1.75} /> {label}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
       <div className="sk-container grid grid-cols-1 lg:grid-cols-[210px_1fr] gap-0 min-h-[calc(100vh-8rem)]">
         <aside className="py-6 pr-4 border-r border-line hidden lg:block">
           <nav className="space-y-1">
@@ -215,18 +233,27 @@ export function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [liveErr, setLiveErr] = useState('');
 
   const reload = () => {
     const { from, to } = rangeDates(range);
-    adminApi.stats(from, to).then(setStats);
-    adminApi.orders({ status: statusFilter, from, to }).then(setOrders);
-    adminApi.products({ limit: 6, activeOnly: false }).then(setProducts);
+    adminApi.stats(from, to).then(setStats).catch((err) => setLiveErr(err.message));
+    adminApi.orders({ status: statusFilter, from, to }).then(setOrders).catch(() => setOrders([]));
+    adminApi.products({ limit: 6, activeOnly: false }).then(setProducts).catch(() => setProducts([]));
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    reload();
-    return subscribeCatalog(reload);
+    setLiveErr('');
+    const { from, to } = rangeDates(range);
+    return adminApi.subscribeDashboard(
+      { from, to, status: statusFilter },
+      {
+        onStats: setStats,
+        onOrders: setOrders,
+        onProducts: setProducts,
+        onError: (err) => setLiveErr(err?.message || 'Could not load live admin data.'),
+      },
+    );
   }, [range, statusFilter]);
 
   const cards = [
@@ -255,6 +282,12 @@ export function AdminDashboard() {
           </select>
         </div>
       </div>
+
+      {liveErr && (
+        <p className="mt-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          {liveErr}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mt-6">
         {cards.map((c) => (
@@ -290,14 +323,20 @@ export function AdminDashboard() {
               <div className="font-semibold">{inr(o.total)}</div>
               <select
                 value={o.orderStatus}
-                onChange={(e) => adminApi.setStatus(o.orderId, e.target.value).then(reload)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  adminApi.setStatus(o.orderId, next).catch((err) => {
+                    setLiveErr(err?.message || 'Could not update order status.');
+                    e.target.value = o.orderStatus;
+                  });
+                }}
                 className="sk-input !py-1.5 !text-[13px]"
               >
                 {STATUS_OPTS.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
               </select>
             </div>
           ))}
-          {!orders.length && <div className="px-4 py-8 text-center text-ink-500 text-sm">No orders in this range.</div>}
+          {!orders.length && <div className="px-4 py-8 text-center text-ink-500 text-sm">No orders yet.</div>}
         </div>
       </section>
 
@@ -328,6 +367,13 @@ export function AdminDashboard() {
             );
           })}
         </div>
+        {!products.length && (
+          <div className="rounded-xl border border-line bg-white px-4 py-8 text-center text-ink-500 text-sm">
+            No products yet.{' '}
+            <Link to="/admin/products" className="font-semibold text-brand-900 underline">Open the products list</Link>
+            {' '}to publish the catalog.
+          </div>
+        )}
       </section>
     </div>
   );

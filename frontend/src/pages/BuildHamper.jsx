@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { verifiedImg } from '@/data/verifiedImages';
 import { api } from '@/lib/api';
-import { saveHamperBuild } from '@/lib/commerceStore';
+import { getLiveProducts, saveHamperBuild } from '@/lib/commerceStore';
+import { fetchHamperBuilderPage, mapHamperBuilderProduct } from '@/lib/liveCatalog';
 import {
   ArrowLeft, ArrowRight, Sparkles, Plus, Minus, Check, X, Gift, ShieldCheck,
   Crown, Heart, Pencil, Truck, Package, Leaf, Star, Box, ShoppingBag,
@@ -116,6 +117,19 @@ const MOCK_PRODUCTS = [
   { id: 'mp11', slug: 'medjoul-dates', name: 'Ajwa Dates', price: 599, weight: '250g', category: 'dates', premium: true, img: '/products/medjoul-dates-1.jpg' },
   { id: 'mp12', slug: 'badam-roasted', name: 'Dark Chocolate Almonds', price: 399, weight: '200g', category: 'chocolate', bestseller: true, img: '/products/badam-roasted-1.jpg' },
 ];
+
+function HamperProductSkeleton() {
+  return (
+    <div className="sk-wizard-card overflow-hidden animate-pulse" aria-hidden>
+      <div className="aspect-square bg-[#EFE8DC]" />
+      <div className="p-3.5 space-y-2">
+        <div className="h-4 bg-[#EFE8DC] rounded w-4/5" />
+        <div className="h-3 bg-[#EFE8DC] rounded w-1/3" />
+        <div className="h-9 bg-[#EFE8DC] rounded-full mt-3" />
+      </div>
+    </div>
+  );
+}
 
 function loadState() {
   try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; }
@@ -472,6 +486,11 @@ export default function BuildHamper() {
   const [occasion, setOccasion] = useState(null);
   const [sortBy, setSortBy] = useState('popularity');
   const [loading, setLoading] = useState(false);
+  const [productRows, setProductRows] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsLoadingMore, setProductsLoadingMore] = useState(false);
+  const [productsHasMore, setProductsHasMore] = useState(false);
+  const [catalogTick, setCatalogTick] = useState(0);
   const [previewProgress, setPreviewProgress] = useState(0);
   const [previewReady, setPreviewReady] = useState(false);
   const [done, setDone] = useState(false);
@@ -480,6 +499,13 @@ export default function BuildHamper() {
   const [previewNote, setPreviewNote] = useState('');
   const { add } = useCart();
   const { has, toggle } = useWishlist();
+  const cacheRef = useRef({});
+  const catalogMapRef = useRef(new Map(MOCK_PRODUCTS.map((p) => {
+    const mapped = mapHamperBuilderProduct(p);
+    return [mapped.id, mapped];
+  })));
+  const sentinelRef = useRef(null);
+  const queryKey = catTab === 'premium' ? 'all' : catTab;
 
   const setPersist = (patch) => {
     setState((s) => {
@@ -499,6 +525,102 @@ export default function BuildHamper() {
     const ok = Boolean(state.budgetConfirmed || stored.budgetConfirmed) && Number(state.budget || stored.budget) > 0;
     if (!ok) nav('/build-hamper/budget', { replace: true });
   }, [idx, state.budgetConfirmed, state.budget, nav]);
+
+  useEffect(() => {
+    getLiveProducts({ activeOnly: false }).forEach((p) => {
+      const mapped = mapHamperBuilderProduct(p);
+      if (mapped?.id) catalogMapRef.current.set(mapped.id, mapped);
+    });
+    setCatalogTick((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    if (step !== 'products') return undefined;
+    let cancelled = false;
+    const cached = cacheRef.current[queryKey];
+    if (cached?.items?.length) {
+      setProductRows(cached.items);
+      setProductsHasMore(Boolean(cached.hasMore));
+      setProductsLoading(false);
+      return undefined;
+    }
+
+    setProductsLoading(true);
+    setProductRows([]);
+    fetchHamperBuilderPage({ category: queryKey === 'all' ? null : queryKey })
+      .then((page) => {
+        if (cancelled) return;
+        const mapped = page.items || [];
+        const items = mapped.length
+          ? mapped
+          : (queryKey === 'all' ? MOCK_PRODUCTS.map(mapHamperBuilderProduct).filter(Boolean) : []);
+        cacheRef.current[queryKey] = {
+          items,
+          cursor: page.cursor,
+          hasMore: Boolean(page.hasMore) && mapped.length > 0,
+        };
+        items.forEach((p) => {
+          if (p?.id) catalogMapRef.current.set(p.id, p);
+        });
+        setCatalogTick((n) => n + 1);
+        setProductRows(items);
+        setProductsHasMore(Boolean(page.hasMore) && mapped.length > 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const fallback = MOCK_PRODUCTS.map(mapHamperBuilderProduct).filter(Boolean);
+        cacheRef.current[queryKey] = { items: fallback, cursor: null, hasMore: false };
+        fallback.forEach((p) => catalogMapRef.current.set(p.id, p));
+        setCatalogTick((n) => n + 1);
+        setProductRows(fallback);
+        setProductsHasMore(false);
+      })
+      .finally(() => {
+        if (!cancelled) setProductsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [step, queryKey]);
+
+  const loadMoreProducts = useCallback(async () => {
+    if (productsLoading || productsLoadingMore || !productsHasMore) return;
+    const cached = cacheRef.current[queryKey];
+    if (!cached?.hasMore) return;
+    setProductsLoadingMore(true);
+    try {
+      const page = await fetchHamperBuilderPage({
+        category: queryKey === 'all' ? null : queryKey,
+        cursor: cached.cursor,
+      });
+      const nextItems = [...(cached.items || []), ...(page.items || [])];
+      cacheRef.current[queryKey] = {
+        items: nextItems,
+        cursor: page.cursor,
+        hasMore: Boolean(page.hasMore),
+      };
+      (page.items || []).forEach((p) => {
+        if (p?.id) catalogMapRef.current.set(p.id, p);
+      });
+      setCatalogTick((n) => n + 1);
+      setProductRows(nextItems);
+      setProductsHasMore(Boolean(page.hasMore));
+    } finally {
+      setProductsLoadingMore(false);
+    }
+  }, [productsLoading, productsLoadingMore, productsHasMore, queryKey]);
+
+  useEffect(() => {
+    if (step !== 'products' || !productsHasMore || productsLoading) return undefined;
+    const el = sentinelRef.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) loadMoreProducts();
+    }, { rootMargin: '420px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [step, productsHasMore, productsLoading, loadMoreProducts, productRows.length]);
 
   useEffect(() => {
     if (step !== 'preview') {
@@ -551,8 +673,13 @@ export default function BuildHamper() {
   }, [step]);
 
   const chosen = useMemo(
-    () => MOCK_PRODUCTS.filter((p) => state.items[p.id]).map((p) => ({ ...p, qty: state.items[p.id] })),
-    [state.items],
+    () => Object.entries(state.items)
+      .map(([id, qty]) => {
+        const p = catalogMapRef.current.get(id);
+        return p ? { ...p, qty } : null;
+      })
+      .filter(Boolean),
+    [state.items, catalogTick],
   );
   const styleObj = STYLES.find((s) => s.key === state.style) || STYLES[0];
   const spent = chosen.reduce((s, p) => s + p.price * p.qty, 0);
@@ -574,10 +701,9 @@ export default function BuildHamper() {
   }, [sideCat, sortBy]);
 
   const filteredProducts = useMemo(() => {
-    let list = [...MOCK_PRODUCTS];
+    let list = [...productRows];
     if (sideCat === 'bestsellers') list = list.filter((p) => p.bestseller);
     else if (sideCat === 'premium' || sideCat === 'luxury') list = list.filter((p) => p.premium || p.bestseller || p.price >= 399);
-    // wooden / basket / box keep the full product set — those are hamper-style filters
 
     if (catTab === 'premium') list = list.filter((p) => p.premium || p.bestseller || p.price >= 399);
     else if (catTab === 'dry-fruits') list = list.filter((p) => p.category === 'dry-fruits' || p.category === 'dates');
@@ -587,7 +713,7 @@ export default function BuildHamper() {
     if (sortBy === 'price-desc') list.sort((a, b) => b.price - a.price);
     if (sortBy === 'popularity') list.sort((a, b) => Number(!!b.bestseller) - Number(!!a.bestseller) || b.price - a.price);
     return list;
-  }, [catTab, sideCat, sortBy]);
+  }, [productRows, catTab, sideCat, sortBy]);
 
   const goto = (n) => nav(`/build-hamper/${STEPS[n]}`);
 
@@ -882,7 +1008,11 @@ export default function BuildHamper() {
                         {premium && <span className="hidden sm:block w-px h-5 bg-[#E8E4DF] mx-1 shrink-0" />}
                         <button
                           type="button"
-                          onClick={() => setCatTab(t.key)}
+                          onClick={() => {
+                            const key = t.key === 'premium' ? 'all' : t.key;
+                            if (!cacheRef.current[key]?.items?.length) setProductsLoading(true);
+                            setCatTab(t.key);
+                          }}
                           className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-[7px] rounded-full text-sm font-medium transition-colors ${
                             premium
                               ? 'bg-white text-[var(--sk-gold-600)] border border-[var(--sk-gold-600)]'
@@ -924,7 +1054,9 @@ export default function BuildHamper() {
               </div>
 
               <div className="mt-5 grid gap-5 md:gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-                {filteredProducts.map((p) => {
+                {productsLoading
+                  ? Array.from({ length: 8 }).map((_, i) => <HamperProductSkeleton key={`sk-${i}`} />)
+                  : filteredProducts.map((p) => {
                   const qty = state.items[p.id] || 0;
                   const added = qty > 0;
                   const wished = has(p.id);
@@ -933,7 +1065,13 @@ export default function BuildHamper() {
                     <div key={p.id} className="sk-wizard-card overflow-hidden flex flex-col">
                       <div className="relative aspect-square bg-[#F7F3EC] overflow-hidden">
                         <Link to={href} className="absolute inset-0 block">
-                          <img src={p.img || p.images?.[0]} alt={p.name} className="w-full h-full object-cover" />
+                          <img
+                            src={p.img || p.images?.[0]}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
                         </Link>
                         {p.bestseller && (
                           <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-bold tracking-wide bg-[var(--sk-espresso)] text-white px-2.5 py-1 rounded-full pointer-events-none">
@@ -962,7 +1100,7 @@ export default function BuildHamper() {
                           {inr(p.price)} <span className="text-[var(--sk-ink-400)]">/ {p.weight}</span>
                         </div>
 
-                        <div className="mt-auto pt-3 flex items-center gap-2">
+                        <div className="mt-auto pt-3 flex items-center gap-2 relative z-10">
                           <div
                             className="inline-flex items-center border border-[#E8E4DF] rounded-full bg-white"
                             onClick={(e) => e.stopPropagation()}
@@ -1000,9 +1138,13 @@ export default function BuildHamper() {
                     </div>
                   );
                 })}
+                {productsLoadingMore && Array.from({ length: 4 }).map((_, i) => (
+                  <HamperProductSkeleton key={`more-${i}`} />
+                ))}
               </div>
+              <div ref={sentinelRef} className="h-1" aria-hidden />
 
-              {filteredProducts.length === 0 && (
+              {!productsLoading && filteredProducts.length === 0 && (
                 <div className="text-center py-12 text-[var(--sk-ink-500)]">No products in this category yet.</div>
               )}
 

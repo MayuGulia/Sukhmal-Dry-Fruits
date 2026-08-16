@@ -36,7 +36,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'listmodels-gemini-3.7-flash';
+const GEMINI_MODULE_BUST = 'multi-change-v1';
 const helperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;

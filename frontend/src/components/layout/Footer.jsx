@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Youtube, ShieldCheck } from 'lucide-react';
 import { BrandLockup } from '@/components/brand/BrandSeal';
 import { useAuth } from '@/contexts/AuthContext';
+import { STORE_ADDRESS, STORE_EMAIL, STORE_INSTAGRAM, STORE_PHONE_DISPLAY, STORE_PHONE_TEL } from '@/data/storeInfo';
+import { saveNewsletterSignup } from '@/lib/newsletter';
 
 function PinterestIcon({ size = 14 }) {
   return (
@@ -37,7 +39,27 @@ const PAY = [
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [already, setAlready] = useState(false);
+  const [subError, setSubError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { isAdmin } = useAuth();
+
+  const onSubscribe = async (e) => {
+    e.preventDefault();
+    setSubError('');
+    setAlready(false);
+    setSubmitting(true);
+    try {
+      const result = await saveNewsletterSignup(email);
+      setAlready(Boolean(result?.already));
+      setEmail('');
+      setSubscribed(true);
+    } catch (err) {
+      setSubError(err?.message || 'Could not subscribe. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <footer className="bg-[var(--sk-espresso)] text-white">
@@ -48,26 +70,27 @@ export default function Footer() {
             <p className="text-cream-200/70 text-sm mt-1">Join our newsletter for festive launches and member-only deals.</p>
           </div>
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setEmail('');
-              setSubscribed(true);
-              setTimeout(() => setSubscribed(false), 2500);
-            }}
-            className="flex w-full md:w-auto md:min-w-[400px] gap-2"
+            onSubmit={onSubscribe}
+            className="flex w-full md:w-auto md:min-w-[400px] gap-2 flex-wrap"
           >
             <input
               type="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setSubscribed(false); setSubError(''); }}
               placeholder="Your email address"
-              className="sk-input !bg-white !border-transparent flex-1 !rounded-full !text-brand-900"
+              className="sk-input !bg-white !border-transparent flex-1 !rounded-full !text-brand-900 min-w-[180px]"
               aria-label="Email for newsletter"
             />
-            <button type="submit" className="sk-btn-gold whitespace-nowrap !px-5 !rounded-full">
-              {subscribed ? 'Subscribed' : 'Subscribe'}
+            <button type="submit" disabled={submitting} className="sk-btn-gold whitespace-nowrap !px-5 !rounded-full">
+              {submitting ? 'Please wait…' : subscribed ? (already ? 'Already subscribed' : 'Subscribed') : 'Subscribe'}
             </button>
+            {subError && <p className="w-full text-[12px] text-red-200">{subError}</p>}
+            {subscribed && !subError && (
+              <p className="w-full text-[12px] text-cream-200/80">
+                {already ? 'You’re already on the list.' : 'You’re subscribed. Welcome to Sukhmal.'}
+              </p>
+            )}
           </form>
         </div>
       </div>
@@ -78,17 +101,26 @@ export default function Footer() {
           <p className="text-sm text-cream-200/65 mt-4 max-w-xs leading-relaxed">
             Premium dry fruits, nuts & curated gift hampers — hand-picked and delivered across India since 1994.
           </p>
+          <address className="not-italic text-[12px] text-cream-200/70 mt-4 leading-relaxed">
+            {STORE_ADDRESS}
+            <div className="mt-1">
+              <a href={`tel:${STORE_PHONE_TEL}`} className="hover:text-white">{STORE_PHONE_DISPLAY}</a>
+              {' · '}
+              <a href={`mailto:${STORE_EMAIL}`} className="hover:text-white">{STORE_EMAIL}</a>
+            </div>
+          </address>
           <div className="flex items-center gap-2.5 mt-5">
             {[
               { Ic: Facebook, href: '#', label: 'Facebook' },
-              { Ic: Instagram, href: '#', label: 'Instagram' },
+              { Ic: Instagram, href: STORE_INSTAGRAM, label: 'Instagram', external: true },
               { Ic: Youtube, href: '#', label: 'YouTube' },
               { Ic: PinterestIcon, href: '#', label: 'Pinterest' },
-            ].map(({ Ic, href, label }) => (
+            ].map(({ Ic, href, label, external }) => (
               <a
                 key={label}
                 href={href}
                 aria-label={label}
+                {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
                 className="w-9 h-9 rounded-full border border-gold-500/40 text-gold-400 grid place-items-center hover:bg-white/10 hover:border-gold-400 transition-colors"
               >
                 <Ic size={14} />
@@ -113,7 +145,6 @@ export default function Footer() {
           { to: '/track-order', label: 'Track Order' },
           { to: '/store-locator', label: 'Store Locator' },
           { to: '/shipping-delivery', label: 'Shipping & Delivery' },
-          { to: '/returns-refunds', label: 'Returns & Refunds' },
           { to: '/faqs', label: 'FAQs' },
           { to: '/contact-us', label: 'Contact Us' },
         ])}
@@ -125,13 +156,11 @@ export default function Footer() {
             { to: '/wishlist', label: 'Wishlist' },
             { to: '/account/addresses', label: 'Addresses' },
             { to: '/account/loyalty', label: 'Loyalty Points' },
+            ...(isAdmin ? [{ to: '/admin', label: 'Owner Access' }] : []),
           ])}
           <div className="mt-8">
             {col('About Us', [
               { to: '/about-us', label: 'Our Story' },
-              { to: '/quality-purity', label: 'Quality & Purity' },
-              { to: '/blog', label: 'Blog' },
-              { to: '/careers', label: 'Careers' },
             ])}
           </div>
         </div>
@@ -178,7 +207,7 @@ export default function Footer() {
             {isAdmin ? (
               <>
                 <span className="opacity-40">|</span>
-                <Link to="/admin" className="hover:text-white">
+                <Link to="/admin" className="hover:text-white font-semibold text-gold-300">
                   Owner Access
                 </Link>
               </>

@@ -5,7 +5,8 @@ import ProductCard from '@/components/shared/ProductCard';
 import FlourishTitle from '@/components/home/FlourishTitle';
 import { HERO_IMG } from '@/data/homeBrand';
 import { useProducts, ProductSkeleton } from '@/lib/catalog';
-import { inr } from '@/lib/utils';
+import { getOrderById, mapOrderDoc } from '@/lib/orders';
+import { api } from '@/lib/api';
 import {
   MapPin,
   ArrowRight,
@@ -40,164 +41,6 @@ const STATUS_COPY = {
   shipped: 'Your hamper is on the move with our delivery partner.',
   ofd: 'Your hamper is carefully packed and on its way with premium handling.',
   delivered: 'Your gift has been delivered. We hope it brings a smile!',
-};
-
-/** Dummy public tracking records keyed by Order ID (case-insensitive). */
-const TRACK_DB = {
-  SKF458792: {
-    id: 'SKF458792',
-    placedOn: '18 May, 2025',
-    placedTime: '11:42 AM',
-    recipient: 'Monika Batra',
-    paymentStatus: 'Paid Successfully',
-    amount: 2204,
-    status: 'ofd',
-    stepTimes: {
-      confirmed: '18 May, 11:42 AM',
-      packed: '18 May, 01:15 PM',
-      shipped: '19 May, 09:30 AM',
-      ofd: '24 May, 07:30 AM',
-      delivered: null,
-    },
-    etaDate: '24 May, 2025',
-    etaTime: 'Before 8:00 PM',
-    onTime: true,
-    partner: {
-      name: 'Blue Dart Express',
-      tracking: 'BDS4792394',
-      support: '+91 1860 233 1234',
-      hours: 'Mon – Sat | 9 AM – 7 PM',
-    },
-    timeline: [
-      {
-        title: 'Out For Delivery',
-        at: '24 May, 07:30 AM',
-        text: 'Your order is out for delivery and will reach you soon.',
-        current: true,
-      },
-      {
-        title: 'Reached Local Delivery Hub',
-        at: '24 May, 05:15 AM',
-        text: 'Your order has reached the local delivery hub.',
-      },
-      {
-        title: 'Handed to Delivery Partner',
-        at: '23 May, 08:40 PM',
-        text: 'Your order has been picked up by our delivery partner.',
-      },
-      {
-        title: 'Shipped',
-        at: '19 May, 09:30 AM',
-        text: 'Your order is on its way to you.',
-      },
-      {
-        title: 'Package Packed',
-        at: '18 May, 01:15 PM',
-        text: 'We have packed your order with care.',
-      },
-      {
-        title: 'Order Confirmed',
-        at: '18 May, 11:42 AM',
-        text: 'Payment received — order confirmed.',
-      },
-    ],
-  },
-  SKF120045: {
-    id: 'SKF120045',
-    placedOn: '10 May, 2025',
-    placedTime: '04:20 PM',
-    recipient: 'Rahul Mehta',
-    paymentStatus: 'Paid Successfully',
-    amount: 1499,
-    status: 'shipped',
-    stepTimes: {
-      confirmed: '10 May, 04:20 PM',
-      packed: '11 May, 10:05 AM',
-      shipped: '11 May, 06:40 PM',
-      ofd: null,
-      delivered: null,
-    },
-    etaDate: '15 May, 2025',
-    etaTime: 'Before 9:00 PM',
-    onTime: true,
-    partner: {
-      name: 'Blue Dart Express',
-      tracking: 'BDX8812045',
-      support: '+91 1860 233 1234',
-      hours: 'Mon – Sat | 9 AM – 7 PM',
-    },
-    timeline: [
-      {
-        title: 'Shipped',
-        at: '11 May, 06:40 PM',
-        text: 'Your order is on its way to you.',
-        current: true,
-      },
-      {
-        title: 'Package Packed',
-        at: '11 May, 10:05 AM',
-        text: 'We have packed your order with care.',
-      },
-      {
-        title: 'Order Confirmed',
-        at: '10 May, 04:20 PM',
-        text: 'Payment received — order confirmed.',
-      },
-    ],
-  },
-  SKF998877: {
-    id: 'SKF998877',
-    placedOn: '02 May, 2025',
-    placedTime: '12:05 PM',
-    recipient: 'Priya Sharma',
-    paymentStatus: 'Paid Successfully',
-    amount: 3299,
-    status: 'delivered',
-    stepTimes: {
-      confirmed: '02 May, 12:05 PM',
-      packed: '02 May, 04:30 PM',
-      shipped: '03 May, 08:00 AM',
-      ofd: '05 May, 08:15 AM',
-      delivered: '05 May, 02:40 PM',
-    },
-    etaDate: '05 May, 2025',
-    etaTime: 'Delivered at 2:40 PM',
-    onTime: true,
-    partner: {
-      name: 'Blue Dart Express',
-      tracking: 'BDX9988771',
-      support: '+91 1860 233 1234',
-      hours: 'Mon – Sat | 9 AM – 7 PM',
-    },
-    timeline: [
-      {
-        title: 'Delivered',
-        at: '05 May, 02:40 PM',
-        text: 'Gift delivered successfully to the recipient.',
-        current: true,
-      },
-      {
-        title: 'Out For Delivery',
-        at: '05 May, 08:15 AM',
-        text: 'Your order is out for delivery and will reach you soon.',
-      },
-      {
-        title: 'Shipped',
-        at: '03 May, 08:00 AM',
-        text: 'Your order is on its way to you.',
-      },
-      {
-        title: 'Package Packed',
-        at: '02 May, 04:30 PM',
-        text: 'We have packed your order with care.',
-      },
-      {
-        title: 'Order Confirmed',
-        at: '02 May, 12:05 PM',
-        text: 'Payment received — order confirmed.',
-      },
-    ],
-  },
 };
 
 function LeafDecor({ className = '', flip = false }) {
@@ -248,20 +91,32 @@ function BlueDartMark() {
   );
 }
 
-function lookupOrder(raw) {
+async function lookupOrder(raw) {
   const key = String(raw || '')
     .trim()
     .toUpperCase()
     .replace(/\s+/g, '');
   if (!key) return { error: 'Please enter your Order ID.' };
-  const hit = TRACK_DB[key] || Object.values(TRACK_DB).find((o) => o.id.toUpperCase() === key);
-  if (!hit) {
+  try {
+    try {
+      const remote = await api.post('/track-order', { orderId: key });
+      if (remote.data?.data) {
+        const mapped = mapOrderDoc(remote.data.id || key, remote.data.data);
+        if (mapped?.track) return { data: mapped.track };
+      }
+    } catch {}
+    const hit = await getOrderById(key);
+    if (!hit) {
+      return {
+        error: 'We couldn’t find an order with that ID. Double-check the ID from your confirmation email.',
+      };
+    }
+    return { data: hit.track };
+  } catch {
     return {
-      error:
-        'We couldn’t find an order with that ID. Double-check the ID from your confirmation email, or try SKF458792.',
+      error: 'We couldn’t look up that order right now. Please try again in a moment.',
     };
   }
-  return { data: hit };
 }
 
 function Stepper({ result, compact = false }) {
@@ -512,8 +367,8 @@ export default function TrackOrder() {
   const [acc, setAcc] = useState('eta');
   const { data: PRODUCTS, loading } = useProducts({ bestseller: true, limit: 8 });
 
-  const runLookup = (value) => {
-    const { data, error: err } = lookupOrder(value);
+  const runLookup = async (value) => {
+    const { data, error: err } = await lookupOrder(value);
     setError(err || '');
     setResult(data || null);
     setTimelineOpen(true);
@@ -540,7 +395,7 @@ export default function TrackOrder() {
   return (
     <div className="bg-[var(--sk-cream-100)] pb-16 md:pb-20">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-cream-300/70 border-b border-line">
+      <section className="relative bg-cream-300/70 border-b border-line">
         <div className="sk-container pt-5 md:pt-6 relative z-[1]">
           <Breadcrumb
             items={[
@@ -550,7 +405,7 @@ export default function TrackOrder() {
           />
         </div>
 
-        <div className="sk-container relative pt-6 md:pt-10 pb-24 md:pb-28">
+        <div className="sk-container relative pt-6 md:pt-10 pb-8 md:pb-10">
           <LeafDecor className="pointer-events-none absolute left-0 md:left-2 top-8 w-16 md:w-24 text-[var(--sk-green-500)] opacity-70 hidden sm:block" />
           <LeafDecor
             flip
@@ -584,7 +439,7 @@ export default function TrackOrder() {
           {/* Lookup card — overlaps hero */}
           <form
             onSubmit={submit}
-            className="absolute left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 bottom-0 translate-y-1/2 w-auto md:w-[min(720px,92%)] z-10"
+            className="relative z-10 mt-8 md:mt-10 mx-auto w-full max-w-[720px]"
           >
             <div className="bg-white rounded-2xl border border-line shadow-sk-lg p-4 md:p-5">
               <div className="flex items-start gap-3 mb-3.5">
@@ -632,25 +487,10 @@ export default function TrackOrder() {
       </section>
 
       {/* Results */}
-      <div className="sk-container pt-20 md:pt-24 space-y-5 md:space-y-6">
+      <div className="sk-container pt-8 md:pt-10 space-y-5 md:space-y-6">
         {!result && !error && (
           <p className="text-center text-sm text-ink-500 max-w-lg mx-auto">
-            Try a sample ID:{' '}
-            {Object.keys(TRACK_DB).map((sample, i) => (
-              <React.Fragment key={sample}>
-                {i > 0 && <span className="text-ink-400"> · </span>}
-                <button
-                  type="button"
-                  className="font-mono font-semibold text-brand-900 underline-offset-2 hover:underline"
-                  onClick={() => {
-                    setId(sample);
-                    runLookup(sample);
-                  }}
-                >
-                  {sample}
-                </button>
-              </React.Fragment>
-            ))}
+            Enter the Order ID from your confirmation email or SMS to see live status.
           </p>
         )}
 

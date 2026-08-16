@@ -10,10 +10,12 @@ import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProduct, useProducts } from '@/lib/catalog';
+import { packVariants } from '@/lib/commerceStore';
 import Breadcrumb from '@/components/shared/Breadcrumb';
 import ProductCard from '@/components/shared/ProductCard';
 import { api } from '@/lib/api';
 import { CATEGORIES } from '@/data/mockCatalog';
+import { STORE_WHATSAPP } from '@/data/storeInfo';
 
 const TRUST = [
   { Ic: Leaf, l: '100% Natural', s: 'No Preservatives' },
@@ -116,6 +118,7 @@ function ProductGallery({ images, name, outOfStock }) {
   const thumbsRef = useRef(null);
 
   const go = useCallback((i) => {
+    if (!images.length) return;
     const next = ((i % images.length) + images.length) % images.length;
     setIdx(next);
     const track = trackRef.current;
@@ -125,7 +128,7 @@ function ProductGallery({ images, name, outOfStock }) {
     }
   }, [images.length]);
 
-  useEffect(() => { setIdx(0); }, [images]);
+  useEffect(() => { setIdx(0); }, [images.join('|')]);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -454,7 +457,8 @@ function RelatedCarousel({ items }) {
 export default function PDP() {
   const { slug } = useParams();
   const { data: p, loading } = useProduct(slug);
-  const [variant, setVariant] = useState(null);
+  const packs = packVariants(p || {});
+  const [variantW, setVariantW] = useState(null);
   const [qty, setQty] = useState(1);
   const [pincode, setPincode] = useState('');
   const [pincodeResult, setPincodeResult] = useState(null);
@@ -468,7 +472,7 @@ export default function PDP() {
   const { data: related = [] } = useProducts({ category: p?.category, limit: 10 });
 
   useEffect(() => {
-    setVariant(null);
+    setVariantW(null);
     setQty(1);
     setTab('description');
     setShowMsg(false);
@@ -478,8 +482,10 @@ export default function PDP() {
   }, [slug]);
 
   useEffect(() => {
-    if (p?.variants?.length && !variant) setVariant(pickDefaultVariant(p.variants));
-  }, [p, variant]);
+    if (!p) return;
+    const next = packVariants(p);
+    setVariantW((w) => (w && next.some((v) => v.w === w) ? w : (pickDefaultVariant(next)?.w || next[0]?.w || null)));
+  }, [p]);
 
   const checkPincode = async (e) => {
     e.preventDefault();
@@ -520,16 +526,25 @@ export default function PDP() {
     ];
   }, [p?.reviews]);
 
-  if (loading || !p) {
+  if (!p) {
+    if (loading) {
+      return (
+        <div className="sk-container py-24 text-center">
+          <Loader className="animate-spin mx-auto text-brand-900" size={36} />
+          <div className="mt-4 text-ink-500">Loading product…</div>
+        </div>
+      );
+    }
     return (
       <div className="sk-container py-24 text-center">
-        <Loader className="animate-spin mx-auto text-brand-900" size={36} />
-        <div className="mt-4 text-ink-500">Loading product…</div>
+        <div className="font-display text-2xl font-bold text-brand-900">Product not found</div>
+        <p className="text-ink-500 mt-2">This item may have been removed from the catalog.</p>
       </div>
     );
   }
 
-  const activeVariant = variant || { w: '250g', price: p.price };
+  const activeVariant = packs.find((v) => v.w === variantW) || packs[0] || { w: '250g', price: p.price };
+  const variantOos = typeof activeVariant.stock === 'number' ? activeVariant.stock <= 0 : p.stock === 0;
   const disc = p.mrp && p.mrp > activeVariant.price
     ? Math.round(((p.mrp - activeVariant.price) / p.mrp) * 100)
     : 0;
@@ -576,7 +591,7 @@ export default function PDP() {
         <ProductGallery
           images={images}
           name={p.name}
-          outOfStock={p.stock === 0}
+          outOfStock={variantOos}
         />
 
         <div className="flex flex-col">
@@ -621,13 +636,13 @@ export default function PDP() {
           <div className="mt-7">
             <div className="text-[13px] font-semibold text-brand-900 mb-2.5">Select Weight</div>
             <div className="flex flex-wrap gap-2">
-              {(p.variants || [{ w: '250g', price: p.price }]).map((v) => {
+              {packs.map((v) => {
                 const on = activeVariant.w === v.w;
                 return (
                   <button
                     key={v.w}
                     type="button"
-                    onClick={() => setVariant(v)}
+                    onClick={() => setVariantW(v.w)}
                     data-testid={`pdp-variant-${v.w}`}
                     className={`min-w-[4.5rem] px-3.5 py-2.5 rounded-lg border-2 text-sm font-medium transition ${
                       on
@@ -671,12 +686,12 @@ export default function PDP() {
             <button
               type="button"
               onClick={() => add(p, { qty, variant: activeVariant, giftMessage: msg || undefined })}
-              disabled={p.stock === 0}
+              disabled={variantOos}
               data-testid="pdp-add-cart"
               className="sk-btn-primary flex-1 !rounded-[10px] !py-3.5 !text-[15px] gap-2 disabled:opacity-50"
             >
               <ShoppingBag size={17} />
-              {p.stock === 0 ? 'Notify Me' : 'Add to Cart'}
+              {variantOos ? 'Notify Me' : 'Add to Cart'}
             </button>
             <button
               type="button"
@@ -750,7 +765,7 @@ export default function PDP() {
 
           {/* WhatsApp CTA */}
           <a
-            href={`https://wa.me/919876543210?text=${waText}`}
+            href={`https://wa.me/${STORE_WHATSAPP}?text=${waText}`}
             target="_blank"
             rel="noreferrer"
             className="mt-5 w-full inline-flex items-center justify-center gap-3 rounded-[12px] bg-[#25D366] hover:bg-[#1fb855] text-white font-semibold text-base py-4 px-5 shadow-sk-md transition"

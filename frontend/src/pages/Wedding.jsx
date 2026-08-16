@@ -1,11 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Award, ChevronLeft, ChevronRight, Gift, Heart, Instagram, MapPin, Maximize2,
-  MessageCircle, Package, Pause, Play, Send, ShieldCheck, Sparkles, Truck, Users, Volume2,
+  Award, ChevronLeft, ChevronRight, Gift, Heart, Instagram, MapPin,
+  MessageCircle, Package, Pause, Play, Send, ShieldCheck, Sparkles, Truck, Users,
 } from 'lucide-react';
 import FlourishTitle from '@/components/home/FlourishTitle';
-import { INSTAGRAM_POSTS, WEDDING_PROMO_IMG } from '@/data/mockContent';
+import BrandVideo from '@/components/media/BrandVideo';
+import { INSTAGRAM_POSTS, WEDDING_PROMO_IMG, WEDDING_VIDEO_SRC } from '@/data/homeBrand';
+import { STORE_INSTAGRAM, STORE_INSTAGRAM_HANDLE, STORE_WHATSAPP } from '@/data/storeInfo';
 import { api } from '@/lib/api';
+import { isValidEmail, isValidIndianPhone, stripHtml } from '@/lib/security';
 
 const BULK_GIFT_IMG = '/brand/wedding-bulk-gift.png';
 
@@ -36,13 +39,52 @@ export default function Wedding() {
   const [form, setForm] = useState({ name: '', phone: '', email: '', occasion: 'Wedding', qty: '', notes: '' });
   const [toast, setToast] = useState('');
   const [sent, setSent] = useState(false);
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(true);
+  const videoRef = useRef(null);
   const igRef = useRef(null);
+
+  const togglePlay = () => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (el.paused) {
+      el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
+  };
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return undefined;
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    setPlaying(!el.paused);
+    el.addEventListener('play', onPlay);
+    el.addEventListener('pause', onPause);
+    return () => {
+      el.removeEventListener('play', onPlay);
+      el.removeEventListener('pause', onPause);
+    };
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!stripHtml(form.name, 80) || !isValidIndianPhone(form.phone)) {
+      setToast('Please enter a valid name and Indian mobile number.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+    if (form.email && !isValidEmail(form.email)) {
+      setToast('Please enter a valid email address.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
     try {
-      await api.post('/enquiry/bulk', form);
+      await api.post('/enquiry/bulk', {
+        ...form,
+        name: stripHtml(form.name, 80),
+        notes: stripHtml(form.notes, 500),
+      });
     } catch {
       /* dummy OK */
     }
@@ -61,20 +103,29 @@ export default function Wedding() {
 
   return (
     <div className="bg-[var(--sk-cream-100)]">
-      {/* Hero — full-bleed lifestyle + video chrome */}
-      <section className="relative overflow-hidden min-h-[72vh] md:min-h-[82vh] flex items-end md:items-center">
-        <div className="absolute inset-0">
-          <img
-            src={WEDDING_PROMO_IMG}
-            alt="Sukhmal wedding gift hamper"
-            className="w-full h-full object-cover object-center scale-[1.02]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1a120e]/92 via-[#2a1a12]/72 to-[#3C2415]/28" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1a120e]/55 via-transparent to-[#1a120e]/25" />
-        </div>
+      <section className="relative w-full min-h-[80vh] overflow-hidden flex items-center bg-black">
+        <BrandVideo
+          ref={videoRef}
+          src={WEDDING_VIDEO_SRC}
+          poster={WEDDING_PROMO_IMG}
+          fallback={WEDDING_PROMO_IMG}
+          fit="cover"
+          position="center center"
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          showToggle
+          toggleClassName="bottom-6 right-6 z-30"
+        />
+        <div
+          className="absolute inset-0 z-10 pointer-events-none"
+          aria-hidden
+          style={{
+            background:
+              'linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.22) 42%, rgba(0,0,0,0.08) 100%)',
+          }}
+        />
 
-        <div className="relative sk-container w-full pt-16 pb-20 md:py-24">
-          <div className="max-w-xl text-white">
+        <div className="relative z-20 w-full sk-container py-16 md:py-20">
+          <div className="relative z-20 max-w-xl p-8 rounded-2xl bg-black/50 backdrop-blur-md border border-white/10 text-white">
             <p className="font-display italic text-[var(--sk-gold-300)] text-xl md:text-2xl tracking-wide">
               Celebrate Love with
             </p>
@@ -86,7 +137,7 @@ export default function Wedding() {
               Premium dry fruits & handcrafted hampers that make every celebration unforgettable.
             </p>
 
-            <div className="mt-7 grid grid-cols-2 gap-x-5 gap-y-4 max-w-lg">
+            <div className="mt-7 grid grid-cols-2 gap-x-5 gap-y-4">
               {HERO_ICONS.map(({ Ic, label, sub }) => (
                 <div key={label} className="flex items-start gap-2.5">
                   <Ic size={18} strokeWidth={1.5} className="text-white/95 mt-0.5 shrink-0" />
@@ -103,11 +154,11 @@ export default function Wedding() {
                 href="#bulk"
                 className="inline-flex items-center gap-2 bg-white text-brand-900 font-semibold px-6 py-3 rounded-full hover:bg-cream-200 transition shadow-sk-sm"
               >
-                Explore Wedding Hampers →
+                Explore Wedding Gifts →
               </a>
               <button
                 type="button"
-                onClick={() => setPlaying((p) => !p)}
+                onClick={togglePlay}
                 className="inline-flex items-center gap-2.5 text-white/90 text-sm hover:text-white transition"
               >
                 <span className="h-10 w-10 rounded-full border border-white/45 grid place-items-center bg-white/5 backdrop-blur-sm">
@@ -118,30 +169,10 @@ export default function Wedding() {
             </div>
           </div>
         </div>
-
-        {/* Video chrome bar */}
-        <div className="absolute inset-x-0 bottom-0 px-4 md:px-8 pb-3">
-          <div className="max-w-5xl mx-auto">
-            <div className="h-[3px] rounded-full bg-white/25 overflow-hidden">
-              <div
-                className="h-full bg-[var(--sk-gold-400)] transition-all duration-500"
-                style={{ width: playing ? '45%' : '18%' }}
-              />
-            </div>
-            <div className="flex items-center gap-3 mt-1.5 text-white/80 text-[11px]">
-              <button type="button" onClick={() => setPlaying((p) => !p)} className="hover:text-white" aria-label="Play">
-                {playing ? <Pause size={12} /> : <Play size={12} />}
-              </button>
-              <Volume2 size={12} />
-              <span className="tabular-nums">{playing ? '0:14' : '0:08'} / 0:30</span>
-              <span className="ml-auto"><Maximize2 size={12} /></span>
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* Why Sukhmal — rounded white panel overlapping hero */}
-      <div className="relative -mt-6 md:-mt-10 z-10">
+      <div className="relative z-10">
         <div className="sk-container">
           <div className="bg-white rounded-t-[28px] md:rounded-t-[40px] rounded-b-2xl shadow-sk-md px-4 md:px-10 pt-10 md:pt-14 pb-10 md:pb-12">
             <FlourishTitle title="Why Sukhmal Wedding Gifts?" className="!mb-8 md:!mb-10" />
@@ -182,7 +213,7 @@ export default function Wedding() {
               </ul>
               <div className="mt-6 flex flex-wrap gap-3">
                 <a
-                  href="https://wa.me/919876543210?text=Hi%20Sukhmal%2C%20I%27d%20like%20a%20wedding%20bulk%20quote"
+                  href={`https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent("Hi Sukhmal, I'd like a wedding bulk quote")}`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 bg-[#25D366] text-white font-semibold px-4 py-2.5 rounded-lg text-sm hover:opacity-95 shadow-sk-sm"
@@ -190,7 +221,7 @@ export default function Wedding() {
                   <MessageCircle size={16} /> Chat on WhatsApp
                 </a>
                 <a
-                  href="https://instagram.com"
+                  href={STORE_INSTAGRAM}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 bg-white border border-[var(--sk-gold-500)] text-brand-900 font-semibold px-4 py-2.5 rounded-lg text-sm hover:bg-cream-200"
@@ -253,9 +284,14 @@ export default function Wedding() {
           <FlourishTitle title="Find Inspiration" className="!mb-3" />
           <p className="text-ink-600 text-sm inline-flex flex-wrap items-center justify-center gap-2">
             Follow us on Instagram for more gifting ideas
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#F3E5D7] text-[#C45C26] font-semibold text-[13px]">
-              @sukhmaldryfruits
-            </span>
+            <a
+              href={STORE_INSTAGRAM}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center px-3 py-1 rounded-full bg-[#F3E5D7] text-[#C45C26] font-semibold text-[13px] hover:opacity-90"
+            >
+              {STORE_INSTAGRAM_HANDLE}
+            </a>
           </p>
         </div>
 
@@ -281,7 +317,7 @@ export default function Wedding() {
             {(INSTAGRAM_POSTS || []).slice(0, 5).map((src, i) => (
               <a
                 key={i}
-                href="https://instagram.com"
+                href={STORE_INSTAGRAM}
                 target="_blank"
                 rel="noreferrer"
                 className="shrink-0 w-44 h-44 md:w-52 md:h-52 rounded-xl overflow-hidden shadow-sk-sm"
@@ -290,7 +326,7 @@ export default function Wedding() {
               </a>
             ))}
             <a
-              href="https://instagram.com"
+              href={STORE_INSTAGRAM}
               target="_blank"
               rel="noreferrer"
               className="shrink-0 w-44 h-44 md:w-52 md:h-52 rounded-xl bg-white border border-line shadow-sk-sm grid place-items-center text-center p-5 hover:border-brand-900 transition"

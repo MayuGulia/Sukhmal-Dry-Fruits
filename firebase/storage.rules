@@ -1,9 +1,31 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.admin == true
+        || request.auth.token.email == 'sukhmaldryfruitskorner2@gmail.com'
+      );
+    }
+    function isImage() {
+      return request.resource.contentType.matches('image/jpeg')
+        || request.resource.contentType.matches('image/png')
+        || request.resource.contentType.matches('image/webp');
+    }
+    function underLimit() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
     match /products/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if isAdmin() && isImage() && underLimit();
+    }
+    match /reviews/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && isImage()
+        && underLimit();
     }
     match /hamperPreviews/{allPaths=**} {
       allow read: if true;

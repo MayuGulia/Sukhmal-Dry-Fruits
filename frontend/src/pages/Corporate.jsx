@@ -6,7 +6,9 @@ import {
 import { useHampers, HamperSkeleton } from '@/lib/catalog';
 import { PremiumHamperCard } from '@/pages/GiftHampers';
 import { CORP_PROMO_IMG } from '@/data/mockContent';
+import { STORE_WHATSAPP } from '@/data/storeInfo';
 import { api } from '@/lib/api';
+import { isValidEmail, isValidIndianPhone, stripHtml } from '@/lib/security';
 
 const PILLARS = [
   { Ic: Briefcase, t: 'Custom Branding', s: 'Logo, cards, ribbons & sleeves for your brand' },
@@ -25,8 +27,23 @@ export default function Corporate() {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!stripHtml(form.name, 80) || !isValidIndianPhone(form.phone)) {
+      setToast('Please enter a valid name and Indian mobile number.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
+    if (form.email && !isValidEmail(form.email)) {
+      setToast('Please enter a valid email address.');
+      setTimeout(() => setToast(''), 3500);
+      return;
+    }
     try {
-      await api.post('/enquiry/bulk', { ...form, occasion: 'Corporate' });
+      await api.post('/enquiry/bulk', {
+        ...form,
+        name: stripHtml(form.name, 80),
+        notes: stripHtml(form.notes, 500),
+        occasion: 'Corporate',
+      });
     } catch {
       /* dummy OK */
     }
@@ -62,7 +79,7 @@ export default function Corporate() {
               <Send size={16} /> Request a Proposal
             </a>
             <a
-              href="https://wa.me/919876543210?text=Hi%20Sukhmal%2C%20corporate%20gifting%20enquiry"
+              href={`https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent('Hi Sukhmal, corporate gifting enquiry')}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 border border-white/40 text-white font-semibold px-4 py-2.5 rounded-full text-sm hover:bg-white/10"

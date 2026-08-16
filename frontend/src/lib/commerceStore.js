@@ -8,6 +8,10 @@ const LS = 'sk_commerce_v1';
 const EVT = 'sk-catalog-updated';
 const PREVIEW_TTL_MS = 5 * 60 * 1000;
 
+export function normalizeProduct(p) {
+  return hydrateProduct(p);
+}
+
 function startOfDay(d = new Date()) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -21,128 +25,38 @@ function iso(d) {
 }
 
 function hydrateProduct(p) {
-  const variants = (p.variants?.length ? p.variants : [{ w: p.weight || '250g', price: p.price }]).map((v) => ({
+  const fromLive = (p.weightVariants || []).map((v) => ({
+    weight: v.weight || v.w,
+    price: v.price,
+    stock: typeof v.stock === 'number' ? v.stock : 20,
+    sku: v.sku || `${p.sku || p.id}-${v.weight || v.w || 'std'}`,
+  }));
+  const fromStatic = (p.variants?.length ? p.variants : [{ w: p.weight || '250g', price: p.price }]).map((v) => ({
     weight: v.w || v.weight,
     price: v.price,
     stock: typeof v.stock === 'number' ? v.stock : 20,
     sku: v.sku || `${p.sku || p.id}-${v.w || v.weight || 'std'}`,
   }));
+  const variants = fromLive.length ? fromLive : fromStatic;
   return {
     ...p,
     weightVariants: variants,
+    variants: variants.map((v) => ({ w: v.weight, price: v.price, stock: v.stock })),
     isActive: p.isActive !== false,
     isDeleted: Boolean(p.isDeleted),
     isBestseller: Boolean(p.bestseller || p.isBestseller),
   };
 }
 
+const DEMO_ORDER_IDS = new Set(['8a97e087', 'b2c19f44', 'c7e4a901', 'd11ab672', 'e90c33da', 'f44de218']);
+
 function seedOrders() {
-  const today = new Date();
-  const earlier = new Date(today);
-  earlier.setDate(Math.max(1, today.getDate() - 8));
-  const t = (h, m) => {
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    return d.toISOString();
-  };
-  return [
-    {
-      orderId: '8a97e087',
-      recipientName: 'Priya Sharma',
-      recipientPhone: '+91 98765 43210',
-      paymentMethod: 'razorpay',
-      paymentStatus: 'paid',
-      orderStatus: 'confirmed',
-      total: 8830,
-      subtotal: 7990,
-      deliveryCharge: 0,
-      gst: 840,
-      items: [],
-      createdAt: t(10, 15),
-      updatedAt: t(10, 15),
-      statusHistory: [{ status: 'confirmed', at: t(10, 15), byAdmin: false }],
-    },
-    {
-      orderId: 'b2c19f44',
-      recipientName: 'Arjun Mehta',
-      recipientPhone: '+91 98100 22119',
-      paymentMethod: 'cod',
-      paymentStatus: 'pending',
-      orderStatus: 'pending_cod',
-      total: 2499,
-      subtotal: 2299,
-      deliveryCharge: 79,
-      gst: 121,
-      items: [],
-      createdAt: t(9, 40),
-      updatedAt: t(9, 40),
-      statusHistory: [{ status: 'pending_cod', at: t(9, 40), byAdmin: false }],
-    },
-    {
-      orderId: 'c7e4a901',
-      recipientName: 'Nikita Verma',
-      recipientPhone: '+91 99001 44521',
-      paymentMethod: 'whatsapp',
-      paymentStatus: 'paid',
-      orderStatus: 'in_preparation',
-      total: 3299,
-      subtotal: 3142,
-      deliveryCharge: 0,
-      gst: 157,
-      items: [],
-      createdAt: t(8, 5),
-      updatedAt: t(8, 20),
-      statusHistory: [{ status: 'confirmed', at: t(8, 5), byAdmin: true }, { status: 'in_preparation', at: t(8, 20), byAdmin: true }],
-    },
-    {
-      orderId: 'd11ab672',
-      recipientName: 'Rakesh Iyer',
-      recipientPhone: '+91 97654 11880',
-      paymentMethod: 'razorpay',
-      paymentStatus: 'pending',
-      orderStatus: 'pending',
-      total: 1499,
-      subtotal: 1428,
-      deliveryCharge: 0,
-      gst: 71,
-      items: [],
-      createdAt: t(7, 50),
-      updatedAt: t(7, 50),
-      statusHistory: [{ status: 'pending', at: t(7, 50), byAdmin: false }],
-    },
-    {
-      orderId: 'e90c33da',
-      recipientName: 'Sanya Kapoor',
-      recipientPhone: '+91 98200 77654',
-      paymentMethod: 'razorpay',
-      paymentStatus: 'paid',
-      orderStatus: 'confirmed',
-      total: 1099,
-      subtotal: 1047,
-      deliveryCharge: 0,
-      gst: 52,
-      items: [],
-      createdAt: t(11, 2),
-      updatedAt: t(11, 2),
-      statusHistory: [{ status: 'confirmed', at: t(11, 2), byAdmin: false }],
-    },
-    {
-      orderId: 'f44de218',
-      recipientName: 'Monika Batra',
-      recipientPhone: '+91 98111 00022',
-      paymentMethod: 'razorpay',
-      paymentStatus: 'paid',
-      orderStatus: 'delivered',
-      total: 13992,
-      subtotal: 13326,
-      deliveryCharge: 0,
-      gst: 666,
-      items: [],
-      createdAt: iso(earlier),
-      updatedAt: iso(earlier),
-      statusHistory: [{ status: 'delivered', at: iso(earlier), byAdmin: true }],
-    },
-  ];
+  return [];
+}
+
+function stripDemoOrders(orders) {
+  if (!Array.isArray(orders)) return [];
+  return orders.filter((o) => o && !DEMO_ORDER_IDS.has(o.orderId));
 }
 
 function defaultState() {
@@ -156,13 +70,34 @@ function defaultState() {
   };
 }
 
+function mergeCatalogAssets(products) {
+  const byId = new Map(MOCK_PRODUCTS.map((p) => [p.id, p]));
+  const bySlug = new Map(MOCK_PRODUCTS.map((p) => [p.slug, p]));
+  return (products || []).map((p) => {
+    const src = byId.get(p.id) || bySlug.get(p.slug);
+    if (!src?.images?.length) return p;
+    const have = new Set(p.images || []);
+    const missing = src.images.filter((im) => !have.has(im));
+    const images = missing.length || JSON.stringify(p.images) !== JSON.stringify(src.images)
+      ? src.images
+      : p.images;
+    if (images === p.images) return p;
+    return { ...p, images };
+  });
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(LS);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed.products) || !parsed.products.length) return defaultState();
-    return { ...defaultState(), ...parsed };
+    const products = mergeCatalogAssets(parsed.products).map(hydrateProduct);
+    const next = { ...defaultState(), ...parsed, products, orders: stripDemoOrders(parsed.orders) };
+    if ((parsed.orders || []).length !== next.orders.length) {
+      try { localStorage.setItem(LS, JSON.stringify(next)); } catch {}
+    }
+    return next;
   } catch {
     return defaultState();
   }
@@ -262,7 +197,7 @@ export function listOrders({ status = 'all', from, to } = {}) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-export function updateOrderStatus(orderId, newStatus, adminEmail = 'monikabatra890@gmail.com') {
+export function updateOrderStatus(orderId, newStatus, adminEmail = 'sukhmaldryfruitskorner2@gmail.com') {
   const state = load();
   const idx = state.orders.findIndex((o) => o.orderId === orderId || `#${o.orderId}` === orderId);
   if (idx < 0) throw new Error('Order not found');
@@ -290,7 +225,7 @@ export function updateOrderStatus(orderId, newStatus, adminEmail = 'monikabatra8
   return next;
 }
 
-export function createManualOrder(payload, adminEmail = 'monikabatra890@gmail.com') {
+export function createManualOrder(payload, adminEmail = 'sukhmaldryfruitskorner2@gmail.com') {
   const state = load();
   const orderId = Math.random().toString(16).slice(2, 10);
   const order = {
@@ -416,6 +351,85 @@ export function searchAll(q, limit = 5) {
   return { orders, products, customers: customers.slice(0, limit) };
 }
 
+export function weightsEqual(a, b) {
+  const na = String(a || '').replace(/\s+/g, '').toLowerCase();
+  const nb = String(b || '').replace(/\s+/g, '').toLowerCase();
+  return Boolean(na) && na === nb;
+}
+
+/** Storefront + admin chips: prefer live weightVariants over static catalog variants. */
+export function packVariants(p) {
+  if (p?.weightVariants?.length) {
+    return p.weightVariants.map((v) => ({
+      w: v.weight,
+      price: v.price,
+      stock: v.stock,
+    }));
+  }
+  if (p?.variants?.length) return p.variants;
+  return [{ w: p?.weight || '250g', price: p?.price, stock: p?.stock }];
+}
+
+export function patchProductWithChanges(product, changes) {
+  const next = {
+    ...product,
+    weightVariants: (product.weightVariants || []).map((v) => ({ ...v })),
+  };
+  const variantOf = (change) => change.weight || change.variant || null;
+
+  for (const change of changes || []) {
+    if (change.noop) continue;
+    const field = change.field;
+    const val = change.after ?? change.newValue;
+    const weight = variantOf(change);
+    const match = (v) => !weight || weightsEqual(v.weight, weight);
+
+    if (field === 'inStock') {
+      const want = Boolean(val);
+      next.weightVariants = next.weightVariants.map((v) => (
+        match(v) ? { ...v, stock: want ? Math.max(Number(v.stock) || 0, 20) : 0 } : v
+      ));
+    } else if (field === 'stock') {
+      const n = Number(val);
+      next.weightVariants = next.weightVariants.map((v) => (match(v) ? { ...v, stock: n } : v));
+    } else if (field === 'price') {
+      const n = Number(val);
+      next.weightVariants = next.weightVariants.map((v) => (match(v) ? { ...v, price: n } : v));
+      if (!weight) next.price = n;
+      else {
+        const first = next.weightVariants[0];
+        if (first && weightsEqual(first.weight, weight)) next.price = n;
+      }
+    } else if (field === 'isActive') {
+      next.isActive = Boolean(val);
+    } else if (field === 'isDeleted') {
+      next.isDeleted = Boolean(val);
+      if (next.isDeleted) next.isActive = false;
+    } else if (field === 'isBestseller') {
+      next.isBestseller = Boolean(val);
+      next.bestseller = Boolean(val);
+    }
+  }
+
+  next.updatedAt = iso(new Date());
+  if (next.weightVariants?.length && next.variants) {
+    next.variants = next.weightVariants.map((v) => ({ w: v.weight, price: v.price, stock: v.stock }));
+  }
+  return next;
+}
+
+export function replaceProductsFromRemote(rows) {
+  if (!Array.isArray(rows) || !rows.length) return;
+  const state = load();
+  const prevById = new Map(state.products.map((p) => [p.id, p]));
+  const prevBySlug = new Map(state.products.map((p) => [p.slug, p]));
+  state.products = rows.map((row) => {
+    const prev = prevById.get(row.id) || prevBySlug.get(row.slug) || {};
+    return hydrateProduct({ ...prev, ...row });
+  });
+  save(state);
+}
+
 export function compactInventoryCatalog(products) {
   return (products || []).map((p) => {
     const variants = p.weightVariants || [];
@@ -440,44 +454,15 @@ export function compactInventoryCatalog(products) {
   });
 }
 
-export function applyFieldChange(change, adminEmail = 'monikabatra890@gmail.com', existingState) {
+export function applyFieldChange(change, adminEmail = 'sukhmaldryfruitskorner2@gmail.com', existingState) {
   const persist = !existingState;
   const state = existingState || load();
   const p = state.products.find((x) => x.id === change.productId || x.slug === change.slug);
   if (!p) throw new Error(`Product missing: ${change.productName || change.productId}`);
   const field = change.field;
   const next = change.after ?? change.newValue;
-
-  if (field === 'inStock') {
-    const want = Boolean(next);
-    p.weightVariants = (p.weightVariants || []).map((v) => ({
-      ...v,
-      stock: want ? Math.max(v.stock || 0, 20) : 0,
-    }));
-  } else if (field === 'stock') {
-    const n = Number(next);
-    p.weightVariants = (p.weightVariants || []).map((v) => {
-      if (change.weight && v.weight !== change.weight) return v;
-      return { ...v, stock: n };
-    });
-  } else if (field === 'price') {
-    const n = Number(next);
-    p.price = n;
-    p.weightVariants = (p.weightVariants || []).map((v) => {
-      if (change.weight && v.weight !== change.weight) return v;
-      return { ...v, price: n };
-    });
-  } else if (field === 'isActive') {
-    p.isActive = Boolean(next);
-  } else if (field === 'isDeleted') {
-    p.isDeleted = Boolean(next);
-    if (p.isDeleted) p.isActive = false;
-  } else if (field === 'isBestseller') {
-    p.isBestseller = Boolean(next);
-    p.bestseller = Boolean(next);
-  } else {
-    throw new Error(`Unsupported field: ${field}`);
-  }
+  const patched = patchProductWithChanges(p, [change]);
+  Object.assign(p, patched);
 
   state.audit.unshift({
     adminEmail,
@@ -491,6 +476,15 @@ export function applyFieldChange(change, adminEmail = 'monikabatra890@gmail.com'
   });
   if (persist) save(state);
   return p;
+}
+
+export function updatePreviewChanges(previewId, changes) {
+  const state = load();
+  const preview = state.previews[previewId];
+  if (!preview) throw new Error('Preview not found');
+  preview.changes = changes;
+  save(state);
+  return preview;
 }
 
 export function savePreview({ command, changes, adminEmail }) {
@@ -508,7 +502,7 @@ export function savePreview({ command, changes, adminEmail }) {
   return state.previews[previewId];
 }
 
-export function applyPreview(previewId, adminEmail = 'monikabatra890@gmail.com') {
+export function applyPreview(previewId, adminEmail = 'sukhmaldryfruitskorner2@gmail.com') {
   const state = load();
   const preview = state.previews[previewId];
   if (!preview) throw new Error('Preview not found');

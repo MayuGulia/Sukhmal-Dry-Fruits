@@ -24,12 +24,13 @@ import Wishlist from '@/pages/Wishlist';
 import AuthPage from '@/pages/AuthPage';
 import About from '@/pages/About';
 import Contact from '@/pages/Contact';
-import { StoreLocator, PolicyPage, Blog, BlogArticle, Careers, FAQs, NotFound } from '@/pages/ContentPages';
+import { StoreLocator, PolicyPage, FAQs, NotFound } from '@/pages/ContentPages';
 import { AccountLayout, Dashboard as AccountDashboard, MyOrders, OrderDetail, ReturnOrder, Addresses, PaymentMethods, Loyalty, ProfileSettings } from '@/pages/account/Account';
 import { AdminLayout, AdminDashboard } from '@/pages/admin/Admin';
 import { AdminProducts, AdminOrders, AdminInventory, AdminPayments, AdminSettings } from '@/pages/admin/AdminPages';
-import { RequireAuth, PublicOnly } from '@/components/auth/AuthGate';
+import { RequireAuth, RequireAdmin, PublicOnly } from '@/components/auth/AuthGate';
 
+import { Toaster } from 'sonner';
 import './App.css';
 
 // Scroll-to-top on route change
@@ -56,7 +57,7 @@ export default function App() {
                 <Route path="/signup" element={<PublicOnly><AuthPage mode="signup" /></PublicOnly>} />
                 <Route path="/forgot-password" element={<PublicOnly><AuthPage mode="forgot" /></PublicOnly>} />
 
-                <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
+                <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="products" element={<AdminProducts />} />
                   <Route path="orders" element={<AdminOrders />} />
@@ -68,9 +69,10 @@ export default function App() {
                   <Route path="offers" element={<Navigate to="/admin/settings" replace />} />
                 </Route>
 
-                <Route path="*" element={<RequireAuth><Shell><CustomerRoutes /></Shell></RequireAuth>} />
+                <Route path="*" element={<Shell><CustomerRoutes /></Shell>} />
               </Routes>
             </BrowserRouter>
+            <Toaster position="top-center" richColors />
           </CartProvider>
         </WishlistProvider>
       </AuthProvider>
@@ -99,7 +101,7 @@ function CustomerRoutes() {
 
       {/* Cart / Checkout */}
       <Route path="/cart" element={<Cart />} />
-      <Route path="/checkout" element={<Checkout />} />
+      <Route path="/checkout" element={<RequireAuth><Checkout /></RequireAuth>} />
       <Route path="/order-success/:orderId" element={<OrderSuccess />} />
       <Route path="/order-failed/:orderId" element={<OrderFailed />} />
       <Route path="/track-order" element={<TrackOrder />} />
@@ -111,7 +113,7 @@ function CustomerRoutes() {
       <Route path="/verify-otp" element={<Navigate to="/login" replace />} />
 
       {/* Account */}
-      <Route path="/account" element={<AccountLayout />}>
+      <Route path="/account" element={<RequireAuth><AccountLayout /></RequireAuth>}>
         <Route index element={<AccountDashboard />} />
         <Route path="orders" element={<MyOrders />} />
         <Route path="orders/:orderId" element={<OrderDetail />} />
@@ -127,14 +129,15 @@ function CustomerRoutes() {
       <Route path="/about-us" element={<About />} />
       <Route path="/contact-us" element={<Contact />} />
       <Route path="/store-locator" element={<StoreLocator />} />
-      <Route path="/blog" element={<Blog />} />
-      <Route path="/blog/:slug" element={<BlogArticle />} />
-      <Route path="/careers" element={<Careers />} />
       <Route path="/faqs" element={<FAQs />} />
       <Route path="/shipping-delivery" element={<PolicyPage pageKey="shipping-delivery" />} />
-      <Route path="/returns-refunds" element={<PolicyPage pageKey="returns-refunds" />} />
       <Route path="/privacy-policy" element={<PolicyPage pageKey="privacy-policy" />} />
       <Route path="/terms-conditions" element={<PolicyPage pageKey="terms-conditions" />} />
+      <Route path="/quality-purity" element={<Navigate to="/about-us" replace />} />
+      <Route path="/blog" element={<Navigate to="/" replace />} />
+      <Route path="/blog/:slug" element={<Navigate to="/" replace />} />
+      <Route path="/careers" element={<Navigate to="/about-us" replace />} />
+      <Route path="/returns-refunds" element={<Navigate to="/terms-conditions" replace />} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>

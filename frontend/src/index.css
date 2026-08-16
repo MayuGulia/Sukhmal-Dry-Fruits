@@ -146,11 +146,36 @@ html, body, #root {
 
 /* Input */
 .sk-input {
-  width: 100%; padding: .7rem 1rem; border-radius: 10px;
+  width: 100%; padding: .75rem 1rem; border-radius: 10px;
   border: 1.5px solid var(--sk-line-strong); background: #fff; color: var(--sk-ink-800);
   font-size: .95rem; transition: border-color .15s;
 }
 .sk-input:focus { outline: none; border-color: var(--sk-brown-900); box-shadow: 0 0 0 3px rgba(60,36,21,.08); }
+.sk-input.has-leading-icon { padding-left: 2.75rem; }
+.sk-input.has-trailing-icon { padding-right: 2.75rem; }
+.sk-field-icon {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2.75rem;
+  display: grid;
+  place-items: center;
+  color: var(--sk-ink-400);
+  pointer-events: none;
+  z-index: 1;
+}
+.sk-field-icon-right {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 2.75rem;
+  display: grid;
+  place-items: center;
+  color: var(--sk-ink-400);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.sk-field-icon-right:hover { color: var(--sk-brown-900); }
 
 /* Scrollers */
 .sk-scroll-x {
@@ -192,5 +217,57 @@ html, body, #root {
 }
 .home-fade-up { animation: home-fade-up .7s cubic-bezier(.22,1,.36,1) both; }
 .home-page img { -webkit-user-drag: none; }
+
+/* Hero video — GPU layer + slight punch so 1080p fills look sharper */
+.sk-hero-video {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Dual price-range thumbs — track is click-through, only knobs capture */
+.sk-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+}
+.sk-range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+.sk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid var(--sk-star);
+  box-shadow: 0 1px 4px rgba(31, 22, 16, 0.2);
+  cursor: grab;
+}
+.sk-range::-moz-range-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+.sk-range::-moz-range-thumb {
+  pointer-events: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid var(--sk-star);
+  box-shadow: 0 1px 4px rgba(31, 22, 16, 0.2);
+  cursor: grab;
+}
 
 /* Table (nutritional info): stack on mobile via <div>-based rows */

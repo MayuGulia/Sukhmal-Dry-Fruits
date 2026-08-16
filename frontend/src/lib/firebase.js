@@ -4,13 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || 'AIzaSyA8869V39QQkcIvrYcD40_c14NumVZJcLo',
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || 'sukhmal-website.firebaseapp.com',
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || 'sukhmal-website',
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || 'sukhmal-website.firebasestorage.app',
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || '1035357939609',
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || '1:1035357939609:web:6eaa71a0cda3479a0b1508',
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || 'G-9J8GX6MNN4',
 };
 
 export const FIREBASE_ENABLED = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);

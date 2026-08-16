@@ -2,14 +2,14 @@ import React from 'react';
 import { Leaf } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export const SUKHMAL_LOGO_SRC = '/brand/sukhmal-logo.png';
+export const SUKHMAL_LOGO_SRC = '/brand/sukhmal-logo.png?v=tight-crop';
 
 /** Official circular Sukhmal Dry Fruits Korner seal. */
 export default function BrandSeal({ size = 68, className = '' }) {
   return (
     <span
       className={`relative inline-block shrink-0 overflow-hidden rounded-full bg-black ring-1 ring-[#C5A059]/55 shadow-[0_2px_10px_rgba(31,22,16,0.22)] ${className}`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden' }}
     >
       <img
         src={SUKHMAL_LOGO_SRC}
@@ -17,7 +17,8 @@ export default function BrandSeal({ size = 68, className = '' }) {
         width={size}
         height={size}
         draggable="false"
-        className="absolute inset-0 h-full w-full object-cover scale-[1.22] origin-center"
+        className="block h-full w-full object-cover"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', margin: 0, padding: 0 }}
       />
     </span>
   );

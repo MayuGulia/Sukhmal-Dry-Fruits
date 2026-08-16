@@ -6,7 +6,7 @@ const img = (id) => `https://images.unsplash.com/${id}?w=800&auto=format&fit=cro
 export const FAQS = [
   { q: 'How fresh are your dry fruits?', a: 'All our products are hand-picked and vacuum-packed within 72 hours of arrival at our facility. Every batch is quality-tested for moisture and aflatoxin levels.' },
   { q: 'Do you ship pan-India?', a: 'Yes! We deliver to 20,000+ pincodes across India. Metro cities usually receive orders in 2–3 business days.' },
-  { q: 'What is your return policy?', a: 'If you receive a damaged or unsatisfactory product, we offer a 100% refund or free replacement within 7 days of delivery. Just email support@sukhmal.in with your order ID.' },
+  { q: 'What is your return policy?', a: 'If you receive a damaged or unsatisfactory product, we offer a 100% refund or free replacement within 7 days of delivery. Just email info@sukhmaldryfruits.com with your order ID.' },
   { q: 'How do I customize a gift hamper?', a: 'Use our \u201cBuild Your Own Hamper\u201d wizard — pick your budget, container, products, gift card & personalized message.' },
   { q: 'Do you take corporate/bulk orders?', a: 'Absolutely. Fill out the Wedding/Corporate inquiry form or WhatsApp us. Bulk pricing kicks in from 25+ hampers with GST invoicing.' },
   { q: 'What payment methods do you accept?', a: 'UPI, Credit/Debit Cards, Net Banking, Wallets, and Cash on Delivery (for select pincodes).' },
@@ -37,9 +37,7 @@ export const BLOG_POSTS = [
 ];
 
 export const STORES = [
-  { name: 'Sukhmal Flagship — Chandni Chowk', address: '145, Katra Neel, Chandni Chowk, New Delhi – 110006', phone: '+91 98765 43210', hours: 'Mon–Sat: 10:00 AM – 8:00 PM', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3502.0!2d77.2299!3d28.6562!2m3!1f0!2f0!3f0' },
-  { name: 'Sukhmal Gurugram',                  address: 'DLF Cyber Hub, Level 2, Shop 34, Gurugram – 122002',      phone: '+91 98765 43211', hours: 'Mon–Sun: 11:00 AM – 9:00 PM', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3506.0!2d77.0888!3d28.4949' },
-  { name: 'Sukhmal Mumbai',                    address: 'Palladium Mall, Ground Floor, Lower Parel, Mumbai – 400013', phone: '+91 98765 43212', hours: 'Mon–Sun: 11:00 AM – 9:00 PM', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3771.0!2d72.8291!3d18.9946' },
+  { name: 'Sukhmal Dry Fruits Korner', address: 'Ground Floor, B-1, Surajmal Vihar, Delhi, East Delhi, Delhi, 110092', phone: '8595321912', hours: 'Mon–Sat: 10:00 AM – 8:00 PM' },
 ];
 
 export const POLICIES = {
@@ -57,7 +55,7 @@ export const POLICIES = {
     title: 'Returns & Refunds Policy',
     sections: [
       { h: 'Return Window', p: '7 days from the date of delivery. Only unopened / sealed products are eligible.' },
-      { h: 'Damaged Products', p: 'If your order arrives damaged, please email a photo to support@sukhmal.in within 48 hours. We’ll replace or refund immediately.' },
+      { h: 'Damaged Products', p: 'If your order arrives damaged, please email a photo to info@sukhmaldryfruits.com within 48 hours. We’ll replace or refund immediately.' },
       { h: 'Refund Timeline', p: 'Refunds are processed within 5–7 business days back to the original payment method.' },
       { h: 'Non-returnable', p: 'Personalised hampers, opened food items, and any products marked \u201cFinal Sale\u201d are not eligible for returns.' },
     ]
@@ -78,6 +76,7 @@ export const POLICIES = {
       { h: 'Order Acceptance', p: 'Placing an order is an offer to buy. We reserve the right to accept or decline any order at our discretion.' },
       { h: 'Payment', p: 'Payments are processed via Razorpay. Orders are confirmed ONLY after payment is captured server-side (webhook confirmed).' },
       { h: 'Governing Law', p: 'These terms are governed by the laws of India. Any disputes will be resolved in the courts of Delhi.' },
+      { h: 'Returns & Refunds', p: 'If you receive a damaged or unsatisfactory product, email info@sukhmaldryfruits.com with your order ID within 7 days for a replacement or refund. Damaged shipments should be reported with a photo within 48 hours. Refunds are processed within 5–7 business days to the original payment method. Personalised hampers, opened food items, and products marked Final Sale are not eligible for return.' },
     ]
   }
 };

@@ -1,15 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Percent, Sparkles, Tag } from 'lucide-react';
+import { Clock, Percent, Sparkles } from 'lucide-react';
 import ProductCard from '@/components/shared/ProductCard';
 import { useProducts, useHampers, ProductSkeleton, HamperSkeleton } from '@/lib/catalog';
 import { PremiumHamperCard } from '@/pages/GiftHampers';
-
-const COUPONS = [
-  { code: 'WELCOME10', desc: '10% OFF on your first order', detail: 'Valid on dry fruits, nuts & hampers. Max discount ₹500.' },
-  { code: 'FESTIVE500', desc: '₹500 OFF on orders above ₹1,500', detail: 'Perfect for festival shopping. One use per account.' },
-  { code: 'BULK25', desc: '25% OFF on 25+ hampers', detail: 'Corporate & wedding bulk orders. GST invoice available.' },
-];
 
 const HIGHLIGHTS = [
   { Ic: Percent, t: 'Seasonal markdowns', s: 'Curated cuts on bestsellers every week' },
@@ -60,29 +54,6 @@ export default function Offers() {
       </div>
 
       <div className="sk-container py-12 md:py-14">
-        <div className="flex items-end justify-between gap-4 mb-5">
-          <div>
-            <div className="sk-section-eyebrow">COUPON CODES</div>
-            <h2 className="font-display font-bold text-brand-900 text-2xl md:text-3xl mt-1">Redeem at Checkout</h2>
-          </div>
-        </div>
-        <div className="grid md:grid-cols-3 gap-4 mb-14">
-          {COUPONS.map((c) => (
-            <div key={c.code} className="bg-white border-2 border-dashed border-gold-500 rounded-xl p-5 shadow-sk-sm">
-              <div className="flex items-start gap-3">
-                <div className="h-11 w-11 rounded-lg bg-gold-500 text-white grid place-items-center shrink-0">
-                  <Tag size={18} />
-                </div>
-                <div>
-                  <div className="font-display font-bold text-brand-900 text-xl tracking-wide">{c.code}</div>
-                  <div className="text-sm text-ink-700 mt-0.5 font-medium">{c.desc}</div>
-                  <p className="text-[12px] text-ink-500 mt-2 leading-snug">{c.detail}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
         <div className="flex items-end justify-between gap-4 mb-5">
           <div>
             <div className="sk-section-eyebrow">GIFTING</div>

@@ -52,7 +52,7 @@ If that variable is empty, the website uses the built-in catalog and still runs.
 
 ## Admin dashboard
 
-1. Create the admin account in Firebase (or sign up on the site) as `monikabatra890@gmail.com`.
+1. Create the admin account in Firebase (or sign up on the site) as `sukhmaldryfruitskorner2@gmail.com`.
 2. Log in at `/login`. That email opens `/admin`.
 2. Open **Owner Access** in the footer (the link is not rendered for non-admins).
 3. Visiting `/admin` without the admin custom claim silently returns home.

@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bot, Send, Sparkles, X } from 'lucide-react';
+import { Gift, Send, Sparkles, X } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { compactInventoryCatalog, getLiveProducts } from '@/lib/commerceStore';
-import { api } from '@/lib/api';
+import { aiApi } from '@/lib/api';
 import { inr } from '@/lib/utils';
 
-const WA = process.env.REACT_APP_WHATSAPP_NUMBER || '919876543210';
+import { STORE_WHATSAPP } from '@/data/storeInfo';
+
+const WA = process.env.REACT_APP_WHATSAPP_NUMBER || STORE_WHATSAPP;
 const SESSION_KEY = 'sk_gift_session';
 const MAX_MSGS = 15;
 export const OPEN_GIFT_ADVISOR = 'sk-open-gift-advisor';
@@ -79,7 +81,7 @@ export default function GiftAdvisor() {
     setBusy(true);
     try {
       const catalog = compactInventoryCatalog(getLiveProducts({ activeOnly: true }));
-      const r = await api.post('/ai-chat', { sessionId: sessionId(), messages: history, catalog });
+      const r = await aiApi.post('/ai-chat', { sessionId: sessionId(), messages: history, catalog });
       const data = r.data;
       if (!data?.text) throw new Error(data?.message || 'Gift Advisor returned an empty reply');
       setMessages((m) => [...m, { role: 'assistant', text: data.text, products: data.products || [] }]);
@@ -92,7 +94,7 @@ export default function GiftAdvisor() {
   };
 
   return (
-    <div className="fixed right-4 z-[45] bottom-[10.75rem] sm:bottom-[6.35rem] flex flex-col items-end gap-3">
+    <div className="relative z-[1] flex flex-col items-start gap-3">
       {open && (
         <div
           role="dialog"
@@ -103,7 +105,7 @@ export default function GiftAdvisor() {
           <div className="flex items-center justify-between px-3.5 py-3 bg-[var(--sk-espresso)] text-white shrink-0">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="h-8 w-8 rounded-full bg-gold-300/15 ring-1 ring-[#C5A059]/70 grid place-items-center shrink-0">
-                <Bot size={16} className="text-gold-300" />
+                <Gift size={16} className="text-gold-300" />
               </span>
               <div className="min-w-0">
                 <h2 id="gift-advisor-title" className="font-display font-bold leading-tight text-[15px]">AI Gift Advisor</h2>
@@ -166,9 +168,9 @@ export default function GiftAdvisor() {
         aria-label={open ? 'Close AI Gift Advisor' : 'Open AI Gift Advisor'}
         aria-expanded={open}
       >
-        {open ? <X size={22} strokeWidth={2} /> : <Bot size={26} strokeWidth={1.75} />}
-        <span className="pointer-events-none absolute right-[4.35rem] top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[var(--sk-espresso)] text-white text-[12px] px-3.5 py-1.5 opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 shadow-sk-md">
-          AI Gift Advisor
+        {open ? <X size={22} strokeWidth={2} /> : <Gift size={26} strokeWidth={1.75} />}
+        <span className="pointer-events-none absolute left-[4.35rem] top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[var(--sk-espresso)] text-white text-[12px] px-3.5 py-1.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 shadow-sk-md">
+          Gift Advisor
         </span>
       </button>
     </div>

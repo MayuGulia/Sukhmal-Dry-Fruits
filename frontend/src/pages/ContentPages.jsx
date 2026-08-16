@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import Breadcrumb, { PageHeader } from '@/components/shared/Breadcrumb';
-import { STORES, POLICIES, BLOG_POSTS, FAQS } from '@/data/mockContent';
+import { Link } from 'react-router-dom';
+import Breadcrumb from '@/components/shared/Breadcrumb';
+import { POLICIES, FAQS } from '@/data/mockContent';
+import { STORES } from '@/data/storeInfo';
 import {
-  MapPin, Phone, Clock, ChevronDown, ExternalLink, ArrowRight,
-  Users, Rocket, Package, Home,
+  MapPin, Phone, Clock, ChevronDown, ArrowRight, Home,
 } from 'lucide-react';
 
 export function StoreLocator() {
@@ -21,10 +21,18 @@ export function StoreLocator() {
         </div>
       </div>
       <div className="sk-container py-10 md:py-14">
-        <div className="grid md:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {STORES.map((s) => (
             <div key={s.name} className="sk-card overflow-hidden flex flex-col">
-              <iframe title={s.name} src={s.map} className="w-full h-44 border-0" loading="lazy" />
+              <div className="aspect-[16/10] bg-cream-200">
+                <img
+                  src={s.photos?.[0] || '/brand/store-storefront.webp'}
+                  alt={`${s.name} storefront`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
               <div className="p-5 flex flex-col flex-1">
                 <div className="font-display font-bold text-brand-900 text-lg">{s.name}</div>
                 <div className="text-sm text-ink-600 mt-2 flex items-start gap-1.5">
@@ -37,7 +45,7 @@ export function StoreLocator() {
                   <Clock size={12} className="text-brand-900" /> {s.hours}
                 </div>
                 <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(s.address)}`}
+                  href={s.directionsUrl || `https://maps.google.com/?q=${encodeURIComponent(s.address)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="sk-btn-outline mt-auto self-start mt-5 text-sm !py-2"
@@ -74,117 +82,6 @@ export function PolicyPage({ pageKey }) {
         ))}
         <div className="mt-10 pt-6 border-t border-line flex flex-wrap gap-3 text-sm">
           <Link to="/contact-us" className="sk-btn-ghost">Questions? Contact us <ArrowRight size={14} /></Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function Blog() {
-  return (
-    <div>
-      <PageHeader title="The Sukhmal Blog" subtitle="Recipes, gifting guides, and wellness stories." breadcrumb={[{ label: 'Blog' }]} />
-      <div className="sk-container py-10 grid md:grid-cols-3 gap-4">
-        {BLOG_POSTS.map((p) => (
-          <Link key={p.slug} to={`/blog/${p.slug}`} className="sk-card overflow-hidden group">
-            <div className="aspect-[16/10] overflow-hidden bg-cream-200">
-              <img src={p.image} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-            </div>
-            <div className="p-5">
-              <div className="flex gap-2 flex-wrap mb-2">{p.tags.map((t) => <span key={t} className="sk-pill">{t}</span>)}</div>
-              <div className="font-display font-bold text-brand-900 text-lg leading-tight">{p.title}</div>
-              <p className="text-[13px] text-ink-600 mt-1 line-clamp-2">{p.excerpt}</p>
-              <div className="mt-3 text-[12px] text-ink-500">{p.date}</div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function BlogArticle() {
-  const { slug } = useParams();
-  const post = BLOG_POSTS.find((p) => p.slug === slug) || BLOG_POSTS[0];
-  return (
-    <div>
-      <PageHeader title={post.title} breadcrumb={[{ label: 'Blog', to: '/blog' }, { label: post.title }]} />
-      <article className="sk-container py-10 max-w-3xl">
-        <img src={post.image} alt={post.title} className="w-full h-[380px] object-cover rounded-2xl mb-6 border border-line" />
-        <div className="prose max-w-none">
-          <p className="text-ink-600 leading-relaxed text-lg">{post.excerpt}</p>
-          <p className="text-ink-600 mt-4 leading-relaxed">
-            Almonds are one of nature&apos;s most nutrient-dense snacks. They&apos;re rich in vitamin E, magnesium, and healthy monounsaturated fats. Just a handful a day (≈28g) has been shown to support heart health, aid weight management, help control blood sugar, boost cognitive function, and even promote glowing skin.
-          </p>
-          <h3 className="font-display text-2xl text-brand-900 font-bold mt-6 mb-3">1. Heart Health</h3>
-          <p className="text-ink-600 leading-relaxed">
-            The monounsaturated fats in almonds have been linked to lower LDL (&ldquo;bad&rdquo;) cholesterol and higher HDL (&ldquo;good&rdquo;) cholesterol.
-          </p>
-          <h3 className="font-display text-2xl text-brand-900 font-bold mt-6 mb-3">2. Skin &amp; Hair</h3>
-          <p className="text-ink-600 leading-relaxed">
-            Vitamin E acts as an antioxidant, protecting cells from oxidative stress and keeping skin looking fresh.
-          </p>
-          <p className="text-ink-600 mt-4 leading-relaxed">
-            Read further, and try our{' '}
-            <Link className="text-brand-900 font-semibold underline" to="/product/california-almonds-premium">
-              Premium California Almonds
-            </Link>
-            .
-          </p>
-        </div>
-      </article>
-    </div>
-  );
-}
-
-export function Careers() {
-  const roles = [
-    { title: 'Warehouse Manager', place: 'Delhi', type: 'Full-time', team: 'Operations', Ic: Package },
-    { title: 'D2C Growth Lead', place: 'Bangalore / Remote', type: 'Full-time', team: 'Marketing', Ic: Rocket },
-    { title: 'Customer Delight Executive', place: 'Delhi', type: 'Full-time', team: 'Support', Ic: Users },
-  ];
-  return (
-    <div>
-      <PageHeader
-        title="Careers at Sukhmal"
-        subtitle="Join a 30-year-old family business rewriting how India gifts."
-        breadcrumb={[{ label: 'Careers' }]}
-      />
-      <div className="sk-container py-10">
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <div className="sk-card p-6">
-            <h3 className="font-display font-bold text-brand-900 text-xl">Why Work With Us</h3>
-            <ul className="mt-3 space-y-2 text-sm text-ink-600 list-disc pl-4">
-              <li>Real ownership — flat teams, fast decisions</li>
-              <li>Family-first culture (literally, since 1994)</li>
-              <li>Above-market pay + ESOPs</li>
-              <li>Health cover for you &amp; your parents</li>
-            </ul>
-          </div>
-          <div className="sk-card p-6 bg-cream-300 border-line">
-            <h3 className="font-display font-bold text-brand-900 text-xl">Don&apos;t see a role?</h3>
-            <p className="text-ink-600 mt-2 text-sm">Send your CV and a note about what excites you.</p>
-            <a href="mailto:careers@sukhmal.in" className="sk-btn-primary mt-4 inline-flex text-sm">
-              careers@sukhmal.in <ExternalLink size={14} />
-            </a>
-          </div>
-        </div>
-        <div className="font-display text-2xl text-brand-900 font-bold mb-3">Open Roles</div>
-        <div className="space-y-3">
-          {roles.map((r) => (
-            <div key={r.title} className="sk-card p-5 flex items-center gap-4">
-              <div className="h-11 w-11 rounded-full bg-cream-300 text-brand-900 grid place-items-center">
-                <r.Ic size={20} />
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-brand-900">{r.title}</div>
-                <div className="text-[12px] text-ink-500">{r.team} • {r.place} • {r.type}</div>
-              </div>
-              <a href="mailto:careers@sukhmal.in" className="sk-btn-outline text-sm !py-2">
-                Apply <ArrowRight size={14} />
-              </a>
-            </div>
-          ))}
         </div>
       </div>
     </div>

@@ -3,6 +3,17 @@
     "rules": "firebase/firestore.rules",
     "indexes": "firebase/firestore.indexes.json"
   },
+  "functions": [
+    {
+      "source": "firebase/functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
+    }
+  ],
   "storage": {
     "rules": "firebase/storage.rules"
   },
@@ -11,10 +22,10 @@
       "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "Sukhmal Dry Fruits Korner",
-        "supportEmail": "monikabatra890@gmail.com",
+        "supportEmail": "sukhmaldryfruitskorner2@gmail.com",
         "authorizedRedirectUris": [
           "http://localhost",
-          "https://sukhmal-a4cee.firebaseapp.com"
+          "https://sukhmal-website.firebaseapp.com"
         ]
       }
     }

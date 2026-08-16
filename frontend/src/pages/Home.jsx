@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ChevronRight, Wand2, MessageSquare, Star, ShieldCheck,
-  Award, Leaf, Package, Truck, HeartHandshake, Sparkles, Search, Send, Instagram, Play, X,
+  Award, Leaf, Package, Truck, HeartHandshake, Sparkles, Search, Send, Instagram,
 } from 'lucide-react';
 import ProductCard, { TrustStrip } from '@/components/shared/ProductCard';
 import FlourishTitle from '@/components/home/FlourishTitle';
@@ -18,9 +18,13 @@ import {
   WEDDING_PROMO_IMG,
   CORP_PROMO_IMG,
   HERO_IMG,
-  HERO_VIDEO_EMBED,
+  HERO_VIDEO_SRC,
+  HERO_VIDEO_LAYOUT,
+  HERO_VIDEO_POSITION,
 } from '@/data/homeBrand';
 import { GiftBasketIcon } from '@/components/brand/BrandSeal';
+import BrandVideo from '@/components/media/BrandVideo';
+import { STORE_INSTAGRAM, STORE_INSTAGRAM_HANDLE } from '@/data/storeInfo';
 
 const WHY_ICONS = {
   trust: Award,
@@ -30,6 +34,21 @@ const WHY_ICONS = {
   delivery: Truck,
   love: HeartHandshake,
 };
+
+function HeroBackgroundVideo({ className, fit = 'cover', showToggle = false, toggleClassName }) {
+  return (
+    <BrandVideo
+      src={HERO_VIDEO_SRC}
+      poster={HERO_IMG}
+      fallback={HERO_IMG}
+      fit={fit}
+      position={fit === 'contain' ? 'center center' : HERO_VIDEO_POSITION}
+      className={className}
+      showToggle={showToggle}
+      toggleClassName={toggleClassName}
+    />
+  );
+}
 
 function ViewAllLink({ to, children }) {
   return (
@@ -42,6 +61,54 @@ function ViewAllLink({ to, children }) {
   );
 }
 
+function HeroCopy({ inverted = true }) {
+  const title = inverted ? 'text-white' : 'text-brand-900';
+  const body = inverted ? 'text-white' : 'text-ink-600';
+  const outline = inverted
+    ? 'border-white bg-transparent text-white hover:bg-white/10'
+    : 'border-brand-900/30 bg-transparent text-brand-900 hover:bg-cream-200';
+  const solid = inverted
+    ? 'bg-white text-[var(--sk-espresso)] hover:bg-cream-100'
+    : 'bg-[var(--sk-espresso)] text-white hover:bg-brand-800';
+  return (
+    <div className={`relative w-full max-w-[18.5rem] sm:max-w-sm md:max-w-md lg:max-w-lg text-left ${inverted ? 'pr-4' : ''}`}>
+      {inverted && (
+        <div
+          className="pointer-events-none absolute -inset-x-4 -inset-y-6 md:-inset-x-8 md:-inset-y-8 rounded-3xl bg-gradient-to-r from-black/80 via-black/55 to-transparent"
+          aria-hidden
+        />
+      )}
+      <div className="relative">
+      <h1 className={`font-display text-[2.15rem] sm:text-[2.6rem] md:text-[3.15rem] lg:text-[3.5rem] font-bold leading-[1.08] tracking-[-0.02em] ${title}`}>
+        <span>Crafted with Care.</span>
+        <br />
+        <span>Gifted with </span>
+        <span className="italic text-[var(--sk-gold-600)]">Love.</span>
+      </h1>
+      <p className={`mt-4 md:mt-5 ${body} text-[14px] md:text-[17px] leading-relaxed font-light`}>
+        Premium Dry Fruits & Handcrafted Gift Hampers for Every Celebration.
+      </p>
+      <div className="mt-7 md:mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
+        <Link
+          to="/gift-hampers"
+          data-testid="hero-explore-hampers"
+          className={`inline-flex items-center justify-center gap-2 text-[14px] md:text-[15px] font-semibold !py-3.5 !px-5 md:!px-6 rounded-full border-[1.5px] transition-colors ${outline}`}
+        >
+          Explore Gift Hampers <ChevronRight size={18} />
+        </Link>
+        <Link
+          to="/build-hamper/budget"
+          data-testid="hero-build-hamper"
+          className={`inline-flex items-center justify-center gap-2 text-[14px] md:text-[15px] font-semibold !py-3.5 !px-5 md:!px-6 rounded-full transition-colors ${solid}`}
+        >
+          Build Your Own Hamper <ChevronRight size={18} />
+        </Link>
+      </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Homepage rebuilt against Images/.../01-home-page.jpeg
  * HERO IMAGE IS FROZEN — only copy/CTA position may change.
@@ -51,21 +118,7 @@ export default function Home() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiPreview, setAiPreview] = useState(null);
   const [aiBusy, setAiBusy] = useState(false);
-  const [heroOpen, setHeroOpen] = useState(false);
-
-  useEffect(() => {
-    if (!heroOpen) return undefined;
-    const onKey = (e) => {
-      if (e.key === 'Escape') setHeroOpen(false);
-    };
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [heroOpen]);
+  const splitHero = HERO_VIDEO_LAYOUT === 'split';
 
   const stubGenerate = (e) => {
     e.preventDefault();
@@ -82,97 +135,50 @@ export default function Home() {
   return (
     <div className="home-page bg-white">
       {/* ─── HERO ─── */}
-      <section
-        className="relative overflow-hidden min-h-[560px] md:min-h-[620px] lg:min-h-[720px] flex flex-col justify-end"
-        data-testid="home-hero"
-      >
-        <div className="absolute inset-0">
-          <img
-            src={HERO_IMG}
-            alt="Sukhmal luxury dry fruit gift hamper"
-            className="w-full h-full object-cover object-[78%_center] md:object-[82%_center]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[rgba(31,22,16,0.88)] via-[rgba(31,22,16,0.48)] to-transparent w-full md:w-[58%]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(31,22,16,0.55)] via-transparent to-transparent" />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setHeroOpen(true)}
-          aria-label="Play brand film"
-          data-testid="hero-play"
-          className="absolute z-20 left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 h-[72px] w-[72px] md:h-[88px] md:w-[88px] rounded-full bg-white/95 text-[var(--sk-espresso)] grid place-items-center shadow-[0_8px_28px_rgba(0,0,0,0.28)] sk-play-pulse hover:scale-105 transition-transform"
+      {splitHero ? (
+        <section
+          className="relative overflow-hidden bg-cream-100 min-h-[560px] md:min-h-[620px] lg:min-h-[680px]"
+          data-testid="home-hero"
+          data-hero-layout="split"
         >
-          <Play size={32} className="ml-1" fill="currentColor" />
-        </button>
-
-        <div className="relative z-10 w-full pb-28 md:pb-32 pt-20 md:pt-24">
-          <div className="sk-container">
-            <div className="w-full max-w-[18.5rem] sm:max-w-sm md:max-w-md lg:max-w-lg text-left text-white pr-4">
-              <h1 className="font-display text-[2.15rem] sm:text-[2.6rem] md:text-[3.15rem] lg:text-[3.5rem] font-bold leading-[1.08] tracking-[-0.02em]">
-                <span className="text-white">Crafted with Care.</span>
-                <br />
-                <span className="text-white">Gifted with </span>
-                <span className="italic text-[var(--sk-gold-600)]">Love.</span>
-              </h1>
-              <p className="mt-4 md:mt-5 text-cream-200/90 text-[14px] md:text-[17px] leading-relaxed font-light">
-                Premium Dry Fruits & Handcrafted Gift Hampers for Every Celebration.
-              </p>
-              <div className="mt-7 md:mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
-                <Link
-                  to="/gift-hampers"
-                  data-testid="hero-explore-hampers"
-                  className="inline-flex items-center justify-center gap-2 text-[14px] md:text-[15px] font-semibold !py-3.5 !px-5 md:!px-6 rounded-full border-[1.5px] border-white/80 bg-transparent text-white hover:bg-white/10 transition-colors"
-                >
-                  Explore Gift Hampers <ChevronRight size={18} />
-                </Link>
-                <Link
-                  to="/build-hamper/budget"
-                  data-testid="hero-build-hamper"
-                  className="inline-flex items-center justify-center gap-2 text-[14px] md:text-[15px] font-semibold !py-3.5 !px-5 md:!px-6 rounded-full bg-white text-[var(--sk-espresso)] hover:bg-cream-100 transition-colors"
-                >
-                  Build Your Own Hamper <ChevronRight size={18} />
-                </Link>
+          <div className="sk-container grid md:grid-cols-2 gap-8 md:gap-12 items-center py-12 md:py-16">
+            <HeroCopy inverted={false} />
+            <div className="relative mx-auto w-full max-w-xl">
+              <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-black shadow-sk-lg">
+                <HeroBackgroundVideo
+                  fit="cover"
+                  className="absolute inset-0 w-full h-full"
+                />
               </div>
             </div>
           </div>
-        </div>
+          <TrustStrip />
+        </section>
+      ) : (
+        <section
+          className="relative overflow-hidden w-full aspect-[16/9] min-h-[280px] max-h-[min(82vh,860px)] flex flex-col justify-end bg-black"
+          data-testid="home-hero"
+          data-hero-layout="cover"
+        >
+          <div className="absolute inset-0 overflow-hidden bg-black">
+            <HeroBackgroundVideo
+              fit="cover"
+              showToggle
+              toggleClassName="bottom-28 md:bottom-32 right-4 md:right-6"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-transparent w-full md:w-[62%]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
+          </div>
 
-        <TrustStrip overlay />
-      </section>
-
-      {heroOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-8">
-          <button
-            type="button"
-            className="absolute inset-0 bg-[rgba(31,22,16,0.86)] backdrop-blur-[2px]"
-            aria-label="Close brand film"
-            onClick={() => setHeroOpen(false)}
-          />
-          <div className="relative z-10 w-full max-w-4xl rounded-2xl overflow-hidden shadow-sk-lg ring-1 ring-white/10">
-            <button
-              type="button"
-              onClick={() => setHeroOpen(false)}
-              className="absolute top-3 right-3 z-20 h-9 w-9 rounded-full bg-black/50 text-white grid place-items-center hover:bg-black/70"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
-            <div className="relative aspect-video bg-black">
-              {HERO_VIDEO_EMBED ? (
-                <iframe
-                  title="Sukhmal brand film"
-                  src={HERO_VIDEO_EMBED}
-                  className="absolute inset-0 w-full h-full"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : (
-                <img src={HERO_IMG} alt="Sukhmal luxury hamper" className="w-full h-full object-cover" />
-              )}
+          <div className="relative z-10 w-full pb-28 md:pb-32 pt-20 md:pt-24">
+            <div className="sk-container">
+              <HeroCopy />
             </div>
           </div>
-        </div>
+
+          <TrustStrip overlay />
+        </section>
       )}
 
       {/* ─── Shop by Category ─── */}
@@ -442,14 +448,18 @@ export default function Home() {
       <section className="bg-white py-12 md:py-16" data-testid="home-instagram">
         <div className="sk-container">
           <FlourishTitle title="Follow Us on Instagram" />
-          <p className="text-center text-ink-500 text-sm -mt-6 mb-8">@sukhmaldryfruits</p>
+          <p className="text-center text-ink-500 text-sm -mt-6 mb-8">
+            <a href={STORE_INSTAGRAM} target="_blank" rel="noreferrer" className="hover:text-brand-900">
+              {STORE_INSTAGRAM_HANDLE}
+            </a>
+          </p>
           <div className="grid grid-cols-4 md:grid-cols-8 gap-2 md:gap-2.5">
             {INSTAGRAM_POSTS.map((im, i) => {
               const isLast = i === INSTAGRAM_POSTS.length - 1;
               return (
                 <a
                   key={i}
-                  href="https://instagram.com"
+                  href={STORE_INSTAGRAM}
                   target="_blank"
                   rel="noreferrer"
                   className="relative aspect-square overflow-hidden rounded-lg block bg-[#F4EDE3] group"

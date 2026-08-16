@@ -19,7 +19,12 @@ function makeDevServerV5Compatible(devServerConfig) {
         : "http";
   compatibleConfig.headers = {
     ...compatibleConfig.headers,
-    "Cross-Origin-Resource-Policy": "same-origin",
+    // Firebase Google popup needs to talk to the opener window.
+    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    "Cross-Origin-Embedder-Policy": "unsafe-none",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
   };
 
   if (onBeforeSetupMiddleware || setupMiddlewares) {

@@ -5,7 +5,21 @@
 
 /** FROZEN — current luxury hamper hero (do not replace). */
 export const HERO_IMG = '/brand/hero-luxury-hamper-v2.png';
-/** Optional YouTube/Vimeo embed URL — hero play button opens this in a modal. */
+/**
+ * Homepage hero — sukhmal.mp4 is 1920×1080 (16:9 landscape).
+ * Banner is aspect-[16/9] so the clip fills the frame with no stretch.
+ */
+export const HERO_VIDEO_SRC = '/assets/videos/sukhmal.mp4';
+export const HERO_VIDEO_LAYOUT = 'cover'; // 'cover' | 'split'
+export const HERO_VIDEO_POSITION = 'center center';
+/**
+ * Wedding hero uses homepage-hero.mp4 inside the same full-bleed frame as sukhmal.mp4
+ * (min-h 80vh, object-fit cover). The clip is cropped to that landscape frame —
+ * the hero size and aspect are unchanged.
+ */
+export const WEDDING_VIDEO_SRC = '/assets/videos/homepage-hero.mp4';
+export const WEDDING_VIDEO_POSITION = 'center center';
+/** Optional YouTube/Vimeo embed URL — used in the lightbox if set. */
 export const HERO_VIDEO_EMBED = '';
 
 export const BYOH_BANNER_IMG = '/brand/byoh-lifestyle.png';

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/shared/Breadcrumb';
 import { TrustStrip } from '@/components/shared/ProductCard';
 import { useCart } from '@/contexts/CartContext';
 import { inr } from '@/lib/utils';
 import {
-  Trash2, ChevronLeft, Lock, Tag, Truck, Clock, Info, Minus, Plus,
+  Trash2, ChevronLeft, Lock, Truck, Clock, Info, Minus, Plus,
   ShoppingBag, ShieldCheck,
 } from 'lucide-react';
 
@@ -24,25 +24,11 @@ function Flourish() {
 }
 
 export default function Cart() {
-  const { items, updateQty, remove, coupon, setCoupon, totals, count } = useCart();
-  const [code, setCode] = useState(coupon?.code || '');
-  const [msg, setMsg] = useState('');
+  const { items, updateQty, remove, totals, count } = useCart();
 
   const threshold = totals.freeShippingThreshold ?? FREE_SHIP;
   const remainingForFreeShip = Math.max(0, threshold - (totals.subtotal - totals.discount));
   const hasFreeShip = totals.shipping === 0 && totals.subtotal > 0;
-
-  const applyCoupon = (e) => {
-    e.preventDefault();
-    const c = code.trim().toUpperCase();
-    if (['WELCOME10', 'FESTIVE500', 'BULK25'].includes(c)) {
-      setCoupon({ code: c });
-      setMsg('Coupon applied!');
-    } else {
-      setCoupon(null);
-      setMsg('Invalid coupon code');
-    }
-  };
 
   return (
     <div>
@@ -147,39 +133,6 @@ export default function Cart() {
                   </div>
                 ))}
               </div>
-
-              <form
-                onSubmit={applyCoupon}
-                className="mt-5 rounded-xl border border-line bg-cream-300/70 p-4 md:p-5"
-              >
-                <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
-                  <div className="flex-1 flex items-start gap-2.5">
-                    <Tag size={18} className="text-brand-900 mt-0.5 shrink-0" />
-                    <div>
-                      <div className="font-semibold text-brand-900 text-sm">Have a Coupon Code?</div>
-                      <p className="text-[12px] text-ink-500 mt-0.5">Apply it for extra discounts</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 w-full md:w-auto md:min-w-[320px]">
-                    <input
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="Enter coupon code"
-                      className="sk-input !bg-white"
-                      data-testid="cart-coupon-input"
-                    />
-                    <button type="submit" className="sk-btn-primary whitespace-nowrap !px-5" data-testid="cart-coupon-apply">
-                      Apply
-                    </button>
-                  </div>
-                </div>
-                {msg && (
-                  <div className={`mt-2 text-[12px] ${coupon ? 'text-[var(--sk-green-500)]' : 'text-[var(--sk-red-500)]'}`}>
-                    {msg}
-                  </div>
-                )}
-                {coupon && <div className="mt-2 sk-pill sk-pill-green">Applied: {coupon.code}</div>}
-              </form>
 
               <Link to="/category/all" className="sk-btn-outline mt-5 inline-flex !py-2.5 !px-4 text-sm">
                 <ChevronLeft size={14} /> Continue Shopping

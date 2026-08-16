@@ -10,124 +10,10 @@ import {
   Eye, EyeOff, MoreVertical, Box,
 } from 'lucide-react';
 import { inr } from '@/lib/utils';
+import { useUserOrders, useUserProfile } from '@/hooks/useAccountData';
+import { saveUserAddresses, saveUserProfile } from '@/lib/orders';
 
-/* ─── Dummy data (matched to account mocks) ───────────────────── */
-
-const MOCK_ORDERS = [
-  {
-    id: 'SKF12876',
-    date: '15 May, 2025',
-    placedAt: '15 May 2025, 11:24 AM',
-    total: 2499,
-    status: 'delivered',
-    items: 2,
-    title: 'Luxury Nut Delight Hamper',
-    image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200&auto=format&fit=crop',
-    lines: [
-      { name: 'Luxury Nut Delight Hamper', qty: 1, weight: '1.2kg', price: 1899, image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=120&auto=format&fit=crop' },
-      { name: 'California Almonds', qty: 1, weight: '250g', price: 600, image: 'https://images.unsplash.com/photo-1508061253562-c74c172aaa78?w=120&auto=format&fit=crop' },
-    ],
-    timeline: [
-      { label: 'Order Placed', at: '15 May, 11:24 AM', done: true },
-      { label: 'Confirmed', at: '15 May, 12:10 PM', done: true },
-      { label: 'Shipped', at: '16 May, 09:40 AM', done: true },
-      { label: 'Out for Delivery', at: '17 May, 08:15 AM', done: true },
-      { label: 'Delivered', at: '17 May, 02:30 PM', done: true },
-    ],
-    address: { name: 'Rohan Sharma', line1: '145, Katra Neel', line2: 'Chandni Chowk, New Delhi', pincode: '110006', phone: '+91 98765 43210' },
-    summary: { subtotal: 2499, shipping: 0, discount: 150, gst: 0, paid: 2499 },
-  },
-  {
-    id: 'SKF12812',
-    date: '10 May, 2025',
-    placedAt: '10 May 2025, 04:12 PM',
-    total: 1299,
-    status: 'shipped',
-    items: 1,
-    title: 'Premium Mixed Nuts Combo',
-    image: 'https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=200&auto=format&fit=crop',
-    lines: [
-      { name: 'Premium Mixed Nuts Combo', qty: 1, weight: '500g', price: 1299, image: 'https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=120&auto=format&fit=crop' },
-    ],
-    timeline: [
-      { label: 'Order Placed', at: '10 May, 04:12 PM', done: true },
-      { label: 'Confirmed', at: '10 May, 05:00 PM', done: true },
-      { label: 'Shipped', at: '11 May, 10:20 AM', done: true },
-      { label: 'Out for Delivery', at: '—', done: false },
-      { label: 'Delivered', at: '—', done: false },
-    ],
-    address: { name: 'Rohan Sharma', line1: '145, Katra Neel', line2: 'Chandni Chowk, New Delhi', pincode: '110006', phone: '+91 98765 43210' },
-    summary: { subtotal: 1299, shipping: 0, discount: 0, gst: 0, paid: 1299 },
-  },
-  {
-    id: 'SKF12765',
-    date: '02 May, 2025',
-    placedAt: '02 May 2025, 09:05 AM',
-    total: 599,
-    status: 'delivered',
-    items: 1,
-    title: 'Kalmi Dates (Premium)',
-    image: 'https://images.unsplash.com/photo-1498557850523-fd3d118b962e?w=200&auto=format&fit=crop',
-    lines: [
-      { name: 'Kalmi Dates (Premium)', qty: 1, weight: '500g', price: 599, image: 'https://images.unsplash.com/photo-1498557850523-fd3d118b962e?w=120&auto=format&fit=crop' },
-    ],
-    timeline: [
-      { label: 'Order Placed', at: '02 May, 09:05 AM', done: true },
-      { label: 'Confirmed', at: '02 May, 09:40 AM', done: true },
-      { label: 'Shipped', at: '02 May, 06:00 PM', done: true },
-      { label: 'Out for Delivery', at: '03 May, 08:00 AM', done: true },
-      { label: 'Delivered', at: '03 May, 01:15 PM', done: true },
-    ],
-    address: { name: 'Rohan Sharma', line1: 'DLF Cyber Hub, Level 3', line2: 'Sector 24, Gurugram', pincode: '122002', phone: '+91 98765 43210' },
-    summary: { subtotal: 599, shipping: 0, discount: 0, gst: 0, paid: 599 },
-  },
-  {
-    id: 'SKF12568',
-    date: '12 May, 2023',
-    placedAt: '12 May 2023, 07:48 PM',
-    total: 2499,
-    status: 'cancelled',
-    items: 1,
-    title: 'Wedding Blessings Hamper',
-    image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=200&auto=format&fit=crop',
-    lines: [
-      { name: 'Wedding Blessings Hamper', qty: 1, weight: '1.5kg', price: 2499, image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=120&auto=format&fit=crop' },
-    ],
-    timeline: [
-      { label: 'Order Placed', at: '12 May, 07:48 PM', done: true },
-      { label: 'Confirmed', at: '—', done: false },
-      { label: 'Shipped', at: '—', done: false },
-      { label: 'Out for Delivery', at: '—', done: false },
-      { label: 'Delivered', at: '—', done: false },
-    ],
-    address: { name: 'Rohan Sharma', line1: '145, Katra Neel', line2: 'Chandni Chowk, New Delhi', pincode: '110006', phone: '+91 98765 43210' },
-    summary: { subtotal: 2499, shipping: 0, discount: 0, gst: 0, paid: 0 },
-  },
-  {
-    id: 'SKF12112',
-    date: '28 Apr, 2025',
-    placedAt: '28 Apr 2025, 02:20 PM',
-    total: 899,
-    status: 'processing',
-    items: 1,
-    title: 'W320 Cashews (500g)',
-    image: 'https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=200&auto=format&fit=crop',
-    lines: [
-      { name: 'W320 Cashews', qty: 1, weight: '500g', price: 899, image: 'https://images.unsplash.com/photo-1608797178974-15b35a64ede9?w=120&auto=format&fit=crop' },
-    ],
-    timeline: [
-      { label: 'Order Placed', at: '28 Apr, 02:20 PM', done: true },
-      { label: 'Confirmed', at: '28 Apr, 03:00 PM', done: true },
-      { label: 'Shipped', at: '—', done: false },
-      { label: 'Out for Delivery', at: '—', done: false },
-      { label: 'Delivered', at: '—', done: false },
-    ],
-    address: { name: 'Rohan Sharma', line1: '145, Katra Neel', line2: 'Chandni Chowk, New Delhi', pincode: '110006', phone: '+91 98765 43210' },
-    summary: { subtotal: 899, shipping: 0, discount: 0, gst: 0, paid: 899 },
-  },
-];
-
-const TOTAL_ORDERS_COUNT = 12;
+const EMPTY_ADDRESS = { id: '', label: 'Home', name: '', line1: '', line2: '', pincode: '', phone: '', isDefault: false };
 
 const STATUS_STYLE = {
   processing: 'bg-amber-50 text-amber-800 border border-amber-200',
@@ -135,14 +21,6 @@ const STATUS_STYLE = {
   delivered: 'bg-[var(--sk-green-100)] text-[var(--sk-green-500)] border border-[var(--sk-green-100)]',
   cancelled: 'bg-neutral-100 text-neutral-500 border border-neutral-200',
 };
-
-const EMPTY_ADDRESS = { id: '', label: 'Home', name: '', line1: '', line2: '', pincode: '', phone: '', isDefault: false };
-
-const INITIAL_ADDRESSES = [
-  { id: 'a1', label: 'Home', name: 'Rohan Sharma', line1: '145, Katra Neel', line2: 'Chandni Chowk, New Delhi', pincode: '110006', phone: '+91 98765 43210', isDefault: true },
-  { id: 'a2', label: 'Office', name: 'Rohan Sharma', line1: 'DLF Cyber Hub, Level 3', line2: 'Sector 24, Gurugram', pincode: '122002', phone: '+91 98765 43210', isDefault: false },
-  { id: 'a3', label: 'Other', name: 'Priya Sharma', line1: '12, Palm Grove Apartments', line2: 'Sector 56, Noida', pincode: '201301', phone: '+91 98111 22334', isDefault: false },
-];
 
 const SIDEBAR_PRIMARY = [
   { to: '/account', label: 'My Dashboard', Ic: LayoutDashboard, end: true },
@@ -187,7 +65,8 @@ function navClass(isActive) {
 /* ─── Layout ─────────────────────────────────────────────────── */
 
 export function AccountLayout() {
-  const { user, isAuthed, logout, loading } = useAuth();
+  const { isAuthed, logout, loading } = useAuth();
+  const { name, email } = useUserProfile();
   const nav = useNavigate();
 
   React.useEffect(() => {
@@ -201,8 +80,8 @@ export function AccountLayout() {
   }
   if (!isAuthed) return null;
 
-  const name = user?.displayName || 'Guest';
-  const email = user?.email || user?.phone || '';
+  const displayName = name || 'Guest';
+  const displayEmail = email || '';
 
   return (
     <div className="min-h-[60vh] bg-[#FBF7F2]">
@@ -215,11 +94,11 @@ export function AccountLayout() {
           <div className="sk-card p-5 !shadow-sm">
             <div className="flex items-center gap-3.5">
               <div className="h-14 w-14 rounded-full bg-brand-900 text-white grid place-items-center font-display font-bold text-lg shrink-0">
-                {initials(name)}
+                {initials(displayName)}
               </div>
               <div className="min-w-0">
-                <div className="font-semibold text-brand-900 truncate">{name}</div>
-                <div className="text-[12px] text-ink-500 truncate mt-0.5">{email}</div>
+                <div className="font-semibold text-brand-900 truncate">{displayName}</div>
+                <div className="text-[12px] text-ink-500 truncate mt-0.5">{displayEmail || 'No email on file'}</div>
                 <Link to="/account/settings" className="text-[12px] font-semibold text-brand-700 hover:underline mt-1 inline-block">
                   Edit Profile
                 </Link>
@@ -270,10 +149,12 @@ export function AccountLayout() {
 /* ─── Dashboard (mock 18) ────────────────────────────────────── */
 
 export function Dashboard() {
-  const { user } = useAuth();
+  const { name, addresses } = useUserProfile();
+  const { orders, loading } = useUserOrders();
   const { ids } = useWishlist();
-  const first = (user?.displayName || 'there').split(' ')[0];
-  const wishlistCount = ids.length || 8;
+  const first = (name || 'there').split(' ')[0];
+  const wishlistCount = ids.length;
+  const recent = orders.slice(0, 3);
 
   return (
     <div className="space-y-7">
@@ -288,9 +169,9 @@ export function Dashboard() {
 
       <div className="grid sm:grid-cols-3 gap-4">
         {[
-          { Ic: Package, iconClass: 'text-brand-900 bg-[#F3E5D7]', n: `${TOTAL_ORDERS_COUNT} Total Orders`, l: 'My Orders', to: '/account/orders', cta: 'View All Orders' },
+          { Ic: Package, iconClass: 'text-brand-900 bg-[#F3E5D7]', n: loading ? '…' : `${orders.length} Total Orders`, l: 'My Orders', to: '/account/orders', cta: 'View All Orders' },
           { Ic: Heart, iconClass: 'text-red-500 bg-red-50', n: `${wishlistCount} Saved Items`, l: 'Wishlist', to: '/wishlist', cta: 'View Wishlist' },
-          { Ic: MapPin, iconClass: 'text-[var(--sk-green-500)] bg-[var(--sk-green-100)]', n: `${INITIAL_ADDRESSES.length} Saved Addresses`, l: 'Addresses', to: '/account/addresses', cta: 'Manage Addresses' },
+          { Ic: MapPin, iconClass: 'text-[var(--sk-green-500)] bg-[var(--sk-green-100)]', n: `${addresses.length} Saved Addresses`, l: 'Addresses', to: '/account/addresses', cta: 'Manage Addresses' },
         ].map(({ Ic, iconClass, n, l, to, cta }) => (
           <Link key={l} to={to} className="sk-card p-5 !shadow-sm hover:!shadow-md transition-shadow group">
             <div className={`h-10 w-10 rounded-xl grid place-items-center mb-3 ${iconClass}`}>
@@ -314,7 +195,10 @@ export function Dashboard() {
             </Link>
           </div>
           <div className="space-y-0">
-            {MOCK_ORDERS.slice(0, 3).map((o) => (
+            {!loading && recent.length === 0 && (
+              <p className="text-sm text-ink-500 py-6 text-center">No orders yet. When you place an order, it will show up here.</p>
+            )}
+            {recent.map((o) => (
               <div key={o.id} className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 border-b border-line last:border-0 first:pt-0 last:pb-0">
                 <img src={o.image} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -330,10 +214,10 @@ export function Dashboard() {
                   </div>
                 </div>
                 <Link
-                  to={o.status === 'shipped' || o.status === 'processing' ? '/track-order' : `/account/orders/${o.id}`}
+                  to={o.status === 'shipped' || o.status === 'processing' ? `/track-order?id=${o.id}` : `/account/orders/${o.id}`}
                   className="sk-btn-outline !py-2 !px-3.5 text-[12px] shrink-0 self-start sm:self-center"
                 >
-                  {o.status === 'shipped' || o.status === 'processing' ? 'Track Order' : 'Reorder'}
+                  {o.status === 'shipped' || o.status === 'processing' ? 'Track Order' : 'View'}
                 </Link>
               </div>
             ))}
@@ -388,11 +272,13 @@ export function Dashboard() {
 
 export function MyOrders({ history = false }) {
   const [tab, setTab] = useState('all');
+  const { orders, loading } = useUserOrders();
+  const source = history
+    ? orders.filter((o) => o.status === 'delivered' || o.status === 'cancelled')
+    : orders;
   const filtered = useMemo(
-    () => (history ? MOCK_ORDERS.filter((o) => o.status === 'delivered' || o.status === 'cancelled') : MOCK_ORDERS).filter(
-      (o) => tab === 'all' || o.status === tab
-    ),
-    [tab, history]
+    () => source.filter((o) => tab === 'all' || o.status === tab),
+    [tab, source]
   );
 
   const tabs = history
@@ -447,7 +333,9 @@ export function MyOrders({ history = false }) {
 
       <div className="space-y-3.5">
         {filtered.length === 0 && (
-          <div className="sk-card p-10 text-center text-ink-600 text-sm !shadow-sm">No orders in this filter.</div>
+          <div className="sk-card p-10 text-center text-ink-600 text-sm !shadow-sm">
+            {loading ? 'Loading orders…' : (tab === 'all' ? 'No orders yet.' : 'No orders in this filter.')}
+          </div>
         )}
         {filtered.map((o) => (
           <div key={o.id} className="sk-card p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4 !shadow-sm">
@@ -470,7 +358,7 @@ export function MyOrders({ history = false }) {
               ) : (
                 <>
                   {(o.status === 'shipped' || o.status === 'processing') && (
-                    <Link to="/track-order" className="sk-btn-outline !py-2 !px-3.5 text-[12px]">
+                    <Link to={`/track-order?id=${o.id}`} className="sk-btn-outline !py-2 !px-3.5 text-[12px]">
                       Track Order
                     </Link>
                   )}
@@ -497,7 +385,7 @@ export function MyOrders({ history = false }) {
 
       <div className="mt-6 flex items-center justify-between gap-3 text-sm text-ink-500">
         <span>
-          Showing {filtered.length} of {TOTAL_ORDERS_COUNT} Orders
+          Showing {filtered.length} of {source.length} Orders
         </span>
         {!history && (
           <Link to="/account/order-history" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
@@ -544,13 +432,26 @@ function TrackingTimeline({ steps }) {
 
 export function OrderDetail() {
   const { orderId } = useParams();
-  const o = MOCK_ORDERS.find((x) => x.id === orderId) || MOCK_ORDERS[0];
+  const { orders, loading } = useUserOrders();
+  const o = orders.find((x) => x.id === orderId);
   const [invoiceHint, setInvoiceHint] = useState(false);
+
+  if (loading) {
+    return <div className="sk-card p-10 text-center text-sm text-ink-500">Loading order…</div>;
+  }
+  if (!o) {
+    return (
+      <div className="sk-card p-10 text-center text-sm text-ink-600">
+        We couldn’t find that order.
+        <div className="mt-4"><Link to="/account/orders" className="sk-btn-primary text-sm">Back to orders</Link></div>
+      </div>
+    );
+  }
 
   const downloadInvoice = () => {
     const blob = new Blob(
       [
-        `Sukhmal Dry Fruits Korner\nINVOICE (Dummy)\n\nOrder: #${o.id}\nDate: ${o.date}\nTotal Paid: ${inr(o.summary?.paid ?? o.total)}\n\nThank you for shopping with us.`,
+        `Sukhmal Dry Fruits Korner\nINVOICE\n\nOrder: #${o.id}\nDate: ${o.date}\nTotal: ${inr(o.summary?.paid ?? o.total)}\n\nThank you for shopping with us.`,
       ],
       { type: 'text/plain' }
     );
@@ -610,7 +511,7 @@ export function OrderDetail() {
         </button>
         {invoiceHint && (
           <p className="text-[12px] text-[var(--sk-green-500)] mt-2 text-center font-medium">
-            Dummy invoice downloaded.
+            Invoice downloaded.
           </p>
         )}
       </div>
@@ -657,7 +558,7 @@ export function OrderDetail() {
 
       <div className="flex flex-wrap gap-2.5">
         {(o.status === 'shipped' || o.status === 'processing') && (
-          <Link to="/track-order" className="sk-btn-primary text-sm">Track Order</Link>
+          <Link to={`/track-order?id=${o.id}`} className="sk-btn-primary text-sm">Track Order</Link>
         )}
         <button type="button" className="sk-btn-outline text-sm">
           <RotateCcw size={14} /> Reorder
@@ -729,9 +630,19 @@ export function ReturnOrder() {
 /* ─── Addresses (mock 17 + 19) ───────────────────────────────── */
 
 export function Addresses() {
-  const [list, setList] = useState(INITIAL_ADDRESSES);
+  const { user, addresses } = useUserProfile();
+  const [list, setList] = useState([]);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_ADDRESS);
+
+  React.useEffect(() => {
+    setList(addresses);
+  }, [addresses]);
+
+  const persist = async (next) => {
+    setList(next);
+    if (user?.uid) await saveUserAddresses(user.uid, next);
+  };
 
   const openNew = () => {
     setForm({ ...EMPTY_ADDRESS, id: `a_${Date.now()}` });
@@ -746,19 +657,17 @@ export function Addresses() {
   const save = (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.line1.trim() || !form.pincode.trim()) return;
-    setList((cur) => {
-      const exists = cur.some((x) => x.id === form.id);
-      let next = exists ? cur.map((x) => (x.id === form.id ? form : x)) : [...cur, form];
-      if (form.isDefault) next = next.map((x) => ({ ...x, isDefault: x.id === form.id }));
-      return next;
-    });
+    let next = list.some((x) => x.id === form.id)
+      ? list.map((x) => (x.id === form.id ? form : x))
+      : [...list, form];
+    if (form.isDefault) next = next.map((x) => ({ ...x, isDefault: x.id === form.id }));
+    persist(next);
     setEditing(null);
   };
 
-  const remove = (id) => setList((cur) => cur.filter((x) => x.id !== id));
+  const remove = (id) => persist(list.filter((x) => x.id !== id));
 
-  const setDefault = (id) =>
-    setList((cur) => cur.map((x) => ({ ...x, isDefault: x.id === id })));
+  const setDefault = (id) => persist(list.map((x) => ({ ...x, isDefault: x.id === id })));
 
   return (
     <div>
@@ -851,6 +760,11 @@ export function Addresses() {
       )}
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {list.length === 0 && !editing && (
+          <div className="sk-card p-8 text-sm text-ink-500 md:col-span-2">
+            No saved addresses yet. Add one for faster checkout.
+          </div>
+        )}
         {list.map((a) => (
           <div key={a.id} className="sk-card p-5 flex flex-col !shadow-sm relative">
             <div className="flex items-start justify-between gap-2">
@@ -1009,9 +923,21 @@ function PasswordField({ label, placeholder }) {
 }
 
 export function ProfileSettings() {
-  const { user } = useAuth();
+  const { user, name, email, phone } = useUserProfile();
+  const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [saved, setSaved] = useState(false);
   const [prefs, setPrefs] = useState({ email: true, sms: true, whatsapp: false });
+
+  React.useEffect(() => {
+    setForm({ name: name || '', email: email || '', phone: phone || '' });
+  }, [name, email, phone]);
+
+  const saveProfile = async () => {
+    if (!user?.uid) return;
+    await saveUserProfile(user.uid, { name: form.name, phone: form.phone });
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2000);
+  };
 
   return (
     <div className="space-y-5">
@@ -1027,20 +953,20 @@ export function ProfileSettings() {
             <div className="grid md:grid-cols-2 gap-3.5">
               <div className="md:col-span-2">
                 <label className="text-[12px] font-semibold text-ink-500">Full Name</label>
-                <input defaultValue={user?.displayName || ''} className="sk-input mt-1" placeholder="Full name" />
+                <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="sk-input mt-1" placeholder="Full name" />
               </div>
               <div>
                 <label className="text-[12px] font-semibold text-ink-500">Email Address</label>
-                <input defaultValue={user?.email || ''} className="sk-input mt-1" placeholder="Email" />
+                <input value={form.email} readOnly className="sk-input mt-1 bg-cream-200" placeholder="Email" />
               </div>
               <div>
                 <label className="text-[12px] font-semibold text-ink-500">Phone Number</label>
-                <input defaultValue={user?.phone || ''} className="sk-input mt-1" placeholder="Phone" />
+                <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} className="sk-input mt-1" placeholder="Phone" />
               </div>
             </div>
             <button
               type="button"
-              onClick={() => { setSaved(true); window.setTimeout(() => setSaved(false), 2000); }}
+              onClick={saveProfile}
               className="sk-btn-primary mt-5 text-sm"
             >
               Save Changes

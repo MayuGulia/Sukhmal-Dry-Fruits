@@ -2,6 +2,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, HAS_BACKEND } from './api';
 import { getLiveProducts, subscribeCatalog } from './commerceStore';
+import { subscribeLiveProduct, subscribeLiveProducts } from './liveCatalog';
+import { db } from './firebase';
 import {
   CATEGORIES as MOCK_CATEGORIES,
   PRODUCTS as MOCK_PRODUCTS,
@@ -113,9 +115,35 @@ export function useCategories() {
 
 export function useProducts({ category, q, bestseller, sort, limit = 200 } = {}) {
   const [data, setData] = useState(() => filterProducts({ category, q, bestseller, sort, limit }));
-  const [loading, setLoading] = useState(HAS_BACKEND);
+  const [loading, setLoading] = useState(Boolean(db) || HAS_BACKEND);
+
+  const applyLocal = useCallback((rows) => {
+    const source = Array.isArray(rows) && rows.length ? rows : getLiveProducts({ activeOnly: true });
+    let list = source.filter((p) => p.isActive !== false && !p.isDeleted);
+    if (category) list = list.filter((p) => p.category === category);
+    if (bestseller) list = list.filter((p) => p.bestseller || p.isBestseller);
+    if (q) {
+      const needle = q.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(needle) ||
+          (p.tagline || '').toLowerCase().includes(needle) ||
+          (p.category || '').toLowerCase().includes(needle),
+      );
+    }
+    if (sort === 'price_asc') list.sort((a, b) => a.price - b.price);
+    if (sort === 'price_desc') list.sort((a, b) => b.price - a.price);
+    if (sort === 'rating') list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    setData(list.slice(0, limit));
+    setLoading(false);
+  }, [category, q, bestseller, sort, limit]);
+
   const fetchIt = useCallback(() => {
     const fallbackData = filterProducts({ category, q, bestseller, sort, limit });
+    if (db) {
+      applyLocal(getLiveProducts({ activeOnly: true }));
+      return Promise.resolve();
+    }
     if (!HAS_BACKEND) {
       setData(fallbackData);
       setLoading(false);
@@ -133,26 +161,49 @@ export function useProducts({ category, q, bestseller, sort, limit = 200 } = {})
       .then((r) => setData(isCatalogList(r.data) ? r.data : fallbackData))
       .catch(() => setData(fallbackData))
       .finally(() => setLoading(false));
-  }, [category, q, bestseller, sort, limit]);
+  }, [applyLocal, category, q, bestseller, sort, limit]);
+
   useEffect(() => {
+    if (db) {
+      setLoading(true);
+      return subscribeLiveProducts((rows) => applyLocal(rows), { activeOnly: true });
+    }
     fetchIt();
     if (HAS_BACKEND) return undefined;
     return subscribeCatalog(fetchIt);
-  }, [fetchIt]);
+  }, [applyLocal, fetchIt]);
+
   return { data, loading, refetch: fetchIt };
 }
 
 export function useProduct(slug) {
+  const resolved = PRODUCT_SLUG_ALIASES[slug] || slug;
   const [data, setData] = useState(() => findMockProduct(slug));
-  const [loading, setLoading] = useState(HAS_BACKEND);
+  const [loading, setLoading] = useState(() => !findMockProduct(slug) && (Boolean(db) || HAS_BACKEND));
   const [error, setError] = useState(null);
+
   useEffect(() => {
     const fallback = findMockProduct(slug);
+    if (fallback) {
+      setData(fallback);
+      setLoading(false);
+      setError(null);
+    }
+    if (db) {
+      if (!fallback) setLoading(true);
+      setError(null);
+      return subscribeLiveProduct(resolved, (row) => {
+        const next = row || fallback;
+        setData(next);
+        setError(next ? null : new Error('Product not found'));
+        setLoading(false);
+      });
+    }
     if (!HAS_BACKEND) {
       setData(fallback);
       setError(fallback ? null : new Error('Product not found'));
       setLoading(false);
-      return undefined;
+      return subscribeCatalog(() => setData(findMockProduct(slug)));
     }
     let m = true;
     setLoading(true);
@@ -174,7 +225,7 @@ export function useProduct(slug) {
     return () => {
       m = false;
     };
-  }, [slug]);
+  }, [slug, resolved]);
   return { data, loading, error };
 }
 

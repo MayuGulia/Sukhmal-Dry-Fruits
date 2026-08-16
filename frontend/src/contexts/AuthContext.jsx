@@ -4,21 +4,26 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider, FIREBASE_ENABLED } from '@/lib/firebase';
+import { isStrongPassword, passwordPolicyMessage, stripHtml } from '@/lib/security';
 
 const Ctx = createContext(null);
 const LS = 'sk_auth_v1';
-export const ADMIN_EMAIL = (process.env.REACT_APP_ADMIN_EMAIL || 'monikabatra890@gmail.com').toLowerCase();
+export const ADMIN_EMAIL = 'sukhmaldryfruitskorner2@gmail.com';
+const ADMIN_EMAILS = new Set([ADMIN_EMAIL]);
 
 export const DEMO_ADMIN = {
   email: ADMIN_EMAIL,
   password: '',
-  name: 'Monika',
+  name: 'Admin',
 };
 
 export function loginLocation(returnTo = '/') {
@@ -29,15 +34,21 @@ export function loginLocation(returnTo = '/') {
 }
 
 export function isAdminEmail(email) {
-  return String(email || '').trim().toLowerCase() === ADMIN_EMAIL;
+  return ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
 }
 
 export function isDemoAdminCredentials() {
   return false;
 }
 
+function collectEmails(source) {
+  if (!source) return [];
+  const emails = [source.email, ...(source.providerData || []).map((p) => p.email)];
+  return emails.filter(Boolean);
+}
+
 function mapSession(fbUser, claims = {}) {
-  const admin = Boolean(claims.admin) || isAdminEmail(fbUser.email);
+  const admin = Boolean(claims.admin) || collectEmails(fbUser).some(isAdminEmail);
   return {
     uid: fbUser.uid,
     email: fbUser.email || null,
@@ -69,7 +80,7 @@ async function upsertUserDoc(fbUser, extras = {}) {
     exists = (await getDoc(ref)).exists();
   } catch {}
   const payload = {
-    name: extras.name || fbUser.displayName || '',
+    name: stripHtml(extras.name || fbUser.displayName || '', 80),
     email: fbUser.email || null,
     phone: extras.phone || fbUser.phoneNumber || null,
     updatedAt: serverTimestamp(),
@@ -78,6 +89,7 @@ async function upsertUserDoc(fbUser, extras = {}) {
     payload.addresses = [];
     payload.wishlist = [];
     payload.loyaltyPoints = 0;
+    payload.role = 'customer';
     payload.createdAt = serverTimestamp();
   }
   await setDoc(ref, payload, { merge: true });
@@ -102,6 +114,10 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return undefined;
     }
+
+    getRedirectResult(auth).then(async (result) => {
+      if (result?.user) await upsertUserDoc(result.user);
+    }).catch(() => {});
 
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
@@ -146,11 +162,13 @@ export const AuthProvider = ({ children }) => {
 
   const signUpWithEmail = async ({ email, password, name, phone } = {}) => {
     if (!auth) throw new Error('Firebase is not configured');
+    if (!isStrongPassword(password)) throw new Error(passwordPolicyMessage());
     const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-    if (name) await updateProfile(cred.user, { displayName: name });
+    if (name) await updateProfile(cred.user, { displayName: stripHtml(name, 80) });
     await upsertUserDoc(cred.user, { name, phone });
+    try { await sendEmailVerification(cred.user); } catch {}
     const session = await sessionFromFirebaseUser(cred.user);
-    if (name) session.displayName = name;
+    if (name) session.displayName = stripHtml(name, 80);
     if (phone) session.phone = phone;
     setUser(session);
     return session;
@@ -158,11 +176,20 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithGoogle = async () => {
     if (!auth || !googleProvider) throw new Error('Firebase is not configured');
-    const cred = await signInWithPopup(auth, googleProvider);
-    await upsertUserDoc(cred.user);
-    const session = await sessionFromFirebaseUser(cred.user);
-    setUser(session);
-    return session;
+    try {
+      const cred = await signInWithPopup(auth, googleProvider);
+      await upsertUserDoc(cred.user);
+      const session = await sessionFromFirebaseUser(cred.user);
+      setUser(session);
+      return session;
+    } catch (err) {
+      const code = err?.code || '';
+      if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+        await signInWithRedirect(auth, googleProvider);
+        return null;
+      }
+      throw err;
+    }
   };
 
   const sendReset = async (email) => {
@@ -170,13 +197,22 @@ export const AuthProvider = ({ children }) => {
     await sendPasswordResetEmail(auth, email.trim());
   };
 
+  const refreshSession = async () => {
+    if (!auth?.currentUser) return user;
+    try { await auth.currentUser.reload(); } catch {}
+    const session = await sessionFromFirebaseUser(auth.currentUser);
+    setUser(session);
+    return session;
+  };
+
   const logout = async () => {
     try { if (auth) await signOut(auth); } catch {}
-    localStorage.removeItem(LS);
+    try { localStorage.removeItem(LS); } catch {}
+    try { sessionStorage.removeItem('sk_login_lock'); } catch {}
     setUser(null);
   };
 
-  const isAdmin = Boolean(user?.customClaims?.admin);
+  const isAdmin = Boolean(user?.customClaims?.admin) || isAdminEmail(user?.email);
 
   return (
     <Ctx.Provider
@@ -192,6 +228,7 @@ export const AuthProvider = ({ children }) => {
         signUpWithEmail,
         signInWithGoogle,
         sendReset,
+        refreshSession,
         firebaseEnabled: FIREBASE_ENABLED,
       }}
     >

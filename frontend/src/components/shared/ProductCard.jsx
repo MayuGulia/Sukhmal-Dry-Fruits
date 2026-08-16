@@ -4,6 +4,22 @@ import { Heart, Plus, Star, Check, Leaf, Hand, Gift, Truck } from 'lucide-react'
 import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
+import { packVariants } from '@/lib/commerceStore';
+
+/** Category / offers cards use the packaged jar/box (gallery image 2). Gift hampers stay on image 1. */
+const PACKAGING_LISTING_CATEGORIES = new Set([
+  'dry-fruits',
+  'nuts',
+  'seeds',
+  'dates',
+  'berries',
+]);
+
+export function listingImage(p) {
+  const imgs = Array.isArray(p?.images) ? p.images.filter(Boolean) : [];
+  if (PACKAGING_LISTING_CATEGORIES.has(p?.category) && imgs[1]) return imgs[1];
+  return imgs[0] || p?.img || p?.image || '';
+}
 
 function shortSubtitle(p) {
   if (p.subcategory) return p.subcategory;
@@ -47,12 +63,10 @@ export default function ProductCard({ p, variant = 'default' }) {
   const { has, toggle } = useWishlist();
   const active = has(p.id);
   const labeled = variant === 'labeled';
-  const variants = p.variants?.length
-    ? p.variants
-    : [{ w: p.weight || '250g', price: p.price }];
+  const variants = packVariants(p);
   const preferredIdx = Math.max(0, variants.findIndex((v) => /500/i.test(String(v.w))));
   const [vi, setVi] = useState(preferredIdx >= 0 ? preferredIdx : 0);
-  const selected = variants[Math.min(vi, variants.length - 1)] || variants[0];
+  const selected = variants[Math.min(vi, Math.max(variants.length - 1, 0))] || variants[0];
   const price = selected?.price ?? p.price;
   const subtitle = shortSubtitle(p);
   const liveVariant = (p.weightVariants || []).find((v) => v.weight === selected?.w) || p.weightVariants?.[vi];
@@ -64,7 +78,7 @@ export default function ProductCard({ p, variant = 'default' }) {
     return (
       <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full h-full bg-white">
         <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-[#F4EDE3]">
-          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" decoding="async" />
+          <img src={listingImage(p)} alt={p.name} className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" loading="lazy" decoding="async" />
           {p.bestseller && <span className="sk-pill sk-pill-brown absolute top-2 left-2 !py-1 !px-2.5">Bestseller</span>}
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
@@ -106,7 +120,7 @@ export default function ProductCard({ p, variant = 'default' }) {
     <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full overflow-hidden">
       <Link to={`/product/${p.slug}`} className="relative block aspect-square overflow-hidden bg-cream-200">
         <img
-          src={p.images[0]}
+          src={listingImage(p)}
           alt={p.name}
           className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           loading="lazy"

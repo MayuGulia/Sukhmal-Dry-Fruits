@@ -5,6 +5,8 @@
  */
 const FALLBACK_MODEL = 'gemini-flash-latest';
 const SKIP = /lite|tts|image|video|audio|1\.5|gemini-pro$|gemini-1\.0|computer-use|robotics|lyria|deep-research|antigravity|gemma-|omni-|eap|customtools/i;
+/** ListModels still returns these, but generateContent 404s them for new AI Studio keys. */
+const LISTED_BUT_BLOCKED_FOR_NEW_KEYS = /^gemini-2\.5-flash$/;
 
 function envGet(name) {
   try {
@@ -35,16 +37,50 @@ function flashRank(id) {
   return 0;
 }
 
+function maskKeyMeta(key) {
+  if (!key) return { present: false };
+  return {
+    present: true,
+    length: key.length,
+    prefix: key.slice(0, 3),
+    looksLikeAiStudioAuthKey: key.startsWith('AQ.'),
+    looksLikeLegacyGoogleKey: key.startsWith('AIza'),
+  };
+}
+
+function logExactRequest(label, { method, url, apiVersion, model, key }) {
+  console.log(
+    `[Sukhmal Gemini] ${label} EXACT REQUEST`,
+    JSON.stringify({
+      method,
+      completeUrl: url,
+      apiVersion,
+      model,
+      modelPathHasModelsPrefix: /\/models\//.test(url),
+      headers: {
+        'Content-Type': method === 'POST' ? 'application/json' : undefined,
+        'x-goog-api-key': maskKeyMeta(key),
+      },
+    }),
+  );
+}
+
 export function rankStableFlashModels(ids) {
   return [...new Set(ids || [])]
-    .filter((id) => id && !SKIP.test(id) && (/^gemini-\d+(\.\d+)?-flash$/.test(id) || id === 'gemini-flash-latest'))
+    .filter(
+      (id) =>
+        id &&
+        !SKIP.test(id) &&
+        !LISTED_BUT_BLOCKED_FOR_NEW_KEYS.test(id) &&
+        (/^gemini-\d+(\.\d+)?-flash$/.test(id) || id === 'gemini-flash-latest'),
+    )
     .sort((a, b) => flashRank(b) - flashRank(a));
 }
 
 export function pickStableFlashModel(ids, envModel) {
   const ranked = rankStableFlashModels(ids);
-  if (envModel && SKIP.test(envModel)) {
-    console.warn(`[Sukhmal Gemini] GEMINI_MODEL=${envModel} is lite/retired — ignoring`);
+  if (envModel && (SKIP.test(envModel) || LISTED_BUT_BLOCKED_FOR_NEW_KEYS.test(envModel))) {
+    console.warn(`[Sukhmal Gemini] GEMINI_MODEL=${envModel} is lite/retired/blocked for new keys — ignoring`);
   } else if (envModel && ranked.includes(envModel)) {
     return envModel;
   }
@@ -52,7 +88,8 @@ export function pickStableFlashModel(ids, envModel) {
 }
 
 export function geminiGenerateUrl(apiVersion, model) {
-  return `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent`;
+  const id = String(model || '').replace(/^models\//, '');
+  return `https://generativelanguage.googleapis.com/${apiVersion}/models/${id}:generateContent`;
 }
 
 let modelsCache = null;
@@ -60,7 +97,7 @@ let modelsCache = null;
 async function listModels(key, apiVersion) {
   if (modelsCache) return modelsCache;
   const url = `https://generativelanguage.googleapis.com/${apiVersion}/models?pageSize=200`;
-  console.log(`[Sukhmal Gemini] ListModels GET ${url}`);
+  logExactRequest('ListModels', { method: 'GET', url, apiVersion, model: '(list)', key });
   const res = await fetch(url, { headers: { 'x-goog-api-key': key } });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -83,8 +120,15 @@ console.log(
   `[Sukhmal Gemini] helper loaded; GEMINI_MODEL=${configuredGeminiModel() || '(unset → pick newest stable Flash from ListModels)'} api=v1beta method=generateContent`,
 );
 
-function isUnavailableModel(status, message) {
-  return status === 404 || /no longer available|not found for API version|not supported for generateContent/i.test(message || '');
+function shouldTryNextModel(status, message) {
+  return (
+    status === 404 ||
+    status === 429 ||
+    status === 503 ||
+    /no longer available|not found for API version|not supported for generateContent|high demand|unavailable/i.test(
+      message || '',
+    )
+  );
 }
 
 export async function generateGeminiContent({ key, label, body }) {
@@ -93,7 +137,7 @@ export async function generateGeminiContent({ key, label, body }) {
   const envModel = configuredGeminiModel();
   const ranked = rankStableFlashModels(ids);
   const preferred = pickStableFlashModel(ids, envModel);
-  const queue = [preferred, ...ranked.filter((id) => id !== preferred)];
+  const queue = [preferred, FALLBACK_MODEL, ...ranked.filter((id) => id !== preferred && id !== FALLBACK_MODEL)];
   const seen = new Set();
   let lastErr = null;
 
@@ -104,7 +148,7 @@ export async function generateGeminiContent({ key, label, body }) {
     seen.add(model);
     const apiVersion = 'v1beta';
     const url = geminiGenerateUrl(apiVersion, model);
-    console.log(`[Sukhmal Gemini] ${label} sending model=${model} (GEMINI_MODEL=${envModel || 'unset'}) api=${apiVersion} url=${url}`);
+    logExactRequest(label, { method: 'POST', url, apiVersion, model, key });
 
     const res = await fetch(url, {
       method: 'POST',
@@ -130,7 +174,7 @@ export async function generateGeminiContent({ key, label, body }) {
     console.warn(`[Sukhmal Gemini] ${label} failed model=${model} status=${res.status} message=${msg}`);
     lastErr = new Error(msg);
     lastErr.code = 'gemini_error';
-    if (!isUnavailableModel(res.status, msg)) throw lastErr;
+    if (!shouldTryNextModel(res.status, msg)) throw lastErr;
   }
 
   throw lastErr || new Error('Gemini request failed');

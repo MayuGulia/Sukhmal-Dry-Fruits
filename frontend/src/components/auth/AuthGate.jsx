@@ -24,6 +24,13 @@ export function RequireAuth({ children }) {
   return children;
 }
 
+export function RequireAdmin({ children }) {
+  const { isAuthed, isAdmin, loading } = useAuth();
+  if (loading) return <Splash />;
+  if (!isAuthed || !isAdmin) return <Navigate to="/" replace />;
+  return children;
+}
+
 export function PublicOnly({ children }) {
   const { isAuthed, isAdmin, loading } = useAuth();
   if (loading) return <Splash />;

@@ -6,6 +6,15 @@ import {
   CheckCircle2, RefreshCw, Eye, EyeOff, ArrowLeft,
 } from 'lucide-react';
 import { HERO_IMG } from '@/data/mockContent';
+import {
+  isStrongPassword,
+  passwordPolicyMessage,
+  isValidEmail,
+  isValidIndianPhone,
+  loginLockStatus,
+  recordLoginFailure,
+  clearLoginFailures,
+} from '@/lib/security';
 
 /* UserFlows §5 — enumeration-safe copy (never reveal email/phone existence on login/forgot). */
 const MSG = {
@@ -16,7 +25,7 @@ const MSG = {
   signupTaken: 'Account exists — log in instead.',
   needPhone: 'Please enter a valid phone number.',
   needEmail: 'Please enter a valid email address.',
-  needPassword: 'Please enter your password.',
+  needPassword: 'Please enter a password with at least 8 characters, a number, and a special character.',
   needName: 'Please enter your full name.',
 };
 
@@ -89,17 +98,31 @@ function BrandMark({ compact = false }) {
   );
 }
 
-function Field({ icon: Icon, children, hint }) {
+function Field({ icon: Icon, children, hint, trailing }) {
   return (
     <div>
       <div className="relative">
         {Icon && (
-          <Icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none" aria-hidden />
+          <span className="sk-field-icon" aria-hidden>
+            <Icon size={18} strokeWidth={1.75} />
+          </span>
         )}
         {children}
+        {trailing}
       </div>
       {hint && <p className="mt-1.5 text-[12px] text-ink-500">{hint}</p>}
     </div>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.2-.1-2.3-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.6 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.3 4.1-4.1 5.5l.1.1 6.3 5.3C39.2 37.3 44 32 44 24c0-1.2-.1-2.3-.4-3.5z" />
+    </svg>
   );
 }
 
@@ -251,7 +274,7 @@ export default function AuthPage({ mode = 'login' }) {
 
     // ——— Forgot password ———
     if (mode === 'forgot') {
-      if (!form.email.trim() || !form.email.includes('@')) {
+      if (!isValidEmail(form.email)) {
         setMsg({ text: MSG.needEmail, tone: 'error' });
         return;
       }
@@ -287,7 +310,7 @@ export default function AuthPage({ mode = 'login' }) {
         return;
       }
       finishAuth(login({
-        phone: form.phone || phoneFromState || '+919876543210',
+        phone: form.phone || phoneFromState || '',
         name: 'Guest',
       }));
       return;
@@ -299,12 +322,16 @@ export default function AuthPage({ mode = 'login' }) {
         setMsg({ text: MSG.needName, tone: 'error' });
         return;
       }
-      if (!form.email.trim() || !form.email.includes('@')) {
+      if (!form.email.trim() || !isValidEmail(form.email)) {
         setMsg({ text: MSG.needEmail, tone: 'error' });
         return;
       }
-      if (!form.password || form.password.length < 6) {
-        setMsg({ text: MSG.needPassword, tone: 'error' });
+      if (!isStrongPassword(form.password)) {
+        setMsg({ text: passwordPolicyMessage(), tone: 'error' });
+        return;
+      }
+      if (form.phone.trim() && !isValidIndianPhone(form.phone)) {
+        setMsg({ text: MSG.needPhone, tone: 'error' });
         return;
       }
       setLoading(true);
@@ -357,7 +384,13 @@ export default function AuthPage({ mode = 'login' }) {
     }
 
     // Email + password
-    if (!form.email.trim() || !form.email.includes('@')) {
+    const lock = loginLockStatus();
+    if (lock.locked) {
+      const mins = Math.max(1, Math.ceil(lock.remainingMs / 60000));
+      setMsg({ text: `Too many failed attempts. Try again in ${mins} minute(s).`, tone: 'error' });
+      return;
+    }
+    if (!isValidEmail(form.email)) {
       setMsg({ text: MSG.credentials, tone: 'error' });
       return;
     }
@@ -369,6 +402,7 @@ export default function AuthPage({ mode = 'login' }) {
     try {
       if (firebaseEnabled) {
         const session = await signInWithEmail(form.email.trim(), form.password);
+        clearLoginFailures();
         finishAuth(session);
         return;
       }
@@ -378,7 +412,12 @@ export default function AuthPage({ mode = 'login' }) {
         name: form.email.trim().split('@')[0],
       }));
     } catch (err) {
-      setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
+      const next = recordLoginFailure();
+      if (next.locked) {
+        setMsg({ text: 'Too many failed attempts. Try again in 30 minutes.', tone: 'error' });
+      } else {
+        setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
+      }
     } finally {
       setLoading(false);
     }
@@ -503,7 +542,7 @@ export default function AuthPage({ mode = 'login' }) {
                         onChange={set('name')}
                         placeholder="Full name"
                         autoComplete="name"
-                        className="sk-input pl-10"
+                        className="sk-input has-leading-icon"
                         data-testid="auth-name"
                       />
                     </Field>
@@ -517,7 +556,7 @@ export default function AuthPage({ mode = 'login' }) {
                           otpFocused ? 'ring-[3px] ring-[rgba(62,39,21,.08)] border-brand-900' : 'border-line-strong'
                         }`}
                       >
-                        <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+                        <Lock size={18} className="sk-field-icon" aria-hidden />
                         <input
                           ref={otpRef}
                           id="otp-input"
@@ -532,7 +571,7 @@ export default function AuthPage({ mode = 'login' }) {
                           autoComplete="one-time-code"
                           maxLength={6}
                           placeholder="• • • • • •"
-                          className="w-full pl-10 pr-4 py-3.5 rounded-lg bg-white text-brand-900 text-center text-2xl font-semibold tracking-[0.55em] font-mono outline-none"
+                          className="w-full has-leading-icon pr-4 py-3.5 rounded-lg bg-white text-brand-900 text-center text-2xl font-semibold tracking-[0.55em] font-mono outline-none pl-11"
                           data-testid="otp-input"
                         />
                       </div>
@@ -558,7 +597,7 @@ export default function AuthPage({ mode = 'login' }) {
                         placeholder="+91 phone number"
                         autoComplete="tel"
                         inputMode="tel"
-                        className="sk-input pl-10"
+                        className="sk-input has-leading-icon"
                         data-testid="auth-phone"
                       />
                     </Field>
@@ -571,7 +610,7 @@ export default function AuthPage({ mode = 'login' }) {
                           placeholder="+91 phone number (optional)"
                           autoComplete="tel"
                           inputMode="tel"
-                          className="sk-input pl-10"
+                          className="sk-input has-leading-icon"
                           data-testid="auth-phone"
                         />
                       </Field>
@@ -582,7 +621,7 @@ export default function AuthPage({ mode = 'login' }) {
                           type="email"
                           placeholder="Email address"
                           autoComplete="email"
-                          className="sk-input pl-10"
+                          className="sk-input has-leading-icon"
                           data-testid="auth-email"
                         />
                       </Field>
@@ -595,7 +634,7 @@ export default function AuthPage({ mode = 'login' }) {
                         type="email"
                         placeholder="Email address"
                         autoComplete={mode === 'forgot' ? 'email' : 'username'}
-                        className="sk-input pl-10"
+                        className="sk-input has-leading-icon"
                         required={mode !== 'forgot'}
                         data-testid="auth-email"
                       />
@@ -603,24 +642,28 @@ export default function AuthPage({ mode = 'login' }) {
                   )}
 
                   {((mode === 'login' && tab === 'email') || mode === 'signup') && (
-                    <Field icon={Lock}>
+                    <Field
+                      icon={Lock}
+                      trailing={(
+                        <button
+                          type="button"
+                          onClick={() => setShowPw((v) => !v)}
+                          className="sk-field-icon-right"
+                          aria-label={showPw ? 'Hide password' : 'Show password'}
+                        >
+                          {showPw ? <EyeOff size={18} strokeWidth={1.75} /> : <Eye size={18} strokeWidth={1.75} />}
+                        </button>
+                      )}
+                    >
                       <input
                         value={form.password}
                         onChange={set('password')}
                         type={showPw ? 'text' : 'password'}
-                        placeholder={mode === 'signup' ? 'Password (min. 6 characters)' : 'Password'}
+                        placeholder={mode === 'signup' ? 'Password (8+ chars, number & symbol)' : 'Password'}
                         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                        className="sk-input pl-10 pr-11"
+                        className="sk-input has-leading-icon has-trailing-icon"
                         data-testid="auth-password"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPw((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-brand-900 p-1"
-                        aria-label={showPw ? 'Hide password' : 'Show password'}
-                      >
-                        {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
                     </Field>
                   )}
 
@@ -669,20 +712,23 @@ export default function AuthPage({ mode = 'login' }) {
                     <button
                       type="button"
                       disabled={loading}
-                      onClick={async () => {
-                        setLoading(true);
+                      onClick={() => {
+                        if (loading) return;
                         setMsg({ text: '', tone: 'error' });
-                        try {
-                          const session = await signInWithGoogle();
-                          finishAuth(session);
-                        } catch (err) {
-                          setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
-                        } finally {
-                          setLoading(false);
-                        }
+                        const pending = signInWithGoogle();
+                        setLoading(true);
+                        pending
+                          .then((session) => {
+                            if (session) finishAuth(session);
+                          })
+                          .catch((err) => {
+                            setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
+                            setLoading(false);
+                          });
                       }}
-                      className="w-full sk-btn-outline !py-2.5"
+                      className="w-full sk-btn-outline !py-2.5 inline-flex items-center justify-center gap-2.5"
                     >
+                      <GoogleMark />
                       Continue with Google
                     </button>
                   </div>

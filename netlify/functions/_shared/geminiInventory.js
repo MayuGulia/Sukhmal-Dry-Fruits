@@ -1,6 +1,7 @@
 import { generateGeminiContent } from './geminiClient.js';
 
 const ALLOWED_FIELDS = new Set(['inStock', 'stock', 'price', 'isActive', 'isDeleted', 'isBestseller']);
+const PRODUCT_FIELDS = new Set(['isActive', 'isDeleted', 'isBestseller']);
 
 function geminiKey() {
   if (typeof Netlify !== 'undefined' && Netlify.env?.get) {
@@ -11,6 +12,14 @@ function geminiKey() {
 
 function norm(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function normWeight(w) {
+  return String(w || '').replace(/\s+/g, '').toLowerCase();
+}
+
+function weightsEqual(a, b) {
+  return Boolean(normWeight(a)) && normWeight(a) === normWeight(b);
 }
 
 export function fuzzyFindProduct(catalog, name) {
@@ -46,7 +55,7 @@ function coerceValue(field, raw) {
     if (typeof raw === 'number') return raw > 0;
     const s = String(raw ?? '').trim().toLowerCase();
     if (['false', '0', 'no', 'out of stock', 'oos', 'unavailable'].includes(s)) return false;
-    if (['true', '1', 'yes', 'in stock', 'available'].includes(s)) return true;
+    if (['true', '1', 'yes', 'in stock', 'available', 'instock'].includes(s)) return true;
     return Boolean(s);
   }
   if (field === 'stock' || field === 'price') {
@@ -77,26 +86,76 @@ function normalizeField(field, command) {
   if (mapped) return mapped;
   const lower = String(command || '').toLowerCase();
   if (/out of stock|oos|unavailable/.test(lower)) return 'inStock';
-  if (/in stock|available/.test(lower) && !/unavailable/.test(lower)) return 'inStock';
+  if (/in\s*stock|instock|available/.test(lower) && !/unavailable/.test(lower)) return 'inStock';
   if (/%|discount|price|₹/.test(lower)) return 'price';
   return f || 'inStock';
 }
 
-export function readCurrentValue(product, field) {
+function matchCatalogWeight(product, raw) {
+  const variants = product.weightVariants || [];
+  const n = normWeight(raw);
+  if (!n) return null;
+  return (
+    variants.find((v) => normWeight(v.weight) === n)?.weight
+    || variants.find((v) => normWeight(v.weight).startsWith(n) || n.startsWith(normWeight(v.weight)))?.weight
+    || null
+  );
+}
+
+function extractMentionedWeights(command, product) {
+  const text = String(command || '');
+  const found = [...text.matchAll(/(\d+(?:\.\d+)?)\s*(kg|g|gm|grams?)\b/gi)].map((m) => {
+    const unit = m[2].toLowerCase().startsWith('kg') ? 'kg' : 'g';
+    return matchCatalogWeight(product, `${m[1]}${unit}`) || `${m[1]}${unit}`;
+  }).filter(Boolean);
+  return [...new Set(found)];
+}
+
+function wantsAllWeights(command) {
+  return /all\s+weights|saare\s+weight|dono(\s+weight)?|both\s+weights|har\s+weight/i.test(String(command || ''));
+}
+
+function resolveVariants(command, product, hinted) {
+  const catalogWeights = (product.weightVariants || []).map((v) => v.weight);
+  const hintedList = (Array.isArray(hinted) ? hinted : hinted ? [hinted] : [])
+    .map((w) => matchCatalogWeight(product, w))
+    .filter(Boolean);
+  const mentioned = extractMentionedWeights(command, product);
+  if (hintedList.length) return [...new Set(hintedList)];
+  if (mentioned.length) return mentioned;
+  if (wantsAllWeights(command) || catalogWeights.length) return catalogWeights;
+  return [null];
+}
+
+function extractPairedPrices(command) {
+  const text = String(command || '');
+  const m = text.match(/(\d{2,5})\s*(?:se|to|-|→)\s*(\d{2,5})/i);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2])];
+}
+
+export function readCurrentValue(product, field, variantWeight) {
   if (!product) return null;
+  const variants = product.weightVariants || [];
+  const v = variantWeight
+    ? variants.find((x) => weightsEqual(x.weight, variantWeight))
+    : null;
   if (field === 'inStock') {
-    const variants = product.weightVariants || [];
+    if (v) return (v.stock ?? 0) > 0;
     if (typeof product.inStock === 'boolean') return product.inStock;
     if (typeof product.stock === 'number') return product.stock > 0;
     if (!variants.length) return true;
-    return variants.some((v) => (v.stock ?? 0) > 0);
+    return variants.some((row) => (row.stock ?? 0) > 0);
   }
   if (field === 'stock') {
+    if (v) return typeof v.stock === 'number' ? v.stock : 0;
     if (typeof product.stock === 'number') return product.stock;
-    const v = (product.weightVariants || [])[0];
-    return typeof v?.stock === 'number' ? v.stock : 0;
+    return typeof variants[0]?.stock === 'number' ? variants[0].stock : 0;
   }
-  if (field === 'price') return Number(product.price) || 0;
+  if (field === 'price') {
+    if (v) return Number(v.price) || 0;
+    return Number(product.price) || 0;
+  }
   if (field === 'isActive') return product.isActive !== false;
   if (field === 'isDeleted') return Boolean(product.isDeleted);
   if (field === 'isBestseller') return Boolean(product.isBestseller || product.bestseller);
@@ -111,10 +170,34 @@ function valuesEqual(a, b) {
 
 function parseGeminiJson(text) {
   const raw = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  const arrayStart = raw.indexOf('[');
+  const objStart = raw.indexOf('{');
+  if (arrayStart >= 0 && (objStart < 0 || arrayStart < objStart)) {
+    const end = raw.lastIndexOf(']');
+    if (end > arrayStart) return JSON.parse(raw.slice(arrayStart, end + 1));
+  }
   const start = raw.indexOf('{');
   const end = raw.lastIndexOf('}');
   if (start < 0 || end < start) throw new Error('Gemini did not return JSON');
   return JSON.parse(raw.slice(start, end + 1));
+}
+
+function rowsFromGemini(parsed) {
+  if (Array.isArray(parsed)) return parsed;
+  if (Array.isArray(parsed?.changes)) return parsed.changes;
+  if (parsed && typeof parsed === 'object' && parsed.productName) return [parsed];
+  return [];
+}
+
+function commandImpliesInStock(command) {
+  const lower = String(command || '').toLowerCase();
+  if (/out of stock|\boos\b|unavailable/.test(lower)) return false;
+  if (/in\s*stock|instock|available/.test(lower)) return true;
+  return null;
+}
+
+function commandImpliesOutOfStock(command) {
+  return /out of stock|\boos\b|unavailable/.test(String(command || '').toLowerCase());
 }
 
 async function callGemini(command, catalog) {
@@ -131,27 +214,36 @@ async function callGemini(command, catalog) {
     name: p.name,
     category: p.category,
     price: p.price,
-    inStock: readCurrentValue(p, 'inStock'),
-    stock: readCurrentValue(p, 'stock'),
+    weightVariants: (p.weightVariants || []).map((v) => ({
+      weight: v.weight,
+      price: v.price,
+      stock: v.stock,
+      inStock: (v.stock ?? 0) > 0,
+    })),
   }));
 
   const prompt = `You are the inventory manager for Sukhmal Dry Fruits Korner.
-Read the admin's natural-language command and return ONE proposed field change.
+Parse the admin's Hindi-English command into EVERY field change and EVERY pack size mentioned.
 
 Command: ${JSON.stringify(command)}
 
-Catalog (use these names only):
+Catalog (use these names and weightVariants only):
 ${JSON.stringify(slim)}
 
 Rules:
-- productName must match a catalog product (prefer the closest name).
+- Return JSON only: {"changes":[...]} with one object per field per variant.
+- Each change: {"productName": string, "variant": string, "field": string, "newValue": string|number|boolean}
 - field must be one of: inStock, stock, price, isActive, isDeleted, isBestseller.
-- "out of stock", "oos", "mark unavailable" → field "inStock", newValue false.
-- "in stock" / "available" → field "inStock", newValue true.
-- stock counts → field "stock", newValue a number.
-- price / ₹ / discount to a rupee amount → field "price", newValue the new integer rupee price.
-- newValue must be the TARGET value, not the current value.
-- Return JSON only: {"productName": string, "field": string, "newValue": boolean|number|string}`;
+- variant is the pack size (e.g. "250g", "500g"). Use "" for product-level fields (isActive, isDeleted, isBestseller).
+- "all weights 250g 500g" means TWO variants: 250g and 500g — not 1kg, not a single row.
+- inStock / "instock kar do" / available → field inStock, newValue true (per mentioned variant).
+- out of stock / oos → inStock false (per mentioned variant).
+- If N weights and N prices appear (including "399 se 599" with 250g and 500g), PAIR IN ORDER: first weight gets first price, second weight gets second price.
+- If only one target price ("price 599" or "from 399 to 599" with a single pack), apply that target to each mentioned variant.
+- "X se Y" with two weights and two numbers is a range across packs (pair), not "set every pack to Y".
+- Emit stock AND price as separate rows when both are mentioned.
+- newValue is the TARGET value.
+- Never return only one change when multiple variants or fields are named.`;
 
   const { text } = await generateGeminiContent({
     key,
@@ -164,16 +256,115 @@ Rules:
         responseSchema: {
           type: 'OBJECT',
           properties: {
-            productName: { type: 'STRING' },
-            field: { type: 'STRING' },
-            newValue: { type: 'STRING' },
+            changes: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  productName: { type: 'STRING' },
+                  variant: { type: 'STRING' },
+                  field: { type: 'STRING' },
+                  newValue: { type: 'STRING' },
+                },
+                required: ['productName', 'field', 'newValue'],
+              },
+            },
           },
-          required: ['productName', 'field', 'newValue'],
+          required: ['changes'],
         },
       },
     },
   });
   return parseGeminiJson(text);
+}
+
+function expandRow(row, command, catalog) {
+  const field = normalizeField(row.field, command);
+  if (!ALLOWED_FIELDS.has(field)) return [];
+  const product = fuzzyFindProduct(catalog, row.productName) || fuzzyFindProduct(catalog, command);
+  if (!product) return [];
+
+  if (PRODUCT_FIELDS.has(field)) {
+    let newValue = coerceValue(field, row.newValue);
+    const currentValue = readCurrentValue(product, field, null);
+    return [{ product, field, variant: null, currentValue, newValue, changed: !valuesEqual(currentValue, newValue) }];
+  }
+
+  const variants = resolveVariants(command, product, row.variant);
+  const paired = extractPairedPrices(command);
+  const inStockHint = commandImpliesInStock(command);
+  const oos = commandImpliesOutOfStock(command);
+
+  return variants.map((variant, idx) => {
+    let newValue = coerceValue(field, row.newValue);
+    if (field === 'inStock') {
+      if (oos) newValue = false;
+      else if (inStockHint === true) newValue = true;
+    }
+    if (field === 'price' && paired && variants.length === paired.length) {
+      newValue = paired[idx];
+    }
+    const currentValue = readCurrentValue(product, field, variant);
+    return {
+      product,
+      field,
+      variant,
+      currentValue,
+      newValue,
+      changed: !valuesEqual(currentValue, newValue),
+    };
+  });
+}
+
+function ensureStockAndPriceCoverage(command, catalog, expanded) {
+  const product = expanded[0]?.product || fuzzyFindProduct(catalog, command);
+  if (!product) return expanded;
+  const lower = String(command || '').toLowerCase();
+  const wantsStock = /in\s*stock|instock|out of stock|\boos\b|unavailable|available/.test(lower);
+  const wantsPrice = /price|₹|rs\.?|\d{2,5}\s*se\s*\d{2,5}/.test(lower);
+  const variants = resolveVariants(command, product, null);
+  const have = (field, variant) => expanded.some((r) => r.field === field && weightsEqual(r.variant, variant));
+  const extra = [];
+  if (wantsStock) {
+    const oos = commandImpliesOutOfStock(command);
+    const want = oos ? false : true;
+    variants.forEach((variant) => {
+      if (have('inStock', variant)) return;
+      const currentValue = readCurrentValue(product, 'inStock', variant);
+      extra.push({
+        product, field: 'inStock', variant, currentValue, newValue: want,
+        changed: !valuesEqual(currentValue, want),
+      });
+    });
+  }
+  if (wantsPrice) {
+    const paired = extractPairedPrices(command);
+    variants.forEach((variant, idx) => {
+      if (have('price', variant)) return;
+      const newValue = paired
+        ? (variants.length === paired.length ? paired[idx] : paired[paired.length - 1])
+        : null;
+      if (newValue == null || Number.isNaN(Number(newValue))) return;
+      const currentValue = readCurrentValue(product, 'price', variant);
+      extra.push({
+        product, field: 'price', variant, currentValue, newValue: Number(newValue),
+        changed: !valuesEqual(currentValue, Number(newValue)),
+      });
+    });
+  }
+  return [...expanded, ...extra];
+}
+
+function dedupeRows(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const row of rows) {
+    const key = `${row.product?.id || ''}::${row.variant || ''}::${row.field}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
 }
 
 export async function previewInventoryCommand(command, catalog) {
@@ -190,57 +381,45 @@ export async function previewInventoryCommand(command, catalog) {
   }
 
   const parsed = await callGemini(text, catalog);
-  const field = normalizeField(parsed.field, text);
-  if (!ALLOWED_FIELDS.has(field)) {
-    const err = new Error(`Unsupported field "${parsed.field || field}"`);
+  const rawRows = rowsFromGemini(parsed);
+  if (!rawRows.length) {
+    const err = new Error('Gemini did not propose a product change');
     err.code = 'bad_request';
     throw err;
   }
 
-  const product = fuzzyFindProduct(catalog, parsed.productName) || fuzzyFindProduct(catalog, text);
-  if (!product) {
-    const err = new Error(`No product matched "${parsed.productName || text}"`);
+  let expanded = rawRows.flatMap((row) => expandRow(row, text, catalog));
+  expanded = ensureStockAndPriceCoverage(text, catalog, expanded);
+  expanded = dedupeRows(expanded);
+
+  if (!expanded.length) {
+    const err = new Error(`No product matched "${rawRows[0]?.productName || text}"`);
     err.code = 'no_match';
     throw err;
   }
 
-  let newValue = coerceValue(field, parsed.newValue);
-  if (field === 'inStock' && /out of stock|oos|unavailable/.test(text.toLowerCase())) {
-    newValue = false;
-  }
-  if (field === 'inStock' && /\bin stock\b|\bavailable\b/.test(text.toLowerCase()) && !/out of stock|unavailable/.test(text.toLowerCase())) {
-    newValue = true;
-  }
-
-  const currentValue = readCurrentValue(product, field);
-  const changed = !valuesEqual(currentValue, newValue);
-
-  return {
-    productName: parsed.productName,
-    field,
-    newValue,
-    product,
-    currentValue,
-    changed,
-  };
+  return { rows: expanded };
 }
 
 export function buildPreviewPayload(result) {
-  const change = {
+  const rows = result.rows || (result.product ? [result] : []);
+  const changes = rows.map((row) => ({
     type: 'update',
-    productId: result.product.id,
-    slug: result.product.slug,
-    productName: result.product.name,
-    field: result.field,
-    before: result.currentValue,
-    after: result.newValue,
-    currentValue: result.currentValue,
-    newValue: result.newValue,
-    noop: !result.changed,
-  };
+    productId: row.product.id,
+    slug: row.product.slug,
+    productName: row.product.name,
+    variant: row.variant || '',
+    weight: row.variant || '',
+    field: row.field,
+    before: row.currentValue,
+    after: row.newValue,
+    currentValue: row.currentValue,
+    newValue: row.newValue,
+    noop: !row.changed,
+  }));
   return {
-    changes: [change],
-    hasChanges: result.changed,
+    changes,
+    hasChanges: changes.some((c) => !c.noop),
   };
 }
 

@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import Breadcrumb from '@/components/shared/Breadcrumb';
 import FlourishTitle from '@/components/home/FlourishTitle';
 import {
-  Leaf, Award, Heart, Hand, Users, TrendingUp, Package, ShieldCheck,
-  Search, Sparkles, Box, ClipboardCheck, Facebook, Instagram, Linkedin, ArrowRight,
+  Leaf, Award, Heart, Hand, Users, TrendingUp, Package,
+  Search, Sparkles, Box, ClipboardCheck, ArrowRight,
 } from 'lucide-react';
 
 const HERO_IMG = '/brand/about-hero-family.png';
@@ -29,46 +29,12 @@ const TIMELINE = [
   { year: '2025', title: 'The Future', text: 'Innovating with care — D2C experience, quality-first always.' },
 ];
 
-const CERTS = [
-  { code: 'FSSAI', desc: 'Certified', meta: 'Licensed Food Business' },
-  { code: 'ISO', desc: 'Food Safety Management', meta: '22000 Certified' },
-  { code: 'HACCP', desc: 'Food Safety Assurance', meta: 'Process Assured' },
-  { code: 'GMP', desc: 'Good Manufacturing Practice', meta: 'Facility Certified' },
-];
-
 const STATS = [
   { Ic: TrendingUp, n: '30+', l: 'Years of Trust' },
   { Ic: Users, n: '20K+', l: 'Happy Customers' },
   { Ic: Award, n: '500+', l: 'Corporate Clients' },
   { Ic: Package, n: '150+', l: 'Products' },
   { Ic: Heart, n: '99%', l: 'Customer Satisfaction' },
-];
-
-const TEAM = [
-  {
-    name: 'Saurabh Malhotra',
-    role: 'Founder',
-    bio: 'Visionary behind Sukhmal — obsessed with purity, freshness, and honest gifting.',
-    img: '/brand/about-team-saurabh.png',
-  },
-  {
-    name: 'Priya Malhotra',
-    role: 'Co-Founder',
-    bio: 'Steers brand experience, packaging craft, and every celebration-ready hamper.',
-    img: '/brand/about-team-priya.png',
-  },
-  {
-    name: 'Rohit Sharma',
-    role: 'Quality Head',
-    bio: 'Guards every batch — sorting, moisture checks, and aflatoxin-safe standards.',
-    img: '/brand/about-team-rohit.png',
-  },
-  {
-    name: 'Neha Verma',
-    role: 'Customer Support Head',
-    bio: 'Makes sure every order feels personal — from enquiry to doorstep delight.',
-    img: '/brand/about-team-neha.png',
-  },
 ];
 
 const HERO_ICONS = [
@@ -241,25 +207,6 @@ export default function About() {
         </div>
       </section>
 
-      {/* CERTIFICATIONS */}
-      <section className="bg-cream-200 py-14 border-y border-line">
-        <div className="sk-container">
-          <FlourishTitle title="Our Certifications" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 -mt-2">
-            {CERTS.map((c) => (
-              <div key={c.code} className="bg-white border border-line rounded-xl p-6 text-center shadow-[var(--sk-shadow-sm)]">
-                <div className="h-16 w-16 mx-auto rounded-full border-2 border-[var(--sk-gold-500)] bg-cream-100 grid place-items-center">
-                  <ShieldCheck size={28} className="text-brand-900" strokeWidth={1.5} />
-                </div>
-                <div className="font-display font-bold text-brand-900 mt-3 text-lg">{c.code}</div>
-                <div className="text-[12px] text-ink-600 mt-0.5">{c.desc}</div>
-                <div className="text-[11px] text-ink-400 mt-1">{c.meta}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* STATS */}
       <section className="bg-brand-900 text-white py-12 md:py-14">
         <div className="sk-container">
@@ -275,28 +222,6 @@ export default function About() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* TEAM */}
-      <section className="sk-container py-14 md:py-20">
-        <FlourishTitle title="The People Behind Sukhmal" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 -mt-2">
-          {TEAM.map((m) => (
-            <div key={m.name} className="bg-white border border-line rounded-xl overflow-hidden text-center group shadow-[var(--sk-shadow-sm)]">
-              <div className="aspect-[4/5] overflow-hidden bg-cream-200">
-                <img src={m.img} alt={m.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-              </div>
-              <div className="p-4 md:p-5">
-                <div className="font-display font-bold text-brand-900 text-lg leading-tight">{m.name}</div>
-                <div className="text-[12px] font-semibold text-[var(--sk-gold-400)] mt-0.5">{m.role}</div>
-                <p className="text-[12px] text-ink-500 mt-2 leading-snug line-clamp-3">{m.bio}</p>
-                <div className="flex justify-center gap-3 mt-3 text-ink-400">
-                  <Facebook size={14} /><Instagram size={14} /><Linkedin size={14} />
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 
