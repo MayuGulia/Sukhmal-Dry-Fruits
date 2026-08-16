@@ -1,13 +1,11 @@
 import { generateGeminiContent } from './geminiClient.js';
+import { geminiApiKey } from './geminiEnv.js';
 
 const ALLOWED_FIELDS = new Set(['inStock', 'stock', 'price', 'isActive', 'isDeleted', 'isBestseller']);
 const PRODUCT_FIELDS = new Set(['isActive', 'isDeleted', 'isBestseller']);
 
 function geminiKey() {
-  if (typeof Netlify !== 'undefined' && Netlify.env?.get) {
-    return Netlify.env.get('GEMINI_API_KEY') || Netlify.env.get('GEMINI_ASSISTANT_API_KEY') || '';
-  }
-  return process.env.GEMINI_API_KEY || process.env.GEMINI_ASSISTANT_API_KEY || '';
+  return geminiApiKey();
 }
 
 function norm(s) {

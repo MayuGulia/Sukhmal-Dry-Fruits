@@ -3,20 +3,19 @@
  * Interactions API is for multi-turn server-side sessions — not needed here.
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
+import { envGet } from './geminiEnv.js';
+
 const FALLBACK_MODEL = 'gemini-flash-latest';
 const SKIP = /lite|tts|image|video|audio|1\.5|gemini-pro$|gemini-1\.0|computer-use|robotics|lyria|deep-research|antigravity|gemma-|omni-|eap|customtools/i;
 /** ListModels still returns these, but generateContent 404s them for new AI Studio keys. */
 const LISTED_BUT_BLOCKED_FOR_NEW_KEYS = /^gemini-2\.5-flash$/;
-
-function envGet(name) {
-  try {
-    if (typeof Netlify !== 'undefined' && Netlify.env?.get) {
-      const v = Netlify.env.get(name);
-      if (v) return String(v);
-    }
-  } catch {}
-  return process.env[name] || '';
-}
+const IMAGE_MODELS = [
+  'gemini-3.1-flash-image',
+  'gemini-3.1-flash-image-preview',
+  'gemini-2.5-flash-image',
+  'gemini-3-pro-image',
+  'gemini-3-pro-image-preview',
+];
 
 export function configuredGeminiModel() {
   return (envGet('GEMINI_MODEL') || '').trim().replace(/^models\//, '');
@@ -178,4 +177,67 @@ export async function generateGeminiContent({ key, label, body }) {
   }
 
   throw lastErr || new Error('Gemini request failed');
+}
+
+function firstInlineImage(json) {
+  const parts = json?.candidates?.[0]?.content?.parts || [];
+  const imagePart = parts.find((p) => p.inlineData?.data);
+  if (!imagePart) return null;
+  return {
+    mimeType: imagePart.inlineData.mimeType || 'image/png',
+    data: imagePart.inlineData.data,
+  };
+}
+
+export async function generateGeminiImage({ key, prompt, label = 'image' }) {
+  const listed = await listModels(key, 'v1beta');
+  const ids = generateContentIds(listed);
+  const listedImage = ids.filter((id) => /image/i.test(id) && !/tts|video|audio|lite/i.test(id));
+  const queue = [
+    ...IMAGE_MODELS.filter((id) => !ids.length || ids.includes(id)),
+    ...listedImage.filter((id) => !IMAGE_MODELS.includes(id)),
+  ];
+  const seen = new Set();
+  let lastErr = null;
+
+  console.log(`[Sukhmal Gemini] ${label} candidate image models: ${queue.join(', ') || '(none)'}`);
+
+  for (const model of queue) {
+    if (!model || seen.has(model)) continue;
+    seen.add(model);
+    const apiVersion = 'v1beta';
+    const url = geminiGenerateUrl(apiVersion, model);
+    logExactRequest(label, { method: 'POST', url, apiVersion, model, key });
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': key,
+      },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const image = firstInlineImage(json);
+      if (!image) {
+        lastErr = new Error('Gemini returned no image');
+        lastErr.code = 'gemini_error';
+        continue;
+      }
+      console.log(`[Sukhmal Gemini] ${label} ok model=${model} api=${apiVersion}`);
+      return { ...image, model, apiVersion };
+    }
+
+    const msg = json?.error?.message || `Gemini image request failed (${res.status})`;
+    console.warn(`[Sukhmal Gemini] ${label} failed model=${model} status=${res.status} message=${msg}`);
+    lastErr = new Error(msg);
+    lastErr.code = 'gemini_error';
+    if (!shouldTryNextModel(res.status, msg)) throw lastErr;
+  }
+
+  throw lastErr || new Error('Gemini image request failed');
 }

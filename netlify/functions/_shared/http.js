@@ -1,3 +1,5 @@
+import { envGet } from './geminiEnv.js';
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -10,9 +12,7 @@ function notConfigured() {
 }
 
 function env(name) {
-  return (typeof Netlify !== 'undefined' && Netlify.env?.get)
-    ? Netlify.env.get(name)
-    : process.env[name];
+  return envGet(name);
 }
 
 export { json, notConfigured, env };

@@ -78,14 +78,13 @@ export function AiInventoryBar({ onApplied }) {
     }
   };
 
-  const changes = preview?.changes || [];
   const runnable = useMemo(
-    () => changes.filter((c) => {
+    () => (preview?.changes || []).filter((c) => {
       const before = c.currentValue ?? c.before;
       const after = c.newValue ?? c.after;
       return !isSame(before, after);
     }),
-    [changes],
+    [preview],
   );
 
   const editChange = (index, nextValue) => {

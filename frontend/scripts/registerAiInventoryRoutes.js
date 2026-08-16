@@ -36,19 +36,22 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'multi-change-v1';
+const GEMINI_MODULE_BUST = 'hamper-image-interactions-v5';
 const helperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
 const giftHelperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiGiftAdvisor.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
+const hamperHelperUrl = `${pathToFileURL(
+  path.join(__dirname, '../netlify/functions/_shared/generateHamperPreview.js'),
+).href}?v=${GEMINI_MODULE_BUST}`;
 
 function registerAiInventoryRoutes(app) {
   if (!app || app.__skAiInventoryRegistered) return app;
   app.__skAiInventoryRegistered = true;
   console.log(
-    `[Sukhmal Gemini] local routes registered; GEMINI_MODEL=${process.env.GEMINI_MODEL || '(unset → gemini-2.5-flash)'} helper=${helperUrl}`,
+    `[Sukhmal Gemini] local routes registered; GEMINI_MODEL=${process.env.GEMINI_MODEL || '(unset → gemini-2.5-flash)'} key=${Boolean(process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY)} helper=${helperUrl}`,
   );
 
   const preview = async (req, res) => {
@@ -84,8 +87,28 @@ function registerAiInventoryRoutes(app) {
       send(res, 200, result);
     } catch (err) {
       const code = err.code || 'gemini_error';
-      const status = code === 'not_configured' ? 501 : code === 'bad_request' ? 422 : 502;
-      send(res, status, { error: code, message: err.message || 'Gift Advisor failed' });
+      const status = code === 'not_configured' ? 503 : code === 'bad_request' ? 422 : 502;
+      const message = code === 'bad_request'
+        ? (err.message || 'Type a message first')
+        : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
+      send(res, status, { error: code, message });
+    }
+  });
+
+  app.post('/api/generate-hamper-image', async (req, res) => {
+    try {
+      const body = await readJson(req);
+      const { generateHamperPreview } = await import(hamperHelperUrl);
+      const result = await generateHamperPreview(body);
+      send(res, 200, result);
+    } catch (err) {
+      const code = err.code || 'gemini_error';
+      const quota = /quota|rate-limit|limit:\s*0/i.test(err.message || '');
+      const status = code === 'not_configured' ? 503 : code === 'bad_request' ? 422 : quota ? 503 : 502;
+      const message = code === 'bad_request'
+        ? (err.message || 'Add products first')
+        : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
+      send(res, status, { error: quota ? 'quota' : code, message, fallback: true });
     }
   });
   return app;

@@ -6,10 +6,9 @@
 /** FROZEN — current luxury hamper hero (do not replace). */
 export const HERO_IMG = '/brand/hero-luxury-hamper-v2.png';
 /**
- * Homepage hero — sukhmal.mp4 is 1920×1080 (16:9 landscape).
- * Banner is aspect-[16/9] so the clip fills the frame with no stretch.
+ * Homepage hero still — Sukhmal.png fills the same 16:9 cover frame as sukhmal.mp4.
  */
-export const HERO_VIDEO_SRC = '/assets/videos/sukhmal.mp4?v=3';
+export const HERO_STILL_SRC = '/brand/sukhmal.png';
 export const HERO_VIDEO_LAYOUT = 'cover'; // 'cover' | 'split'
 export const HERO_VIDEO_POSITION = 'center center';
 /**

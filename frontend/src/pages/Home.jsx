@@ -17,13 +17,11 @@ import {
   BYOH_BANNER_IMG,
   WEDDING_PROMO_IMG,
   CORP_PROMO_IMG,
-  HERO_IMG,
-  HERO_VIDEO_SRC,
+  HERO_STILL_SRC,
   HERO_VIDEO_LAYOUT,
   HERO_VIDEO_POSITION,
 } from '@/data/homeBrand';
 import { GiftBasketIcon } from '@/components/brand/BrandSeal';
-import BrandVideo from '@/components/media/BrandVideo';
 import { STORE_INSTAGRAM, STORE_INSTAGRAM_HANDLE } from '@/data/storeInfo';
 
 const WHY_ICONS = {
@@ -35,18 +33,18 @@ const WHY_ICONS = {
   love: HeartHandshake,
 };
 
-function HeroBackgroundVideo({ className, fit = 'cover', showToggle = false, toggleClassName }) {
+function HeroBackgroundImage({ className }) {
   return (
-    <BrandVideo
-      src={HERO_VIDEO_SRC}
-      poster={HERO_IMG}
-      fallback={HERO_IMG}
-      fit={fit}
-      position={fit === 'contain' ? 'center center' : HERO_VIDEO_POSITION}
+    <img
+      src={HERO_STILL_SRC}
+      alt=""
       className={className}
-      showToggle={showToggle}
-      toggleClassName={toggleClassName}
-      crisp
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        objectPosition: HERO_VIDEO_POSITION,
+      }}
     />
   );
 }
@@ -146,10 +144,7 @@ export default function Home() {
             <HeroCopy inverted={false} />
             <div className="relative mx-auto w-full max-w-xl">
               <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-black shadow-sk-lg">
-                <HeroBackgroundVideo
-                  fit="cover"
-                  className="absolute inset-0 w-full h-full"
-                />
+                <HeroBackgroundImage className="absolute inset-0 w-full h-full object-cover" />
               </div>
             </div>
           </div>
@@ -162,12 +157,7 @@ export default function Home() {
           data-hero-layout="cover"
         >
           <div className="absolute inset-0 overflow-hidden bg-black">
-            <HeroBackgroundVideo
-              fit="cover"
-              showToggle
-              toggleClassName="bottom-28 md:bottom-32 right-4 md:right-6"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+            <HeroBackgroundImage className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/62 via-black/28 to-transparent w-full md:w-[58%]" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/28 via-transparent to-black/10" />
           </div>

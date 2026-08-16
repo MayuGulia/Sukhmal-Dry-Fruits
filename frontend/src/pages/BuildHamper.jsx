@@ -4,9 +4,9 @@ import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { verifiedImg } from '@/data/verifiedImages';
-import { api } from '@/lib/api';
-import { getLiveProducts, saveHamperBuild } from '@/lib/commerceStore';
-import { fetchHamperBuilderPage, mapHamperBuilderProduct } from '@/lib/liveCatalog';
+import { aiApi } from '@/lib/api';
+import { saveHamperBuild } from '@/lib/commerceStore';
+import { listHamperBuilderProducts, mapHamperBuilderProduct, subscribeLiveProducts } from '@/lib/liveCatalog';
 import {
   ArrowLeft, ArrowRight, Sparkles, Plus, Minus, Check, X, Gift, ShieldCheck,
   Crown, Heart, Pencil, Truck, Package, Leaf, Star, Box, ShoppingBag,
@@ -102,6 +102,12 @@ const OCCASIONS = [
   { key: 'thanks', label: 'Thank You', Icon: HandHeart },
   { key: 'special', label: 'Special Moments', Icon: Sparkles },
 ];
+
+function hamperProductLabel(p) {
+  const weight = p.weight || p.variants?.[0]?.w || p.variants?.[0]?.weight || '';
+  const qty = Number(p.qty) > 1 ? ` ×${p.qty}` : '';
+  return `${p.name}${weight ? ` ${weight}` : ''}${qty}`.trim();
+}
 
 const MOCK_PRODUCTS = [
   { id: 'mp1', slug: 'badam-cf', name: 'California Almonds', price: 299, weight: '250g', category: 'nuts', bestseller: true, img: '/products/badam-cf-1.jpg' },
@@ -486,10 +492,8 @@ export default function BuildHamper() {
   const [occasion, setOccasion] = useState(null);
   const [sortBy, setSortBy] = useState('popularity');
   const [loading, setLoading] = useState(false);
-  const [productRows, setProductRows] = useState([]);
+  const [productRows, setProductRows] = useState(() => listHamperBuilderProducts());
   const [productsLoading, setProductsLoading] = useState(false);
-  const [productsLoadingMore, setProductsLoadingMore] = useState(false);
-  const [productsHasMore, setProductsHasMore] = useState(false);
   const [catalogTick, setCatalogTick] = useState(0);
   const [previewProgress, setPreviewProgress] = useState(0);
   const [previewReady, setPreviewReady] = useState(false);
@@ -499,13 +503,7 @@ export default function BuildHamper() {
   const [previewNote, setPreviewNote] = useState('');
   const { add } = useCart();
   const { has, toggle } = useWishlist();
-  const cacheRef = useRef({});
-  const catalogMapRef = useRef(new Map(MOCK_PRODUCTS.map((p) => {
-    const mapped = mapHamperBuilderProduct(p);
-    return [mapped.id, mapped];
-  })));
-  const sentinelRef = useRef(null);
-  const queryKey = catTab === 'premium' ? 'all' : catTab;
+  const catalogMapRef = useRef(new Map(listHamperBuilderProducts().map((p) => [p.id, p])));
 
   const setPersist = (patch) => {
     setState((s) => {
@@ -527,150 +525,19 @@ export default function BuildHamper() {
   }, [idx, state.budgetConfirmed, state.budget, nav]);
 
   useEffect(() => {
-    getLiveProducts({ activeOnly: false }).forEach((p) => {
-      const mapped = mapHamperBuilderProduct(p);
-      if (mapped?.id) catalogMapRef.current.set(mapped.id, mapped);
-    });
-    setCatalogTick((n) => n + 1);
-  }, []);
-
-  useEffect(() => {
-    if (step !== 'products') return undefined;
-    let cancelled = false;
-    const cached = cacheRef.current[queryKey];
-    if (cached?.items?.length) {
-      setProductRows(cached.items);
-      setProductsHasMore(Boolean(cached.hasMore));
+    const apply = (rows) => {
+      const mapped = (rows || [])
+        .map((p) => mapHamperBuilderProduct(p))
+        .filter((p) => p?.id);
+      if (!mapped.length) return;
+      mapped.forEach((p) => catalogMapRef.current.set(p.id, p));
+      setProductRows(mapped);
       setProductsLoading(false);
-      return undefined;
-    }
-
-    setProductsLoading(true);
-    setProductRows([]);
-    fetchHamperBuilderPage({ category: queryKey === 'all' ? null : queryKey })
-      .then((page) => {
-        if (cancelled) return;
-        const mapped = page.items || [];
-        const items = mapped.length
-          ? mapped
-          : (queryKey === 'all' ? MOCK_PRODUCTS.map(mapHamperBuilderProduct).filter(Boolean) : []);
-        cacheRef.current[queryKey] = {
-          items,
-          cursor: page.cursor,
-          hasMore: Boolean(page.hasMore) && mapped.length > 0,
-        };
-        items.forEach((p) => {
-          if (p?.id) catalogMapRef.current.set(p.id, p);
-        });
-        setCatalogTick((n) => n + 1);
-        setProductRows(items);
-        setProductsHasMore(Boolean(page.hasMore) && mapped.length > 0);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        const fallback = MOCK_PRODUCTS.map(mapHamperBuilderProduct).filter(Boolean);
-        cacheRef.current[queryKey] = { items: fallback, cursor: null, hasMore: false };
-        fallback.forEach((p) => catalogMapRef.current.set(p.id, p));
-        setCatalogTick((n) => n + 1);
-        setProductRows(fallback);
-        setProductsHasMore(false);
-      })
-      .finally(() => {
-        if (!cancelled) setProductsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [step, queryKey]);
-
-  const loadMoreProducts = useCallback(async () => {
-    if (productsLoading || productsLoadingMore || !productsHasMore) return;
-    const cached = cacheRef.current[queryKey];
-    if (!cached?.hasMore) return;
-    setProductsLoadingMore(true);
-    try {
-      const page = await fetchHamperBuilderPage({
-        category: queryKey === 'all' ? null : queryKey,
-        cursor: cached.cursor,
-      });
-      const nextItems = [...(cached.items || []), ...(page.items || [])];
-      cacheRef.current[queryKey] = {
-        items: nextItems,
-        cursor: page.cursor,
-        hasMore: Boolean(page.hasMore),
-      };
-      (page.items || []).forEach((p) => {
-        if (p?.id) catalogMapRef.current.set(p.id, p);
-      });
       setCatalogTick((n) => n + 1);
-      setProductRows(nextItems);
-      setProductsHasMore(Boolean(page.hasMore));
-    } finally {
-      setProductsLoadingMore(false);
-    }
-  }, [productsLoading, productsLoadingMore, productsHasMore, queryKey]);
-
-  useEffect(() => {
-    if (step !== 'products' || !productsHasMore || productsLoading) return undefined;
-    const el = sentinelRef.current;
-    if (!el) return undefined;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) loadMoreProducts();
-    }, { rootMargin: '420px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [step, productsHasMore, productsLoading, loadMoreProducts, productRows.length]);
-
-  useEffect(() => {
-    if (step !== 'preview') {
-      setPreviewProgress(0);
-      setPreviewReady(false);
-      return undefined;
-    }
-    setPreviewProgress(0);
-    setPreviewReady(false);
-    setGeneratedPreview(null);
-    setPreviewNote('');
-    let cancelled = false;
-    const iv = setInterval(() => {
-      setPreviewProgress((p) => {
-        const next = Math.min(100, p + 3 + Math.floor(Math.random() * 4));
-        if (next >= 100) clearInterval(iv);
-        return next;
-      });
-    }, 90);
-    const run = async () => {
-      try {
-        const r = await api.post('/generate-hamper-image', {
-          hamperId: state.style,
-          budget: state.budget,
-          productSelections: chosen.map((p) => ({ productId: p.id, weight: p.variants?.[0]?.w, qty: p.qty })),
-          giftCard: state.card || null,
-        });
-        if (cancelled) return;
-        if (r.data?.url) {
-          setGeneratedPreview(r.data.url);
-          saveHamperBuild({ hamperId: state.style, previewImageUrl: r.data.url, bumpGeneration: true });
-        } else if (r.data?.fallback) {
-          setPreviewNote('Preview generation had trouble, here\'s what\'s inside.');
-        }
-      } catch {
-        if (!cancelled) setPreviewNote('Preview generation had trouble, here\'s what\'s inside.');
-      } finally {
-        if (!cancelled) {
-          setPreviewProgress(100);
-          setPreviewReady(true);
-        }
-      }
     };
-    run();
-    return () => {
-      cancelled = true;
-      clearInterval(iv);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+    apply(listHamperBuilderProducts());
+    return subscribeLiveProducts(apply, { activeOnly: true });
+  }, []);
 
   const chosen = useMemo(
     () => Object.entries(state.items)
@@ -682,6 +549,82 @@ export default function BuildHamper() {
     [state.items, catalogTick],
   );
   const styleObj = STYLES.find((s) => s.key === state.style) || STYLES[0];
+
+  const generateHamperImage = useCallback(async () => {
+    const products = chosen.map(hamperProductLabel).filter(Boolean);
+    if (!products.length) {
+      setPreviewNote('Add products to your hamper before generating a preview.');
+      setPreviewProgress(100);
+      setPreviewReady(true);
+      return;
+    }
+    setPreviewProgress(8);
+    setPreviewReady(false);
+    setGeneratedPreview(null);
+    setPreviewNote('');
+    const iv = setInterval(() => {
+      setPreviewProgress((p) => Math.min(90, p + 2 + Math.floor(Math.random() * 3)));
+    }, 400);
+    try {
+      const card = CARDS.find((c) => c.key === state.cardStyle) || CARDS[0];
+      const payload = {
+        products,
+        boxType: styleObj.type || styleObj.name,
+        packaging: styleObj.type || styleObj.name,
+        hamperId: state.style,
+        hamperName: styleObj.name,
+        budget: state.budget,
+        productSelections: chosen.map((p) => ({
+          productId: p.id,
+          name: p.name,
+          weight: p.weight || p.variants?.[0]?.w || p.variants?.[0]?.weight || '',
+          qty: p.qty,
+        })),
+        giftCard: {
+          name: card.custom && state.message ? 'Custom Gift Card' : card.name,
+          message: state.message || '',
+          recipient: state.recipient || '',
+        },
+      };
+      const r = await aiApi.post('/generate-hamper-image', payload, { timeout: 180000 });
+      if (r.data?.url) {
+        setGeneratedPreview(r.data.url);
+        setPreviewThumb(0);
+        saveHamperBuild({ hamperId: state.style, previewImageUrl: r.data.url, bumpGeneration: true });
+      } else {
+        setPreviewNote('Preview generation had trouble, here\'s what\'s inside.');
+      }
+    } catch (err) {
+      const quota = err?.response?.data?.error === 'quota';
+      setPreviewNote(
+        quota
+          ? 'AI photo credits are not enabled on this Google key yet, here\'s what\'s inside.'
+          : 'Preview generation had trouble, here\'s what\'s inside.',
+      );
+    } finally {
+      clearInterval(iv);
+      setPreviewProgress(100);
+      setPreviewReady(true);
+    }
+  }, [chosen, styleObj, state.style, state.budget, state.cardStyle, state.message, state.recipient]);
+
+  useEffect(() => {
+    if (step !== 'preview') {
+      setPreviewProgress(0);
+      setPreviewReady(false);
+      return undefined;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      if (!cancelled) generateHamperImage();
+    }, 50);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+    // generate once when Preview opens, with the hamper, products, and gift card from this step
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
   const spent = chosen.reduce((s, p) => s + p.price * p.qty, 0);
   const remaining = state.budget - spent;
   const overBudget = remaining < 0;
@@ -1008,11 +951,7 @@ export default function BuildHamper() {
                         {premium && <span className="hidden sm:block w-px h-5 bg-[#E8E4DF] mx-1 shrink-0" />}
                         <button
                           type="button"
-                          onClick={() => {
-                            const key = t.key === 'premium' ? 'all' : t.key;
-                            if (!cacheRef.current[key]?.items?.length) setProductsLoading(true);
-                            setCatTab(t.key);
-                          }}
+                          onClick={() => setCatTab(t.key)}
                           className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-[7px] rounded-full text-sm font-medium transition-colors ${
                             premium
                               ? 'bg-white text-[var(--sk-gold-600)] border border-[var(--sk-gold-600)]'
@@ -1138,11 +1077,7 @@ export default function BuildHamper() {
                     </div>
                   );
                 })}
-                {productsLoadingMore && Array.from({ length: 4 }).map((_, i) => (
-                  <HamperProductSkeleton key={`more-${i}`} />
-                ))}
               </div>
-              <div ref={sentinelRef} className="h-1" aria-hidden />
 
               {!productsLoading && filteredProducts.length === 0 && (
                 <div className="text-center py-12 text-[var(--sk-ink-500)]">No products in this category yet.</div>
@@ -1338,7 +1273,20 @@ export default function BuildHamper() {
                   <LifestyleChrome variant="preview" />
                   <div className="relative sk-card p-5 md:p-7 shadow-[var(--sk-shadow-md)]">
                     <h2 className="sk-section-title text-xl md:text-2xl">Hamper Preview</h2>
-                    {previewNote && <p className="text-sm text-ink-500 mt-2">{previewNote} <button type="button" className="underline" onClick={() => nav('/build-hamper/preview')}>Try Again</button></p>}
+                    <p className="text-sm text-[var(--sk-ink-600)] mt-1">
+                      {chosen.length
+                        ? `AI preview for ${chosen.map(hamperProductLabel).join(', ')} in a ${styleObj.type || styleObj.name}.`
+                        : 'Add at least one product before generating an AI preview.'}
+                    </p>
+                    {previewNote && <p className="text-sm text-ink-500 mt-2">{previewNote}</p>}
+                    <button
+                      type="button"
+                      disabled={chosen.length === 0 || !previewReady}
+                      onClick={generateHamperImage}
+                      className="mt-3 sk-btn-outline !py-2 !px-4 text-sm rounded-full inline-flex items-center gap-1.5 disabled:opacity-40"
+                    >
+                      <Sparkles size={14} /> Generate AI Preview
+                    </button>
 
                     <div className="mt-5 grid md:grid-cols-[1.1fr_1fr] gap-6">
                       <div>

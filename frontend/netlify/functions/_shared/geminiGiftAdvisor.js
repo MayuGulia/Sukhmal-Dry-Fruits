@@ -1,11 +1,5 @@
 import { generateGeminiContent } from './geminiClient.js';
-
-function assistantKey() {
-  if (typeof Netlify !== 'undefined' && Netlify.env?.get) {
-    return Netlify.env.get('GEMINI_ASSISTANT_API_KEY') || Netlify.env.get('GEMINI_API_KEY') || '';
-  }
-  return process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY || '';
-}
+import { CUSTOMER_AI_FALLBACK, geminiApiKey } from './geminiEnv.js';
 
 function parseGeminiJson(text) {
   const raw = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
@@ -42,9 +36,10 @@ function matchProducts(catalog, ids) {
 }
 
 export async function adviseGifts({ messages, catalog }) {
-  const key = assistantKey();
+  const key = geminiApiKey();
   if (!key) {
-    const err = new Error('GEMINI_ASSISTANT_API_KEY is not set on the server');
+    console.warn('[Sukhmal Gemini] gift-advisor missing server API key');
+    const err = new Error(CUSTOMER_AI_FALLBACK);
     err.code = 'not_configured';
     throw err;
   }

@@ -1,6 +1,33 @@
 const path = require("path");
 require("dotenv").config();
 
+function googlePopupHeaders() {
+  return {
+    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    "Cross-Origin-Embedder-Policy": "unsafe-none",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+  };
+}
+
+function applyGooglePopupHeaders(app) {
+  if (!app) return;
+  app.use((req, res, next) => {
+    const headers = googlePopupHeaders();
+    const apply = () => {
+      Object.entries(headers).forEach(([key, value]) => res.setHeader(key, value));
+    };
+    apply();
+    const originalWriteHead = res.writeHead;
+    res.writeHead = function writeHeadPatched(...args) {
+      apply();
+      return originalWriteHead.apply(this, args);
+    };
+    next();
+  });
+}
+
 function makeDevServerV5Compatible(devServerConfig) {
   const {
     https,
@@ -17,18 +44,11 @@ function makeDevServerV5Compatible(devServerConfig) {
       : https
         ? "https"
         : "http";
-  compatibleConfig.headers = {
-    ...compatibleConfig.headers,
-    // Firebase Google popup needs to talk to the opener window.
-    "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
-    "Cross-Origin-Embedder-Policy": "unsafe-none",
-    "Cross-Origin-Resource-Policy": "cross-origin",
-    "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-  };
+  compatibleConfig.headers = () => googlePopupHeaders();
 
   if (onBeforeSetupMiddleware || setupMiddlewares) {
     compatibleConfig.setupMiddlewares = (middlewares, devServer) => {
+      applyGooglePopupHeaders(devServer?.app);
       if (onBeforeSetupMiddleware) {
         onBeforeSetupMiddleware(devServer);
       }
@@ -80,10 +100,12 @@ module.exports = {
     const compatible = makeDevServerV5Compatible(devServerConfig);
     const prevSetup = compatible.setupMiddlewares;
     compatible.setupMiddlewares = (middlewares, devServer) => {
+      applyGooglePopupHeaders(devServer?.app);
+      const next = prevSetup ? prevSetup(middlewares, devServer) : middlewares;
       if (devServer?.app) {
         require('./scripts/registerAiInventoryRoutes').registerAiInventoryRoutes(devServer.app);
       }
-      return prevSetup ? prevSetup(middlewares, devServer) : middlewares;
+      return next;
     };
     return compatible;
   },

@@ -175,6 +175,13 @@ function localHamperSource() {
   return live.length ? live : MOCK_CATALOG_PRODUCTS;
 }
 
+export function listHamperBuilderProducts({ category = null } = {}) {
+  return filterLocalHamperCategory(localHamperSource(), category)
+    .filter((p) => !p.isDeleted && p.isActive !== false)
+    .map((p) => mapHamperBuilderProduct(hydrateStorefrontProduct(p.id, p)))
+    .filter(Boolean);
+}
+
 function filterLocalHamperCategory(list, category) {
   if (!category) return list;
   if (category === 'dry-fruits') {

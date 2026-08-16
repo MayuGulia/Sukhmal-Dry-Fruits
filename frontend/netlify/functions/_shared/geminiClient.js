@@ -1,22 +1,19 @@
 /**
- * Single-turn inventory/gift JSON stays on generateContent (v1beta).
- * Interactions API is for multi-turn server-side sessions — not needed here.
+ * Chat/JSON stays on generateContent (v1beta).
+ * New AI Studio keys must use the Interactions API for images (Imagen :predict is retired).
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
+import { envGet, geminiApiKey } from './geminiEnv.js';
+
 const FALLBACK_MODEL = 'gemini-flash-latest';
 const SKIP = /lite|tts|image|video|audio|1\.5|gemini-pro$|gemini-1\.0|computer-use|robotics|lyria|deep-research|antigravity|gemma-|omni-|eap|customtools/i;
 /** ListModels still returns these, but generateContent 404s them for new AI Studio keys. */
 const LISTED_BUT_BLOCKED_FOR_NEW_KEYS = /^gemini-2\.5-flash$/;
-
-function envGet(name) {
-  try {
-    if (typeof Netlify !== 'undefined' && Netlify.env?.get) {
-      const v = Netlify.env.get(name);
-      if (v) return String(v);
-    }
-  } catch {}
-  return process.env[name] || '';
-}
+const IMAGE_MODELS = [
+  'gemini-2.5-flash-image',
+  'gemini-3.1-flash-lite-image',
+  'gemini-3.1-flash-image',
+];
 
 export function configuredGeminiModel() {
   return (envGet('GEMINI_MODEL') || '').trim().replace(/^models\//, '');
@@ -92,18 +89,19 @@ export function geminiGenerateUrl(apiVersion, model) {
   return `https://generativelanguage.googleapis.com/${apiVersion}/models/${id}:generateContent`;
 }
 
-let modelsCache = null;
+const modelsCacheByKey = new Map();
 
 async function listModels(key, apiVersion) {
-  if (modelsCache) return modelsCache;
+  const cacheKey = `${apiVersion}:${key ? key.slice(-8) : 'none'}`;
+  if (modelsCacheByKey.has(cacheKey)) return modelsCacheByKey.get(cacheKey);
   const url = `https://generativelanguage.googleapis.com/${apiVersion}/models?pageSize=200`;
   logExactRequest('ListModels', { method: 'GET', url, apiVersion, model: '(list)', key });
   const res = await fetch(url, { headers: { 'x-goog-api-key': key } });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     console.warn(`[Sukhmal Gemini] ListModels failed (${res.status}):`, JSON.stringify(json));
-    modelsCache = { models: [] };
-    return modelsCache;
+    modelsCacheByKey.set(cacheKey, { models: [] });
+    return modelsCacheByKey.get(cacheKey);
   }
   const summary = (json.models || []).map((m) => ({
     name: m.name,
@@ -112,7 +110,7 @@ async function listModels(key, apiVersion) {
   console.log('[Sukhmal Gemini] ListModels full response:', JSON.stringify(summary, null, 2));
   const gc = generateContentIds(json);
   console.log('[Sukhmal Gemini] models supporting generateContent:', gc.join(', ') || '(none)');
-  modelsCache = json;
+  modelsCacheByKey.set(cacheKey, json);
   return json;
 }
 
@@ -178,4 +176,139 @@ export async function generateGeminiContent({ key, label, body }) {
   }
 
   throw lastErr || new Error('Gemini request failed');
+}
+
+function firstInlineImage(json) {
+  const parts = json?.candidates?.[0]?.content?.parts || [];
+  const imagePart = parts.find((p) => p.inlineData?.data);
+  if (!imagePart) return null;
+  return {
+    mimeType: imagePart.inlineData.mimeType || 'image/png',
+    data: imagePart.inlineData.data,
+  };
+}
+
+function isZeroQuota(status, message) {
+  return status === 429 && /limit:\s*0/i.test(message || '');
+}
+
+function firstInteractionsImage(json) {
+  const direct = json?.output_image || json?.outputImage;
+  if (direct?.data) {
+    return {
+      mimeType: direct.mime_type || direct.mimeType || 'image/jpeg',
+      data: direct.data,
+    };
+  }
+  const stack = [json];
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object') continue;
+    if (Array.isArray(node)) {
+      for (const item of node) stack.push(item);
+      continue;
+    }
+    if (node.inlineData?.data) {
+      return {
+        mimeType: node.inlineData.mimeType || 'image/png',
+        data: node.inlineData.data,
+      };
+    }
+    if (
+      typeof node.data === 'string' &&
+      node.data.length > 200 &&
+      (node.type === 'image' || node.mime_type || node.mimeType)
+    ) {
+      return {
+        mimeType: node.mime_type || node.mimeType || 'image/png',
+        data: node.data,
+      };
+    }
+    for (const value of Object.values(node)) {
+      if (value && typeof value === 'object') stack.push(value);
+    }
+  }
+  return null;
+}
+
+function imageModelQueue() {
+  return [...IMAGE_MODELS];
+}
+
+async function generateWithInteractions({ key, prompt, label, model }) {
+  const url = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+  logExactRequest(label, { method: 'POST', url, apiVersion: 'v1beta', model, key });
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': key,
+      'Api-Revision': '2026-05-20',
+    },
+    body: JSON.stringify({
+      model,
+      input: prompt,
+      response_format: {
+        type: 'image',
+        mime_type: 'image/jpeg',
+        aspect_ratio: '1:1',
+        image_size: '1K',
+      },
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(json?.error?.message || `Gemini interactions request failed (${res.status})`);
+    err.code = 'gemini_error';
+    err.status = res.status;
+    throw err;
+  }
+  const image = firstInteractionsImage(json);
+  if (!image) {
+    const err = new Error('Gemini returned no image');
+    err.code = 'gemini_error';
+    throw err;
+  }
+  console.log(`[Sukhmal Gemini] ${label} ok model=${model} api=interactions`);
+  return { ...image, model, apiVersion: 'v1beta' };
+}
+
+async function generateImageWithKey({ key, prompt, label }) {
+  const queue = imageModelQueue();
+  let lastErr = null;
+  console.log(`[Sukhmal Gemini] ${label} Interactions candidates: ${queue.join(', ')}`);
+
+  for (const model of queue) {
+    try {
+      return await generateWithInteractions({ key, prompt, label, model });
+    } catch (err) {
+      const msg = err.message || '';
+      const status = err.status || 0;
+      console.warn(`[Sukhmal Gemini] ${label} failed model=${model} api=interactions status=${status} message=${msg}`);
+      lastErr = err;
+      if (status === 401 || status === 403) throw err;
+      if (isZeroQuota(status, msg)) throw err;
+      if (status === 429) throw err;
+      if (status === 404 && /interactions/i.test(msg)) break;
+    }
+  }
+
+  throw lastErr || new Error('Gemini image request failed');
+}
+
+export async function generateGeminiImage({ key, prompt, label = 'image' }) {
+  const keys = [...new Set([key, geminiApiKey()].filter(Boolean))];
+  let lastErr = null;
+  for (const nextKey of keys) {
+    try {
+      return await generateImageWithKey({ key: nextKey, prompt, label });
+    } catch (err) {
+      lastErr = err;
+      const status = err.status || 0;
+      const msg = err.message || '';
+      if (status === 401 || status === 403) continue;
+      if (isZeroQuota(status, msg) || status === 429) continue;
+    }
+  }
+  throw lastErr || new Error('Gemini image request failed');
 }

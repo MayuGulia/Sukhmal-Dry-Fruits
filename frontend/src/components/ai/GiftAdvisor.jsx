@@ -83,11 +83,13 @@ export default function GiftAdvisor() {
       const catalog = compactInventoryCatalog(getLiveProducts({ activeOnly: true }));
       const r = await aiApi.post('/ai-chat', { sessionId: sessionId(), messages: history, catalog });
       const data = r.data;
-      if (!data?.text) throw new Error(data?.message || 'Gift Advisor returned an empty reply');
+      if (!data?.text) throw new Error('empty');
       setMessages((m) => [...m, { role: 'assistant', text: data.text, products: data.products || [] }]);
-    } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Gift Advisor is unavailable right now.';
-      setMessages((m) => [...m, { role: 'assistant', text: msg }]);
+    } catch {
+      setMessages((m) => [...m, {
+        role: 'assistant',
+        text: `I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp: https://wa.me/${WA}`,
+      }]);
     } finally {
       setBusy(false);
     }

@@ -430,8 +430,17 @@ export const adminApi = {
     return { wrote, existing: 0 };
   },
   applyInventory: async (previewId, editedChanges) => {
-    if (editedChanges) updatePreviewChanges(previewId, editedChanges);
-    await commitInventoryBatch(editedChanges);
-    return applyPreview(previewId);
+    const runnable = (editedChanges || []).filter((c) => !c.noop);
+    if (!runnable.length) throw new Error('No changes to apply.');
+    if (editedChanges) {
+      try { updatePreviewChanges(previewId, editedChanges); } catch {}
+    }
+    const wrote = await commitInventoryBatch(editedChanges);
+    try {
+      const result = applyPreview(previewId);
+      return { applied: result?.applied || runnable, wrote: wrote.wrote };
+    } catch {
+      return { applied: runnable, wrote: wrote.wrote };
+    }
   },
 };

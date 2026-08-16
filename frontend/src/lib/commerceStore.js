@@ -532,7 +532,9 @@ export function applyPreview(previewId, adminEmail = 'sukhmaldryfruitskorner2@gm
     if (change.type === 'list') return;
     const p = state.products.find((x) => x.id === change.productId || x.slug === change.slug);
     if (change.productId && !p && change.type !== 'add') {
-      throw new Error(`Product missing since preview: ${change.productName || change.productId}`);
+      // Firestore is the live catalog; skip local-only rows that are not in this browser store.
+      applied.push(change);
+      return;
     }
     if ((change.type === 'update' || change.field) && p && change.type !== 'stock' && change.type !== 'price' && change.type !== 'discount' && change.type !== 'remove') {
       if (change.noop) return;

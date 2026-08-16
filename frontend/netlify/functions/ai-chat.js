@@ -1,13 +1,12 @@
-import { json, env } from './_shared/http.js';
+import { json } from './_shared/http.js';
 import { adviseGifts } from './_shared/geminiGiftAdvisor.js';
+import { CUSTOMER_AI_FALLBACK, geminiApiKey } from './_shared/geminiEnv.js';
 
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'method', message: 'POST required' }, 405);
-  if (!env('GEMINI_ASSISTANT_API_KEY') && !env('GEMINI_API_KEY')) {
-    return json({
-      error: 'not_configured',
-      message: 'Set GEMINI_ASSISTANT_API_KEY on the server (never in the browser).',
-    }, 501);
+  if (!geminiApiKey()) {
+    console.warn('[Sukhmal Gemini] ai-chat missing server API key');
+    return json({ error: 'not_configured', message: CUSTOMER_AI_FALLBACK }, 503);
   }
 
   let body = {};
@@ -22,8 +21,9 @@ export default async (req) => {
     return json(result);
   } catch (err) {
     const code = err.code || 'gemini_error';
-    const status = code === 'not_configured' ? 501 : code === 'bad_request' ? 422 : 502;
-    return json({ error: code, message: err.message || 'Gift Advisor failed' }, status);
+    const status = code === 'not_configured' ? 503 : code === 'bad_request' ? 422 : 502;
+    const message = code === 'bad_request' ? (err.message || 'Type a message first') : CUSTOMER_AI_FALLBACK;
+    return json({ error: code, message }, status);
   }
 };
 
