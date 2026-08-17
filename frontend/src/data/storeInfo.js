@@ -6,6 +6,14 @@ export const STORE_PHONE_DIGITS = '8595321912';
 export const STORE_PHONE_DISPLAY = '8595321912';
 export const STORE_PHONE_TEL = `+91${STORE_PHONE_DIGITS}`;
 export const STORE_WHATSAPP = `91${STORE_PHONE_DIGITS}`;
+const PLACEHOLDER_WHATSAPP = new Set(['919876543210', '918600000000', '9876543210']);
+
+/** Ignore dummy env numbers so Gift Advisor / float always reach the shop. */
+export function storeWhatsAppNumber() {
+  const env = String(process.env.REACT_APP_WHATSAPP_NUMBER || '').replace(/\D/g, '');
+  if (env && env.length >= 10 && !PLACEHOLDER_WHATSAPP.has(env)) return env;
+  return STORE_WHATSAPP;
+}
 export const STORE_EMAIL = 'info@sukhmaldryfruits.com';
 export const STORE_INSTAGRAM = 'https://www.instagram.com/sukhmal_dry_fruits_korner/';
 export const STORE_INSTAGRAM_HANDLE = '@sukhmal_dry_fruits_korner';

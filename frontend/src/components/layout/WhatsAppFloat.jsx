@@ -1,8 +1,8 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
-import { STORE_WHATSAPP } from '@/data/storeInfo';
+import { storeWhatsAppNumber } from '@/data/storeInfo';
 
-const WA = process.env.REACT_APP_WHATSAPP_NUMBER || STORE_WHATSAPP;
+const WA = storeWhatsAppNumber();
 
 export default function WhatsAppFloat() {
   return (

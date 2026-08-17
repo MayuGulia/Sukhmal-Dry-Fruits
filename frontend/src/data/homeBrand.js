@@ -11,6 +11,24 @@ export const HERO_IMG = '/brand/hero-luxury-hamper-v2.png';
 export const HERO_STILL_SRC = '/brand/sukhmal.png';
 export const HERO_VIDEO_LAYOUT = 'cover'; // 'cover' | 'split'
 export const HERO_VIDEO_POSITION = 'center center';
+export const HERO_SLIDE_MS = 5500;
+export const HERO_SLIDES = [
+  {
+    src: HERO_STILL_SRC,
+    alt: 'Sukhmal Dry Fruits Korner storefront in Surajmal Vihar',
+    position: 'center center',
+  },
+  {
+    src: '/brand/hero-slide-2.png',
+    alt: 'Sukhmal Roasted and Salted wall of premium nuts and snacks',
+    position: 'center 42%',
+  },
+  {
+    src: '/brand/hero-slide-3.png',
+    alt: 'Sukhmal Hand Mixed Blends store interior with dry fruits and confectionery',
+    position: 'center 38%',
+  },
+];
 /**
  * Wedding hero uses homepage-hero.mp4 inside the same full-bleed frame as sukhmal.mp4
  * (min-h 80vh, object-fit cover). The clip is cropped to that landscape frame —

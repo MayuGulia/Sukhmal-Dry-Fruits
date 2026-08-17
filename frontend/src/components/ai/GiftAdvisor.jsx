@@ -6,9 +6,9 @@ import { compactInventoryCatalog, getLiveProducts } from '@/lib/commerceStore';
 import { aiApi } from '@/lib/api';
 import { inr } from '@/lib/utils';
 
-import { STORE_WHATSAPP } from '@/data/storeInfo';
+import { storeWhatsAppNumber } from '@/data/storeInfo';
 
-const WA = process.env.REACT_APP_WHATSAPP_NUMBER || STORE_WHATSAPP;
+const WA = storeWhatsAppNumber();
 const SESSION_KEY = 'sk_gift_session';
 const MAX_MSGS = 15;
 export const OPEN_GIFT_ADVISOR = 'sk-open-gift-advisor';
@@ -86,9 +86,19 @@ export default function GiftAdvisor() {
       if (!data?.text) throw new Error('empty');
       setMessages((m) => [...m, { role: 'assistant', text: data.text, products: data.products || [] }]);
     } catch {
+      const catalog = compactInventoryCatalog(getLiveProducts({ activeOnly: true }));
+      const shown = new Set(
+        messages.flatMap((m) => (m.products || []).map((p) => p.id || p.slug)).filter(Boolean),
+      );
+      const ranked = catalog.filter((p) => p.inStock !== false);
+      const fresh = ranked.filter((p) => !shown.has(p.id) && !shown.has(p.slug));
+      const picks = (fresh.length ? fresh : ranked).slice(0, 3);
       setMessages((m) => [...m, {
         role: 'assistant',
-        text: `I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp: https://wa.me/${WA}`,
+        text: picks.length
+          ? 'Here are some other Sukhmal options from the catalogue. Tell me occasion, who it’s for, or a budget and I’ll narrow it.'
+          : `I’m having trouble connecting. WhatsApp us: https://wa.me/${WA}`,
+        products: picks,
       }]);
     } finally {
       setBusy(false);

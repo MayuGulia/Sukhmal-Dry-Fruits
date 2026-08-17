@@ -277,7 +277,7 @@ export function TrustStrip({ overlay = false }) {
           </div>
           <div className="min-w-0">
             <div className={`font-semibold text-sm md:text-[15px] leading-tight ${overlay ? 'text-white' : 'text-brand-900'}`}>{label}</div>
-            <div className={`text-[11px] mt-0.5 leading-tight ${overlay ? 'text-cream-200/75' : 'text-ink-500'}`}>{sub}</div>
+            <div className={`text-[11px] mt-0.5 leading-tight ${overlay ? 'text-white' : 'text-ink-500'}`}>{sub}</div>
           </div>
         </div>
       ))}

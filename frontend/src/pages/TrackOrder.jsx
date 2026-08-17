@@ -7,6 +7,7 @@ import { HERO_IMG } from '@/data/homeBrand';
 import { useProducts, ProductSkeleton } from '@/lib/catalog';
 import { getOrderById, mapOrderDoc } from '@/lib/orders';
 import { api } from '@/lib/api';
+import { STORE_WHATSAPP } from '@/data/storeInfo';
 import {
   MapPin,
   ArrowRight,
@@ -288,7 +289,7 @@ function PartnerBody({ partner }) {
             <Phone size={14} />
           </a>
           <a
-            href="https://wa.me/918600000000"
+            href={`https://wa.me/${STORE_WHATSAPP}`}
             target="_blank"
             rel="noreferrer"
             className="h-8 w-8 rounded-full border border-line-strong grid place-items-center text-brand-900 hover:bg-cream-200"

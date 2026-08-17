@@ -1,5 +1,8 @@
 import { generateGeminiContent } from './geminiClient.js';
-import { CUSTOMER_AI_FALLBACK, geminiApiKey } from './geminiEnv.js';
+import { geminiApiKey } from './geminiEnv.js';
+import { localAdviseGifts } from './localGiftAdvisor.js';
+
+let geminiSkipUntil = 0;
 
 function parseGeminiJson(text) {
   const raw = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
@@ -36,14 +39,6 @@ function matchProducts(catalog, ids) {
 }
 
 export async function adviseGifts({ messages, catalog }) {
-  const key = geminiApiKey();
-  if (!key) {
-    console.warn('[Sukhmal Gemini] gift-advisor missing server API key');
-    const err = new Error(CUSTOMER_AI_FALLBACK);
-    err.code = 'not_configured';
-    throw err;
-  }
-
   const history = (messages || [])
     .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.text)
     .slice(-12)
@@ -58,8 +53,15 @@ export async function adviseGifts({ messages, catalog }) {
     throw err;
   }
 
-  const slim = slimCatalog(catalog);
-  const system = `You are Sukhmal Dry Fruits Korner's Gift Advisor.
+  const key = geminiApiKey();
+  if (!key || Date.now() < geminiSkipUntil) {
+    if (!key) console.warn('[Sukhmal Gemini] gift-advisor missing API key — using catalogue advisor');
+    return localAdviseGifts({ messages, catalog });
+  }
+
+  try {
+    const slim = slimCatalog(catalog);
+    const system = `You are Sukhmal Dry Fruits Korner's Gift Advisor.
 Help customers pick dry fruits, nuts, dates, berries, seeds, and gift hampers.
 Be warm, concise, and practical. Ask a short follow-up if occasion, recipient, or budget is missing.
 Only recommend items from this catalogue:
@@ -69,38 +71,42 @@ Return JSON only:
 {"text":"your reply","productIds":["slug-or-id","..."]}
 Recommend 0–3 products. productIds must match catalogue id or slug. Prices are in INR.`;
 
-  const contents = [
-    { role: 'user', parts: [{ text: system }] },
-    { role: 'model', parts: [{ text: '{"text":"I can help you pick a Sukhmal gift. What is the occasion and budget?","productIds":[]}' }] },
-    ...history,
-  ];
+    const contents = [
+      { role: 'user', parts: [{ text: system }] },
+      { role: 'model', parts: [{ text: '{"text":"I can help you pick a Sukhmal gift. What is the occasion and budget?","productIds":[]}' }] },
+      ...history,
+    ];
 
-  const { text: raw } = await generateGeminiContent({
-    key,
-    label: 'gift-advisor',
-    body: {
-      contents,
-      generationConfig: {
-        temperature: 0.4,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            text: { type: 'STRING' },
-            productIds: { type: 'ARRAY', items: { type: 'STRING' } },
+    const { text: raw } = await generateGeminiContent({
+      key,
+      label: 'gift-advisor',
+      body: {
+        contents,
+        generationConfig: {
+          temperature: 0.4,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              text: { type: 'STRING' },
+              productIds: { type: 'ARRAY', items: { type: 'STRING' } },
+            },
+            required: ['text'],
           },
-          required: ['text'],
         },
       },
-    },
-  });
-  const parsed = parseGeminiJson(raw);
-  const text = String(parsed.text || '').trim();
-  if (!text) {
-    const err = new Error('Gemini returned an empty reply');
-    err.code = 'gemini_error';
-    throw err;
+    });
+    const parsed = parseGeminiJson(raw);
+    const text = String(parsed.text || '').trim();
+    if (!text) throw new Error('Gemini returned an empty reply');
+    const products = matchProducts(catalog, parsed.productIds || parsed.productSlugs || []);
+    return { text, products };
+  } catch (err) {
+    if (err.code === 'bad_request') throw err;
+    console.warn('[Sukhmal Gemini] gift-advisor using catalogue advisor:', err.code || err.message);
+    if (err.code === 'gemini_auth' || err.code === 'not_configured') {
+      geminiSkipUntil = Date.now() + 10 * 60 * 1000;
+    }
+    return localAdviseGifts({ messages, catalog });
   }
-  const products = matchProducts(catalog, parsed.productIds || parsed.productSlugs || []);
-  return { text, products };
 }

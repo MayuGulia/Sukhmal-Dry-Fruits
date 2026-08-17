@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ChevronRight, Wand2, MessageSquare, Star, ShieldCheck,
@@ -17,9 +17,9 @@ import {
   BYOH_BANNER_IMG,
   WEDDING_PROMO_IMG,
   CORP_PROMO_IMG,
-  HERO_STILL_SRC,
+  HERO_SLIDES,
+  HERO_SLIDE_MS,
   HERO_VIDEO_LAYOUT,
-  HERO_VIDEO_POSITION,
 } from '@/data/homeBrand';
 import { GiftBasketIcon } from '@/components/brand/BrandSeal';
 import { STORE_INSTAGRAM, STORE_INSTAGRAM_HANDLE } from '@/data/storeInfo';
@@ -33,23 +33,53 @@ const WHY_ICONS = {
   love: HeartHandshake,
 };
 
-function HeroBackgroundImage({ className }) {
+function HeroDots({ index, setIndex, className }) {
   return (
-    <img
-      src={HERO_STILL_SRC}
-      alt="Sukhmal Dry Fruits Korner premium dry fruits, nuts and gift hampers"
-      width={1920}
-      height={1080}
-      fetchPriority="high"
-      decoding="async"
-      className={className}
-      style={{
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-        objectPosition: HERO_VIDEO_POSITION,
-      }}
-    />
+    <div className={`flex justify-center gap-2 ${className || ''}`}>
+      {HERO_SLIDES.map((slide, i) => (
+        <button
+          key={slide.src}
+          type="button"
+          aria-label={`Show store photo ${i + 1}`}
+          aria-current={i === index}
+          onClick={() => setIndex(i)}
+          className={`h-2 rounded-full transition-all duration-500 ${
+            i === index
+              ? 'w-7 bg-[var(--sk-gold-400)]'
+              : 'w-2 bg-white/55 hover:bg-white/85'
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function HeroBackgroundSlider({ className, index, setPaused }) {
+  return (
+    <div
+      className="absolute inset-0 overflow-hidden bg-black"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {HERO_SLIDES.map((slide, i) => (
+        <img
+          key={slide.src}
+          src={slide.src}
+          alt={i === index ? slide.alt : ''}
+          width={1920}
+          height={1080}
+          fetchPriority={i === 0 ? 'high' : 'low'}
+          decoding={i === 0 ? 'sync' : 'async'}
+          className={`${className} sk-hero-slide ${i === index ? 'is-active' : ''} ${i === index ? '' : 'pointer-events-none'}`}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: slide.position || 'center center',
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -121,7 +151,17 @@ export default function Home() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiPreview, setAiPreview] = useState(null);
   const [aiBusy, setAiBusy] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
   const splitHero = HERO_VIDEO_LAYOUT === 'split';
+
+  useEffect(() => {
+    if (heroPaused || HERO_SLIDES.length < 2) return undefined;
+    const id = window.setInterval(() => {
+      setHeroIndex((i) => (i + 1) % HERO_SLIDES.length);
+    }, HERO_SLIDE_MS);
+    return () => window.clearInterval(id);
+  }, [heroPaused]);
 
   const stubGenerate = (e) => {
     e.preventDefault();
@@ -148,7 +188,16 @@ export default function Home() {
             <HeroCopy inverted={false} />
             <div className="relative mx-auto w-full max-w-xl">
               <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-black shadow-sk-lg">
-                <HeroBackgroundImage className="absolute inset-0 w-full h-full object-cover" />
+                <HeroBackgroundSlider
+                  className="absolute inset-0 w-full h-full object-cover"
+                  index={heroIndex}
+                  setPaused={setHeroPaused}
+                />
+                <HeroDots
+                  index={heroIndex}
+                  setIndex={setHeroIndex}
+                  className="absolute inset-x-0 bottom-4 z-10"
+                />
               </div>
             </div>
           </div>
@@ -161,9 +210,13 @@ export default function Home() {
           data-hero-layout="cover"
         >
           <div className="absolute inset-0 overflow-hidden bg-black">
-            <HeroBackgroundImage className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/62 via-black/28 to-transparent w-full md:w-[58%]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/28 via-transparent to-black/10" />
+            <HeroBackgroundSlider
+              className="absolute inset-0 w-full h-full object-cover"
+              index={heroIndex}
+              setPaused={setHeroPaused}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/62 via-black/28 to-transparent w-full md:w-[58%] pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/28 via-transparent to-black/10 pointer-events-none" />
           </div>
 
           <div className="relative z-10 w-full pb-28 md:pb-32 pt-20 md:pt-24">
@@ -171,6 +224,12 @@ export default function Home() {
               <HeroCopy />
             </div>
           </div>
+
+          <HeroDots
+            index={heroIndex}
+            setIndex={setHeroIndex}
+            className="absolute inset-x-0 bottom-[5.85rem] md:bottom-[6.7rem] z-[25]"
+          />
 
           <TrustStrip overlay />
         </section>

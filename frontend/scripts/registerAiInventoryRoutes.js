@@ -36,7 +36,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'hamper-image-key-e6da-v2';
+const GEMINI_MODULE_BUST = 'gift-local-fallback-v7';
 const helperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
@@ -65,8 +65,14 @@ function registerAiInventoryRoutes(app) {
       send(res, 200, { ...buildPreviewPayload(result), previewId: null });
     } catch (err) {
       const code = err.code || 'gemini_error';
-      const status = code === 'not_configured' ? 501 : code === 'bad_request' || code === 'no_match' ? 422 : 502;
-      send(res, status, { error: code, message: err.message || 'AI preview failed' });
+      const status = code === 'not_configured' || code === 'gemini_auth' ? 501 : code === 'bad_request' || code === 'no_match' ? 422 : 502;
+      const message =
+        code === 'bad_request' || code === 'no_match'
+          ? (err.message || 'Could not understand that command')
+          : code === 'gemini_auth' || code === 'not_configured'
+            ? (err.message || 'Gemini rejected this API key. Add a new GEMINI_API_KEY in frontend/.env and restart.')
+            : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
+      send(res, status, { error: code, message });
     }
   };
 

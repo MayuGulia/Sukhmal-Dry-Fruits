@@ -273,4 +273,25 @@ html, body, #root {
   cursor: grab;
 }
 
-/* Table (nutritional info): stack on mobile via <div>-based rows */
+@keyframes sk-hero-kenburns {
+  from { transform: scale(1); }
+  to { transform: scale(1.055); }
+}
+.sk-hero-slide {
+  opacity: 0;
+  transition: opacity 1.15s ease-in-out;
+  will-change: opacity, transform;
+}
+.sk-hero-slide.is-active {
+  opacity: 1;
+  animation: sk-hero-kenburns 6s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-hero-slide {
+    transition: opacity 0.35s ease;
+  }
+  .sk-hero-slide.is-active {
+    animation: none;
+    transform: none;
+  }
+}

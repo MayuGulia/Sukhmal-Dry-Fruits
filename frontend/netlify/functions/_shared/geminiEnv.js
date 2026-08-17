@@ -2,6 +2,17 @@
 export const CUSTOMER_AI_FALLBACK =
   "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
 
+export const GEMINI_AUTH_HELP =
+  'Gemini rejected this API key. Create a new key at https://aistudio.google.com/apikey, set GEMINI_API_KEY in frontend/.env, and restart the server. Do not paste the key into chat.';
+
+export function isGeminiAuthFailure(status, message) {
+  return (
+    status === 401 ||
+    status === 403 ||
+    /UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|invalid authentication credentials/i.test(message || '')
+  );
+}
+
 export function envGet(name) {
   let fromNetlify = '';
   try {
