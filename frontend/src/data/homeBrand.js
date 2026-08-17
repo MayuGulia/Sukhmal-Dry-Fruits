@@ -52,15 +52,19 @@ export const SHOP_CATEGORY_TILES = [
   { name: 'Raisins', sub: 'Sun-dried Afghan', to: '/product/kishmish-indian', image: '/products/kishmish-indian-1.jpg' },
   { name: 'Walnuts', sub: 'Kashmiri Kernels', to: '/product/walnut-premium', image: '/products/walnut-premium-1.jpg' },
   { name: 'Dates', sub: 'Medjool & Ajwa', to: '/category/dates', image: '/products/medjoul-dates-1.jpg' },
+  { name: 'Gift Hampers', sub: 'Festive collections', to: '/gift-hampers', image: '/brand/hampers/hamper-ganesha-goldbox-hero.png' },
 ];
 
 export const FESTIVAL_TILES = [
+  { key: 'festive', name: 'Festive Gift Hampers', image: '/brand/hampers/hamper-grand-basket-hero.png', to: '/festival-collections' },
   { key: 'diwali', name: 'Diwali Gifts', image: '/brand/hampers/hamper-ganesha-goldbox-hero.png', to: '/festival-collections#diwali' },
   { key: 'wedding', name: 'Wedding Gifts', image: '/brand/hampers/hamper-copper-tray-hero.png', to: '/wedding-gifts' },
-  { key: 'birthday', name: 'Birthday Gifts', image: '/brand/hampers/hamper-pink-tulle-hero.png', to: '/gift-hampers' },
+  { key: 'birthday', name: 'Birthday Gifts', image: '/brand/hampers/hamper-pink-tulle-hero.png', to: '/gift-hampers?occasion=Birthday' },
   { key: 'corporate', name: 'Corporate Gifts', image: '/brand/hampers/hamper-navy-crocodile-closed-hero.png', to: '/corporate-gifts' },
   { key: 'rakhi', name: 'Rakhi Gifts', image: '/brand/hampers/hamper-gold-elephant-hero.png', to: '/festival-collections#rakhi' },
   { key: 'eid', name: 'Eid Gifts', image: '/brand/hampers/hamper-silver-tray-hero.png', to: '/festival-collections#eid' },
+  { key: 'christmas', name: 'Christmas Gifts', image: '/brand/festival-christmas-banner.png', to: '/festival-collections#christmas' },
+  { key: 'new-year', name: 'New Year Gifts', image: '/brand/festival-newyear-banner.png', to: '/festival-collections#new-year' },
 ];
 
 export const WHY_CHOOSE = [

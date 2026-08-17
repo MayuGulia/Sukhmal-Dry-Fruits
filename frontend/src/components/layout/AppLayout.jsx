@@ -21,7 +21,7 @@ export default function AppLayout({ children }) {
         <Nav />
       </div>
       <HamburgerDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 pb-10 md:pb-14">{children}</main>
       <Footer />
       <MobileBottomNav />
       <div

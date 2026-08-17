@@ -10,17 +10,24 @@ const PRIMARY = [
   { to: '/category/dates', label: 'Dates' },
   { to: '/category/berries', label: 'Berries' },
   { to: '/gift-hampers', label: 'Gift Hampers' },
+  { to: '/festival-collections', label: 'Festive Hampers' },
   { to: '/wedding-gifts', label: 'Wedding Gifts', badge: 'New' },
   { to: '/corporate-gifts', label: 'Corporate Gifts' },
   { to: '/offers', label: 'Offers', percent: true },
 ];
 
 const MEGA_EXTRA = [
+  { to: '/festival-collections', label: 'Festive Gift Hampers', tagline: 'Diwali, Eid, Rakhi, Christmas & New Year' },
   { to: '/gift-hampers', label: 'Gift Hampers', tagline: 'Curated for every celebration' },
   { to: '/wedding-gifts', label: 'Wedding Gifts', tagline: 'Elegant boxes for the big day' },
   { to: '/corporate-gifts', label: 'Corporate Gifts', tagline: 'Branded hampers for teams' },
   { to: '/offers', label: 'Offers & Combos', tagline: 'Seasonal savings & bundles' },
 ];
+
+const SPECIAL_CATEGORY_TO = {
+  'gift-hampers': '/gift-hampers',
+  'festival-collections': '/festival-collections',
+};
 
 export default function Nav() {
   const { data: cats } = useCategories();
@@ -35,12 +42,17 @@ export default function Nav() {
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  const megaItems = [
-    ...(cats?.length
-      ? cats.map((c) => ({ to: `/category/${c.slug}`, label: c.name, tagline: c.tagline }))
-      : PRIMARY.slice(0, 5).map((l) => ({ to: l.to, label: l.label, tagline: '' }))),
-    ...MEGA_EXTRA.filter((x) => !(cats || []).some((c) => c.name === x.label)),
-  ];
+  const extraKeys = new Set(MEGA_EXTRA.map((x) => x.to));
+  const fromApi = (cats?.length
+    ? cats.map((c) => ({
+        to: SPECIAL_CATEGORY_TO[c.slug] || `/category/${c.slug}`,
+        label: c.name,
+        tagline: c.tagline,
+      }))
+    : PRIMARY.slice(0, 5).map((l) => ({ to: l.to, label: l.label, tagline: '' }))
+  ).filter((item) => !extraKeys.has(item.to) && !MEGA_EXTRA.some((x) => x.label === item.label));
+
+  const megaItems = [...MEGA_EXTRA, ...fromApi];
 
   return (
     <div className="hidden lg:block bg-white border-b border-line relative z-30">
@@ -70,9 +82,9 @@ export default function Nav() {
                     key={item.to + item.label}
                     to={item.to}
                     onClick={() => setOpen(false)}
-                    className="flex flex-col gap-0.5 px-4 py-3 rounded-lg hover:bg-cream-200 transition-colors"
+                    className="flex flex-col gap-0.5 px-4 py-3 rounded-lg hover:bg-cream-200 transition-colors sk-tap-target"
                   >
-                    <span className="text-[13px] font-semibold text-brand-900">{item.label}</span>
+                    <span className="text-[12px] font-semibold text-brand-900">{item.label}</span>
                     {item.tagline && <span className="text-[11px] text-ink-500 leading-snug">{item.tagline}</span>}
                   </Link>
                 ))}
@@ -87,13 +99,13 @@ export default function Nav() {
           )}
         </div>
 
-        <nav className="flex items-center gap-4 xl:gap-5 text-[13.5px] font-medium text-brand-900 whitespace-nowrap overflow-x-auto scrollbar-none">
+        <nav className="flex items-center gap-3 xl:gap-4 text-[12px] xl:text-[12.5px] font-medium text-brand-900 whitespace-nowrap overflow-x-auto scrollbar-none">
           {PRIMARY.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
               className={({ isActive }) =>
-                `inline-flex items-center gap-1.5 hover:text-brand-700 transition-colors ${isActive ? 'text-brand-700' : ''}`
+                `inline-flex items-center gap-1.5 hover:text-brand-700 transition-colors sk-tap-target ${isActive ? 'text-brand-700' : ''}`
               }
             >
               {l.label}

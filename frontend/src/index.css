@@ -204,9 +204,19 @@ html, body, #root {
   position: absolute; inset: 0; background: linear-gradient(180deg, rgba(60,36,21,0) 0%, rgba(60,36,21,0.15) 40%, rgba(60,36,21,0.55) 100%);
 }
 
-/* Smooth reveal */
-@keyframes sk-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.sk-fade-up { animation: sk-fade-up .4s ease both; }
+@keyframes sk-soft-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.sk-soft-in {
+  animation: sk-soft-in 0.55s cubic-bezier(.22, 1, .36, 1) both;
+}
+.sk-tap-target {
+  transition: transform 0.2s ease;
+}
+.sk-tap-target:active {
+  transform: scale(0.97);
+}
 
 /* Homepage brand motion */
 @keyframes home-fade-up {

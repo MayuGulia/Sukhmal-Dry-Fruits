@@ -7,9 +7,9 @@ import { BrandLockup } from '@/components/brand/BrandSeal';
 
 const STATIC = [
   { to: '/gift-hampers', label: 'Gift Hampers' },
+  { to: '/festival-collections', label: 'Festive Gift Hampers' },
   { to: '/wedding-gifts', label: 'Wedding Gifts' },
   { to: '/corporate-gifts', label: 'Corporate Gifts' },
-  { to: '/festival-collections', label: 'Festival Collections' },
   { to: '/offers', label: 'Offers' },
 ];
 
@@ -117,7 +117,7 @@ export default function HamburgerDrawer({ open, onClose }) {
               key={c.slug}
               onClick={onClose}
               to={`/category/${c.slug}`}
-              className="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-cream-300/80 text-brand-900 font-medium transition-colors"
+              className="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-cream-300/80 text-brand-900 font-medium text-[13.5px] transition-colors"
             >
               {c.name}
               <ChevronRight size={16} className="text-ink-400" />
@@ -129,7 +129,7 @@ export default function HamburgerDrawer({ open, onClose }) {
               key={c.to}
               onClick={onClose}
               to={c.to}
-              className="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-cream-300/80 text-brand-900 font-medium transition-colors"
+              className="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-cream-300/80 text-brand-900 font-medium text-[13.5px] transition-colors sk-tap-target"
             >
               {c.label}
               <ChevronRight size={16} className="text-ink-400" />

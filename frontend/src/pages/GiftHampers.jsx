@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Award, ChevronDown, Filter, Gift, Heart, Leaf, Minus, Plus, Star, Truck, Users, X,
 } from 'lucide-react';
@@ -10,17 +10,15 @@ import { inr, cn } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 
-const PRICE_FLOOR = 299;
-const PRICE_CEIL = 5000;
+const PRICE_FLOOR = 999;
+const PRICE_CEIL = 8000;
 
 const OCCASIONS = ['All Hampers', 'Birthday', 'Wedding', 'Corporate', 'Festival', 'Luxury'];
 
 const PRICE_CHIPS = [
-  { l: 'Under ₹500', max: 499 },
-  { l: '₹500 – ₹1,000', min: 500, max: 1000 },
-  { l: '₹1,000 – ₹2,000', min: 1000, max: 2000 },
-  { l: '₹2,000 – ₹3,000', min: 2000, max: 3000 },
-  { l: '₹3,000 – ₹5,000', min: 3000, max: 5000 },
+  { l: 'Under ₹2,000', max: 1999 },
+  { l: '₹2,000 – ₹3,500', min: 2000, max: 3500 },
+  { l: '₹3,500 – ₹5,000', min: 3500, max: 5000 },
   { l: 'Above ₹5,000', min: 5001 },
 ];
 
@@ -84,28 +82,69 @@ function FilterSection({ id, title, Icon, open, onToggle, children }) {
 }
 
 function DualBudgetSlider({ min, max, onChange }) {
-  const clampMin = (v) => Math.min(Math.max(PRICE_FLOOR, v), max - 50);
-  const clampMax = (v) => Math.max(Math.min(PRICE_CEIL, v), min + 50);
-  const thumb =
-    'absolute w-full appearance-none bg-transparent pointer-events-none ' +
-    '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none ' +
-    '[&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full ' +
-    '[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 ' +
-    '[&::-webkit-slider-thumb]:border-[var(--sk-star)] [&::-webkit-slider-thumb]:shadow-sk-sm ' +
-    '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 ' +
-    '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 ' +
-    '[&::-moz-range-thumb]:border-[var(--sk-star)]';
+  const span = PRICE_CEIL - PRICE_FLOOR;
+  const minPct = ((min - PRICE_FLOOR) / span) * 100;
+  const maxPct = ((max - PRICE_FLOOR) / span) * 100;
+  const minOnTop = min > PRICE_FLOOR + span * 0.45;
+
+  const snap = (n) => Math.round(n / 50) * 50;
+  const commitMin = (raw) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+    onChange({ min: Math.min(Math.max(PRICE_FLOOR, snap(n)), max - 50), max });
+  };
+  const commitMax = (raw) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+    onChange({ min, max: Math.max(Math.min(PRICE_CEIL, snap(n)), min + 50) });
+  };
+
+  const box =
+    'flex items-center h-10 rounded-lg border border-line bg-white px-2.5 focus-within:border-[var(--sk-gold-500)] focus-within:ring-1 focus-within:ring-[var(--sk-gold-500)]/30';
 
   return (
-    <div className="pt-1 px-0.5">
-      <div className="relative h-8 flex items-center">
-        <div className="absolute left-0 right-0 h-1 rounded-full bg-cream-400" />
+    <div className="pt-1 space-y-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+        <label className="block min-w-0">
+          <span className="text-[11px] text-ink-500 font-medium">Min</span>
+          <div className={`${box} mt-1`}>
+            <span className="text-ink-500 text-sm mr-1 shrink-0">₹</span>
+            <input
+              type="number"
+              min={PRICE_FLOOR}
+              max={max - 50}
+              step={50}
+              value={min}
+              aria-label="Minimum budget"
+              onChange={(e) => commitMin(e.target.value)}
+              className="w-full min-w-0 bg-transparent outline-none text-sm font-semibold tabular-nums text-brand-900"
+            />
+          </div>
+        </label>
+        <span className="text-ink-400 pb-2.5" aria-hidden>—</span>
+        <label className="block min-w-0">
+          <span className="text-[11px] text-ink-500 font-medium">Max</span>
+          <div className={`${box} mt-1`}>
+            <span className="text-ink-500 text-sm mr-1 shrink-0">₹</span>
+            <input
+              type="number"
+              min={min + 50}
+              max={PRICE_CEIL}
+              step={50}
+              value={max}
+              aria-label="Maximum budget"
+              onChange={(e) => commitMax(e.target.value)}
+              className="w-full min-w-0 bg-transparent outline-none text-sm font-semibold tabular-nums text-brand-900"
+            />
+          </div>
+        </label>
+      </div>
+
+      <div className="relative h-8 px-1">
+        <div className="absolute left-1 right-1 top-1/2 -translate-y-1/2 h-1 rounded-full bg-cream-400" />
         <div
-          className="absolute h-1 rounded-full bg-[var(--sk-star)]"
-          style={{
-            left: `${((min - PRICE_FLOOR) / (PRICE_CEIL - PRICE_FLOOR)) * 100}%`,
-            right: `${100 - ((max - PRICE_FLOOR) / (PRICE_CEIL - PRICE_FLOOR)) * 100}%`,
-          }}
+          className="absolute top-1/2 -translate-y-1/2 h-1 rounded-full bg-[var(--sk-star)]"
+          style={{ left: `calc(4px + ${minPct}%)`, right: `calc(4px + ${100 - maxPct}%)` }}
         />
         <input
           type="range"
@@ -114,8 +153,9 @@ function DualBudgetSlider({ min, max, onChange }) {
           step={50}
           value={min}
           aria-label="Minimum budget"
-          onChange={(e) => onChange({ min: clampMin(Number(e.target.value)), max })}
-          className={thumb}
+          onChange={(e) => commitMin(e.target.value)}
+          className="sk-range absolute inset-0 w-full"
+          style={{ zIndex: minOnTop ? 5 : 3 }}
         />
         <input
           type="range"
@@ -124,13 +164,14 @@ function DualBudgetSlider({ min, max, onChange }) {
           step={50}
           value={max}
           aria-label="Maximum budget"
-          onChange={(e) => onChange({ min, max: clampMax(Number(e.target.value)) })}
-          className={thumb}
+          onChange={(e) => commitMax(e.target.value)}
+          className="sk-range absolute inset-0 w-full"
+          style={{ zIndex: 4 }}
         />
       </div>
-      <div className="flex items-center justify-between text-[11px] text-ink-500 font-medium">
-        <span>₹299</span>
-        <span>₹5,000+</span>
+      <div className="flex items-center justify-between text-[11px] text-ink-500 font-medium px-0.5">
+        <span>₹ {PRICE_FLOOR.toLocaleString('en-IN')}</span>
+        <span>₹ {PRICE_CEIL.toLocaleString('en-IN')}+</span>
       </div>
     </div>
   );
@@ -211,70 +252,21 @@ export function PremiumHamperCard({ h }) {
   );
 }
 
-export default function GiftHampers() {
-  const [chip, setChip] = useState('All Hampers');
-  const [budget, setBudget] = useState(null);
-  const [sort, setSort] = useState('popularity');
-  const [sideCats, setSideCats] = useState([]);
-  const [sideWeights, setSideWeights] = useState([]);
-  const [sideQuality, setSideQuality] = useState([]);
-  const [priceRange, setPriceRange] = useState({ min: PRICE_FLOOR, max: PRICE_CEIL });
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [open, setOpen] = useState({
-    categories: true,
-    budget: true,
-    weight: true,
-    quality: true,
-  });
-  const { data: hampers, loading } = useHampers();
-
-  const list = useMemo(() => {
-    let rows = hampers.filter((h) => {
-      const occasion = chip === 'All Hampers' ? null : chip;
-      if (occasion === 'Luxury') {
-        if (h.tier !== 'Luxury' && !(h.tags || []).includes('Luxury')) return false;
-      } else if (occasion && !(h.tags || []).includes(occasion) && h.tier !== occasion) {
-        return false;
-      }
-
-      if (budget) {
-        if (budget.min && h.price < budget.min) return false;
-        if (budget.max && h.price > budget.max) return false;
-      } else if (h.price < priceRange.min || (priceRange.max < PRICE_CEIL && h.price > priceRange.max)) {
-        return false;
-      }
-
-      if (sideCats.length) {
-        const ok = sideCats.some((c) =>
-          c === 'Luxury' ? h.tier === 'Luxury' || (h.tags || []).includes('Luxury') : (h.tags || []).includes(c),
-        );
-        if (!ok) return false;
-      }
-      if (sideWeights.length && !sideWeights.includes(weightBucket(h.weight))) return false;
-      if (sideQuality.length && !sideQuality.includes(h.tier)) return false;
-      return true;
-    });
-
-    rows = [...rows];
-    if (sort === 'price-asc') rows.sort((a, b) => a.price - b.price);
-    else if (sort === 'price-desc') rows.sort((a, b) => b.price - a.price);
-    else if (sort === 'rating') rows.sort((a, b) => hamperMeta(b).rating - hamperMeta(a).rating);
-    return rows;
-  }, [hampers, chip, budget, sort, sideCats, sideWeights, sideQuality, priceRange]);
-
-  const toggleArr = (cur, v, set) => set(cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
-  const toggleSection = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
-
-  const resetAll = () => {
-    setChip('All Hampers');
-    setBudget(null);
-    setSideCats([]);
-    setSideWeights([]);
-    setSideQuality([]);
-    setPriceRange({ min: PRICE_FLOOR, max: PRICE_CEIL });
-  };
-
-  const Filters = () => (
+function HamperFilters({
+  hampers,
+  open,
+  toggleSection,
+  sideCats,
+  setSideCats,
+  sideWeights,
+  setSideWeights,
+  sideQuality,
+  setSideQuality,
+  priceRange,
+  applyPriceRange,
+  toggleArr,
+}) {
+  return (
     <aside>
       <FilterSection
         id="categories"
@@ -316,7 +308,7 @@ export default function GiftHampers() {
         open={open.budget}
         onToggle={toggleSection}
       >
-        <DualBudgetSlider min={priceRange.min} max={priceRange.max} onChange={setPriceRange} />
+        <DualBudgetSlider min={priceRange.min} max={priceRange.max} onChange={applyPriceRange} />
       </FilterSection>
 
       <FilterSection
@@ -386,6 +378,110 @@ export default function GiftHampers() {
       </div>
     </aside>
   );
+}
+
+export default function GiftHampers() {
+  const [searchParams] = useSearchParams();
+  const occasionParam = searchParams.get('occasion');
+  const [chip, setChip] = useState(
+    OCCASIONS.includes(occasionParam) ? occasionParam : 'All Hampers',
+  );
+  const [budget, setBudget] = useState(null);
+  const [sort, setSort] = useState('popularity');
+  const [sideCats, setSideCats] = useState([]);
+  const [sideWeights, setSideWeights] = useState([]);
+  const [sideQuality, setSideQuality] = useState([]);
+  const [priceRange, setPriceRange] = useState({ min: PRICE_FLOOR, max: PRICE_CEIL });
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [open, setOpen] = useState({
+    categories: true,
+    budget: true,
+    weight: true,
+    quality: true,
+  });
+  const { data: hampers, loading } = useHampers();
+
+  useEffect(() => {
+    if (OCCASIONS.includes(occasionParam)) setChip(occasionParam);
+  }, [occasionParam]);
+
+  const list = useMemo(() => {
+    let rows = hampers.filter((h) => {
+      const occasion = chip === 'All Hampers' ? null : chip;
+      if (occasion === 'Luxury') {
+        if (h.tier !== 'Luxury' && !(h.tags || []).includes('Luxury')) return false;
+      } else if (occasion && !(h.tags || []).includes(occasion) && h.tier !== occasion) {
+        return false;
+      }
+
+      if (h.price < priceRange.min || (priceRange.max < PRICE_CEIL && h.price > priceRange.max)) {
+        return false;
+      }
+
+      if (sideCats.length) {
+        const ok = sideCats.some((c) =>
+          c === 'Luxury' ? h.tier === 'Luxury' || (h.tags || []).includes('Luxury') : (h.tags || []).includes(c),
+        );
+        if (!ok) return false;
+      }
+      if (sideWeights.length && !sideWeights.includes(weightBucket(h.weight))) return false;
+      if (sideQuality.length && !sideQuality.includes(h.tier)) return false;
+      return true;
+    });
+
+    rows = [...rows];
+    if (sort === 'price-asc') rows.sort((a, b) => a.price - b.price);
+    else if (sort === 'price-desc') rows.sort((a, b) => b.price - a.price);
+    else if (sort === 'rating') rows.sort((a, b) => hamperMeta(b).rating - hamperMeta(a).rating);
+    return rows;
+  }, [hampers, chip, sort, sideCats, sideWeights, sideQuality, priceRange]);
+
+  const toggleArr = (cur, v, set) => set(cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
+  const toggleSection = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
+
+  const applyPriceRange = (next) => {
+    setPriceRange(next);
+    const match = PRICE_CHIPS.find((b) => {
+      const min = b.min || PRICE_FLOOR;
+      const max = b.max || PRICE_CEIL;
+      return next.min === min && next.max === max;
+    });
+    setBudget(match || null);
+  };
+
+  const applyBudgetChip = (b) => {
+    if (budget?.l === b.l) {
+      setBudget(null);
+      setPriceRange({ min: PRICE_FLOOR, max: PRICE_CEIL });
+      return;
+    }
+    setBudget(b);
+    setPriceRange({ min: b.min || PRICE_FLOOR, max: b.max || PRICE_CEIL });
+  };
+
+  const resetAll = () => {
+    setChip('All Hampers');
+    setBudget(null);
+    setSideCats([]);
+    setSideWeights([]);
+    setSideQuality([]);
+    setPriceRange({ min: PRICE_FLOOR, max: PRICE_CEIL });
+  };
+
+  const hamperFilterProps = {
+    hampers,
+    open,
+    toggleSection,
+    sideCats,
+    setSideCats,
+    sideWeights,
+    setSideWeights,
+    sideQuality,
+    setSideQuality,
+    priceRange,
+    applyPriceRange,
+    toggleArr,
+  };
 
   return (
     <div className="bg-cream-100">
@@ -395,7 +491,7 @@ export default function GiftHampers() {
           <h1 className="font-display font-bold text-brand-900 text-3xl md:text-5xl mt-3 leading-tight">
             Gift Hampers
           </h1>
-          <p className="text-ink-600 mt-2 max-w-3xl text-sm md:text-base leading-relaxed">
+          <p className="text-ink-600 mt-2 max-w-3xl text-[12px] md:text-[13px] leading-relaxed">
             {HAMPER_INTRO}
           </p>
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -418,12 +514,12 @@ export default function GiftHampers() {
       </div>
 
       <div className="sk-container py-8 md:py-12">
-        <div className="grid lg:grid-cols-[240px_1fr] gap-8">
+        <div className="grid lg:grid-cols-[260px_1fr] gap-8">
           <div className="hidden lg:block">
             <div className="font-display font-bold text-brand-900 text-lg mb-4 inline-flex items-center gap-2">
               <Filter size={18} className="text-[var(--sk-gold-500)]" /> Filter Hampers
             </div>
-            <Filters />
+            <HamperFilters {...hamperFilterProps} />
           </div>
 
           <div>
@@ -479,7 +575,7 @@ export default function GiftHampers() {
                 <button
                   key={b.l}
                   type="button"
-                  onClick={() => setBudget(budget?.l === b.l ? null : b)}
+                  onClick={() => applyBudgetChip(b)}
                   className={cn(
                     'px-3.5 py-2 rounded-md text-[12px] font-medium border transition',
                     budget?.l === b.l
@@ -527,7 +623,7 @@ export default function GiftHampers() {
                 <X size={20} />
               </button>
             </div>
-            <Filters />
+            <HamperFilters {...hamperFilterProps} />
             <button type="button" onClick={() => setMobileOpen(false)} className="sk-btn-primary w-full mt-5">
               Show {list.length} Results
             </button>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ChevronRight, Wand2, MessageSquare, Star, ShieldCheck,
@@ -23,6 +23,37 @@ import {
 } from '@/data/homeBrand';
 import { GiftBasketIcon } from '@/components/brand/BrandSeal';
 import { STORE_INSTAGRAM, STORE_INSTAGRAM_HANDLE } from '@/data/storeInfo';
+
+const ANIMATED_TILES = new Set(['Gift Hampers', 'Festive Gift Hampers']);
+
+function useSoftIn() {
+  const ref = useRef(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setShown(true);
+    }, { threshold: 0.28 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return { ref, shown };
+}
+
+function SoftTileLink({ to, testId, className, animate, children }) {
+  const { ref, shown } = useSoftIn();
+  return (
+    <Link
+      ref={ref}
+      to={to}
+      data-testid={testId}
+      className={`${className} ${animate ? `sk-tap-target ${shown ? 'sk-soft-in' : 'opacity-0'}` : ''}`}
+    >
+      {children}
+    </Link>
+  );
+}
 
 const WHY_ICONS = {
   trust: Award,
@@ -242,12 +273,13 @@ export default function Home() {
             title="Shop by Category"
             cta={<ViewAllLink to="/category/all">View All Categories</ViewAllLink>}
           />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5" data-testid="shop-by-category">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 md:gap-5" data-testid="shop-by-category">
             {SHOP_CATEGORY_TILES.map((c) => (
-              <Link
+              <SoftTileLink
                 key={c.name}
                 to={c.to}
-                data-testid={`cat-tile-${c.name.toLowerCase()}`}
+                testId={`cat-tile-${c.name.toLowerCase()}`}
+                animate={ANIMATED_TILES.has(c.name)}
                 className="group flex flex-col text-center"
               >
                 <div className="aspect-square rounded-[18px] overflow-hidden bg-[#F4EDE3] ring-1 ring-[var(--sk-line)] shadow-sk-sm group-hover:shadow-sk-md transition-shadow">
@@ -258,9 +290,9 @@ export default function Home() {
                     loading="lazy"
                   />
                 </div>
-                <div className="mt-3 font-display font-bold text-brand-900 text-[15px] md:text-base">{c.name}</div>
-                <div className="text-[12px] text-ink-500 mt-0.5 leading-snug">{c.sub}</div>
-              </Link>
+                <div className="mt-2.5 font-display font-bold text-brand-900 text-[13px] md:text-[14px]">{c.name}</div>
+                <div className="text-[11px] text-ink-500 mt-0.5 leading-snug">{c.sub}</div>
+              </SoftTileLink>
             ))}
           </div>
         </div>
@@ -273,12 +305,13 @@ export default function Home() {
             title="Festival Collections"
             cta={<ViewAllLink to="/festival-collections">View All Collections</ViewAllLink>}
           />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5" data-testid="festival-collections">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5" data-testid="festival-collections">
             {FESTIVAL_TILES.map((f) => (
-              <Link
+              <SoftTileLink
                 key={f.key}
                 to={f.to}
-                data-testid={`fest-${f.key}`}
+                testId={`fest-${f.key}`}
+                animate={ANIMATED_TILES.has(f.name)}
                 className="group block"
               >
                 <div className="rounded-[18px] overflow-hidden bg-[#F4EDE3] shadow-sk-sm aspect-square ring-1 ring-[var(--sk-line)]">
@@ -289,10 +322,10 @@ export default function Home() {
                     loading="lazy"
                   />
                 </div>
-                <div className="mt-3 text-center font-display font-bold text-brand-900 text-[15px] md:text-base">
+                <div className="mt-2.5 text-center font-display font-bold text-brand-900 text-[13px] md:text-[14px]">
                   {f.name}
                 </div>
-              </Link>
+              </SoftTileLink>
             ))}
           </div>
         </div>

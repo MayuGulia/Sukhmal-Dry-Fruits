@@ -74,12 +74,14 @@ const CAT_ICONS = {
   dates: Cherry,
   berries: Grape,
   'gift-hampers': Package,
+  'festival-collections': Gift,
   'wedding-gifts': HeartHandshake,
   'corporate-gifts': Briefcase,
   offers: Percent,
 };
 
 const EXTRA_CATS = [
+  { slug: 'festival-collections', name: 'Festive Gift Hampers', to: '/festival-collections', count: 10 },
   { slug: 'wedding-gifts', name: 'Wedding Gifts', to: '/wedding-gifts', count: 15 },
   { slug: 'corporate-gifts', name: 'Corporate Gifts', to: '/corporate-gifts', count: 20 },
   { slug: 'offers', name: 'Offers', to: '/offers', count: 10 },
@@ -254,8 +256,16 @@ function FiltersPanel({
       to: c.slug === 'gift-hampers' ? '/gift-hampers' : `/category/${c.slug}`,
       count: categoryCounts[c.slug] ?? c.count ?? 0,
     })),
-    ...EXTRA_CATS,
+    ...EXTRA_CATS.filter((x) => !categories.some((c) => c.slug === x.slug || c.name === x.name)),
   ];
+  if (!catLinks.some((c) => c.slug === 'gift-hampers')) {
+    catLinks.splice(Math.max(0, catLinks.findIndex((c) => c.slug === 'festival-collections')), 0, {
+      slug: 'gift-hampers',
+      name: 'Gift Hampers',
+      to: '/gift-hampers',
+      count: categoryCounts['gift-hampers'] || 10,
+    });
+  }
 
   return (
     <aside>
