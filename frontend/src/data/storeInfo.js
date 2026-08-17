@@ -10,6 +10,8 @@ export const STORE_EMAIL = 'info@sukhmaldryfruits.com';
 export const STORE_INSTAGRAM = 'https://www.instagram.com/sukhmal_dry_fruits_korner/';
 export const STORE_INSTAGRAM_HANDLE = '@sukhmal_dry_fruits_korner';
 export const STORE_HOURS = 'Mon–Sat: 10:00 AM – 8:00 PM';
+export const STORE_FSSAI_LABEL = 'FSSAI licensed food business';
+export const STORE_GST_LABEL = 'GST invoices available on request';
 export const STORE_PHOTOS = [
   '/brand/store-storefront.webp',
   '/brand/store-roasted-salted.webp',

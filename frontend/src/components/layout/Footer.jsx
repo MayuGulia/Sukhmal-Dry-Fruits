@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Youtube, ShieldCheck } from 'lucide-react';
 import { BrandLockup } from '@/components/brand/BrandSeal';
 import { useAuth } from '@/contexts/AuthContext';
-import { STORE_ADDRESS, STORE_EMAIL, STORE_INSTAGRAM, STORE_PHONE_DISPLAY, STORE_PHONE_TEL } from '@/data/storeInfo';
+import { STORE_ADDRESS, STORE_EMAIL, STORE_FSSAI_LABEL, STORE_GST_LABEL, STORE_INSTAGRAM, STORE_PHONE_DISPLAY, STORE_PHONE_TEL } from '@/data/storeInfo';
 import { saveNewsletterSignup } from '@/lib/newsletter';
 
 function PinterestIcon({ size = 14 }) {
@@ -108,6 +108,8 @@ export default function Footer() {
               {' · '}
               <a href={`mailto:${STORE_EMAIL}`} className="hover:text-white">{STORE_EMAIL}</a>
             </div>
+            <div className="mt-2 text-cream-200/60">{STORE_FSSAI_LABEL}</div>
+            <div className="text-cream-200/60">{STORE_GST_LABEL}</div>
           </address>
           <div className="flex items-center gap-2.5 mt-5">
             {[

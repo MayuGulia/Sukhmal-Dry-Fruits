@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import ProductCard from '@/components/shared/ProductCard';
 import { useProducts, useCategories, ProductSkeleton } from '@/lib/catalog';
+import { CATEGORY_COPY } from '@/seo/pageMeta';
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 12;
@@ -553,8 +554,15 @@ export default function PLP() {
             </div>
           </div>
 
-          {cat && (
-            <h1 className="sr-only">{cat.name}</h1>
+          {(cat || slug === 'all') && (
+            <div className="mb-5">
+              <h1 className="font-display font-bold text-brand-900 text-2xl md:text-3xl leading-tight">
+                {cat?.name || 'All Dry Fruits & Nuts'}
+              </h1>
+              <p className="text-ink-600 mt-2 max-w-3xl text-sm md:text-[15px] leading-relaxed">
+                {(CATEGORY_COPY[slug] || CATEGORY_COPY.all).intro}
+              </p>
+            </div>
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-5">

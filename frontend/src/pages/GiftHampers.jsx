@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useHampers, HamperSkeleton } from '@/lib/catalog';
 import Breadcrumb from '@/components/shared/Breadcrumb';
+import { HAMPER_INTRO } from '@/seo/pageMeta';
 import { inr, cn } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
@@ -394,8 +395,8 @@ export default function GiftHampers() {
           <h1 className="font-display font-bold text-brand-900 text-3xl md:text-5xl mt-3 leading-tight">
             Gift Hampers
           </h1>
-          <p className="text-ink-600 mt-2 max-w-2xl text-sm md:text-base">
-            Thoughtfully curated hampers for every occasion — made with premium dry fruits, nuts & more.
+          <p className="text-ink-600 mt-2 max-w-3xl text-sm md:text-base leading-relaxed">
+            {HAMPER_INTRO}
           </p>
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {TRUST.map(({ Ic, label, sub }) => (

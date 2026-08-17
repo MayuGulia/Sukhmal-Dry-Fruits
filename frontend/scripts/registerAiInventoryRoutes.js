@@ -36,7 +36,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'hamper-image-interactions-v5';
+const GEMINI_MODULE_BUST = 'hamper-image-key-e6da-v2';
 const helperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
@@ -45,6 +45,9 @@ const giftHelperUrl = `${pathToFileURL(
 ).href}?v=${GEMINI_MODULE_BUST}`;
 const hamperHelperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/generateHamperPreview.js'),
+).href}?v=${GEMINI_MODULE_BUST}`;
+const sitemapHelperUrl = `${pathToFileURL(
+  path.join(__dirname, '../netlify/functions/_shared/sitemapUrls.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
 
 function registerAiInventoryRoutes(app) {
@@ -109,6 +112,17 @@ function registerAiInventoryRoutes(app) {
         ? (err.message || 'Add products first')
         : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
       send(res, status, { error: quota ? 'quota' : code, message, fallback: true });
+    }
+  });
+
+  app.get('/sitemap.xml', async (req, res) => {
+    try {
+      const { buildSitemapXml } = await import(sitemapHelperUrl);
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+      res.end(buildSitemapXml());
+    } catch (err) {
+      send(res, 500, { error: 'sitemap', message: err.message || 'Sitemap failed' });
     }
   });
   return app;

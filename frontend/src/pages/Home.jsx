@@ -37,7 +37,11 @@ function HeroBackgroundImage({ className }) {
   return (
     <img
       src={HERO_STILL_SRC}
-      alt=""
+      alt="Sukhmal Dry Fruits Korner premium dry fruits, nuts and gift hampers"
+      width={1920}
+      height={1080}
+      fetchPriority="high"
+      decoding="async"
       className={className}
       style={{
         width: '100%',
@@ -190,7 +194,7 @@ export default function Home() {
                 <div className="aspect-square rounded-[18px] overflow-hidden bg-[#F4EDE3] ring-1 ring-[var(--sk-line)] shadow-sk-sm group-hover:shadow-sk-md transition-shadow">
                   <img
                     src={c.image}
-                    alt={c.name}
+                    alt={`${c.name} — ${c.sub}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
@@ -421,7 +425,7 @@ export default function Home() {
                 </div>
                 <p className="text-[13px] md:text-[14px] leading-relaxed text-ink-600 italic flex-1">“{t.text}”</p>
                 <div className="mt-5 flex items-center gap-3 pt-4 border-t border-[var(--sk-line)]">
-                  <img src={t.avatar} alt="" className="w-11 h-11 rounded-full object-cover" loading="lazy" />
+                  <img src={t.avatar} alt={t.name} className="w-11 h-11 rounded-full object-cover" loading="lazy" />
                   <div>
                     <div className="font-semibold text-brand-900 text-[13px]">{t.name}</div>
                     <div className="text-[11px] text-[var(--sk-gold-600)] font-semibold inline-flex items-center gap-1 mt-0.5">
@@ -455,7 +459,7 @@ export default function Home() {
                   rel="noreferrer"
                   className="relative aspect-square overflow-hidden rounded-lg block bg-[#F4EDE3] group"
                 >
-                  <img src={im} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                  <img src={im} alt="Sukhmal Dry Fruits Instagram pack shot" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                   {isLast && (
                     <div className="absolute inset-0 bg-[var(--sk-espresso)]/70 grid place-items-center text-white">
                       <div className="text-center">

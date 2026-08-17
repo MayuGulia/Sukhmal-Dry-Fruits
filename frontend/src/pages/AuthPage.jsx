@@ -5,6 +5,7 @@ import {
   Mail, Phone, Lock, User, ArrowRight, ShieldCheck, Loader2,
   CheckCircle2, RefreshCw, Eye, EyeOff, ArrowLeft,
 } from 'lucide-react';
+import SeoHead from '@/seo/SeoHead';
 import { HERO_IMG } from '@/data/mockContent';
 import {
   isStrongPassword,
@@ -427,11 +428,17 @@ export default function AuthPage({ mode = 'login' }) {
 
   return (
     <div className="min-h-screen grid md:grid-cols-2 bg-cream-100">
+      <SeoHead
+        title="Account | Sukhmal Dry Fruits"
+        description="Log in or create a Sukhmal Dry Fruits Korner account to order premium dry fruits and gift hampers."
+        path={loc.pathname || '/login'}
+        noindex
+      />
       {/* Brand panel */}
       <aside className="hidden md:block relative overflow-hidden">
         <img
           src={HERO_IMG}
-          alt=""
+          alt="Sukhmal Dry Fruits gift hamper"
           className="absolute inset-0 w-full h-full object-cover scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-brand-900 via-brand-900/55 to-brand-900/20" />

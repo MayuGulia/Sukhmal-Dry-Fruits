@@ -126,7 +126,7 @@ export default function About() {
                   Our mission is to deliver purity, quality and smiles in every pack we send.
                 </p>
               </div>
-              <img src={QUOTE_IMG} alt="" className="mt-6 w-full h-28 object-cover rounded-xl opacity-90" />
+              <img src={QUOTE_IMG} alt="Premium Sukhmal nuts in a bowl" className="mt-6 w-full h-28 object-cover rounded-xl opacity-90" />
             </div>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function About() {
       {/* CLOSING CTA */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img src={CTA_IMG} alt="" className="w-full h-full object-cover" />
+          <img src={CTA_IMG} alt="Thank-you dry fruit assortment from Sukhmal" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-brand-900/85" />
         </div>
         <div className="relative sk-container py-16 md:py-20 text-center text-white">

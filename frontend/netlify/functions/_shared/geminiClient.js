@@ -3,7 +3,7 @@
  * New AI Studio keys must use the Interactions API for images (Imagen :predict is retired).
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
-import { envGet, geminiApiKey } from './geminiEnv.js';
+import { envGet } from './geminiEnv.js';
 
 const FALLBACK_MODEL = 'gemini-flash-latest';
 const SKIP = /lite|tts|image|video|audio|1\.5|gemini-pro$|gemini-1\.0|computer-use|robotics|lyria|deep-research|antigravity|gemma-|omni-|eap|customtools/i;
@@ -287,7 +287,7 @@ async function generateImageWithKey({ key, prompt, label }) {
       console.warn(`[Sukhmal Gemini] ${label} failed model=${model} api=interactions status=${status} message=${msg}`);
       lastErr = err;
       if (status === 401 || status === 403) throw err;
-      if (isZeroQuota(status, msg)) throw err;
+      if (isZeroQuota(status, msg)) continue;
       if (status === 429) throw err;
       if (status === 404 && /interactions/i.test(msg)) break;
     }
@@ -297,18 +297,5 @@ async function generateImageWithKey({ key, prompt, label }) {
 }
 
 export async function generateGeminiImage({ key, prompt, label = 'image' }) {
-  const keys = [...new Set([key, geminiApiKey()].filter(Boolean))];
-  let lastErr = null;
-  for (const nextKey of keys) {
-    try {
-      return await generateImageWithKey({ key: nextKey, prompt, label });
-    } catch (err) {
-      lastErr = err;
-      const status = err.status || 0;
-      const msg = err.message || '';
-      if (status === 401 || status === 403) continue;
-      if (isZeroQuota(status, msg) || status === 429) continue;
-    }
-  }
-  throw lastErr || new Error('Gemini image request failed');
+  return generateImageWithKey({ key, prompt, label });
 }

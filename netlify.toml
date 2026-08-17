@@ -14,6 +14,42 @@
   ]
 
 [[redirects]]
+  from = "/sitemap.xml"
+  to = "/.netlify/functions/sitemap"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/dry-fruits"
+  to = "/category/dry-fruits"
+  status = 301
+
+[[redirects]]
+  from = "/nuts"
+  to = "/category/nuts"
+  status = 301
+
+[[redirects]]
+  from = "/dates"
+  to = "/category/dates"
+  status = 301
+
+[[redirects]]
+  from = "/corporate-gifting"
+  to = "/corporate-gifts"
+  status = 301
+
+[[redirects]]
+  from = "/hampers"
+  to = "/gift-hampers"
+  status = 301
+
+[[redirects]]
+  from = "/hampers/:slug"
+  to = "/gift-hampers/:slug"
+  status = 301
+
+[[redirects]]
   from = "/api/admin/ai-inventory/preview"
   to = "/.netlify/functions/ai-inventory"
   status = 200
