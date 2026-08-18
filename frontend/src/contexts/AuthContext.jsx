@@ -14,11 +14,17 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider, FIREBASE_ENABLED } from '@/lib/firebase';
 import { isStrongPassword, passwordPolicyMessage, stripHtml } from '@/lib/security';
+import { ADMIN_EMAIL, isAdminEmail } from '@/lib/adminEmails';
+import { setAuthToken } from '@/lib/api';
+import {
+  googleSignInPrefersRedirect,
+  shouldFallbackGoogleRedirect,
+  storeGoogleAuthError,
+} from '@/lib/authRedirect';
 
 const Ctx = createContext(null);
 const LS = 'sk_auth_v1';
-export const ADMIN_EMAIL = 'sukhmaldryfruitskorner2@gmail.com';
-const ADMIN_EMAILS = new Set([ADMIN_EMAIL]);
+export { ADMIN_EMAIL, isAdminEmail };
 
 export const DEMO_ADMIN = {
   email: ADMIN_EMAIL,
@@ -31,10 +37,6 @@ export function loginLocation(returnTo = '/') {
     ? returnTo
     : '/';
   return { pathname: '/login', search: `?return=${encodeURIComponent(path)}`, state: { from: path, returnTo: path } };
-}
-
-export function isAdminEmail(email) {
-  return ADMIN_EMAILS.has(String(email || '').trim().toLowerCase());
 }
 
 export function isDemoAdminCredentials() {
@@ -54,6 +56,7 @@ function mapSession(fbUser, claims = {}) {
     email: fbUser.email || null,
     phone: fbUser.phoneNumber || null,
     displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Guest'),
+    photoURL: fbUser.photoURL || null,
     emailVerified: Boolean(fbUser.emailVerified),
     customClaims: admin ? { admin: true } : {},
   };
@@ -62,9 +65,16 @@ function mapSession(fbUser, claims = {}) {
 async function sessionFromFirebaseUser(fbUser) {
   let claims = {};
   try {
-    const token = await fbUser.getIdTokenResult(true);
-    claims = token.claims || {};
-  } catch {}
+    const tokenResult = await fbUser.getIdTokenResult();
+    claims = tokenResult.claims || {};
+    setAuthToken(tokenResult.token);
+  } catch {
+    try {
+      setAuthToken(await fbUser.getIdToken());
+    } catch {
+      setAuthToken(null);
+    }
+  }
   const session = mapSession(fbUser, claims);
   try {
     localStorage.setItem(LS, JSON.stringify(session));
@@ -75,24 +85,34 @@ async function sessionFromFirebaseUser(fbUser) {
 async function upsertUserDoc(fbUser, extras = {}) {
   if (!db || !fbUser?.uid) return;
   const ref = doc(db, 'users', fbUser.uid);
-  let exists = false;
-  try {
-    exists = (await getDoc(ref)).exists();
-  } catch {}
-  const payload = {
+  const profile = {
     name: stripHtml(extras.name || fbUser.displayName || '', 80),
     email: fbUser.email || null,
     phone: extras.phone || fbUser.phoneNumber || null,
+    photoURL: fbUser.photoURL || null,
     updatedAt: serverTimestamp(),
   };
-  if (!exists) {
-    payload.addresses = [];
-    payload.wishlist = [];
-    payload.loyaltyPoints = 0;
-    payload.role = 'customer';
-    payload.createdAt = serverTimestamp();
+  try {
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await setDoc(ref, profile, { merge: true });
+      return;
+    }
+    await setDoc(ref, {
+      ...profile,
+      addresses: [],
+      wishlist: [],
+      loyaltyPoints: 0,
+      role: 'customer',
+      createdAt: serverTimestamp(),
+    }, { merge: true });
+  } catch {
+    try {
+      await setDoc(ref, profile, { merge: true });
+    } catch (err) {
+      console.warn('[Sukhmal Auth] user profile save skipped', err?.code || err?.message);
+    }
   }
-  await setDoc(ref, payload, { merge: true });
 }
 
 export const AuthProvider = ({ children }) => {
@@ -115,22 +135,35 @@ export const AuthProvider = ({ children }) => {
       return undefined;
     }
 
-    getRedirectResult(auth).then(async (result) => {
-      if (result?.user) await upsertUserDoc(result.user);
-    }).catch(() => {});
+    let cancelled = false;
+    let unsub = () => {};
 
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (!fbUser) {
-        try { localStorage.removeItem(LS); } catch {}
-        setUser(null);
-        setLoading(false);
-        return;
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) await upsertUserDoc(result.user);
+      } catch (err) {
+        storeGoogleAuthError(err);
       }
-      const session = await sessionFromFirebaseUser(fbUser);
-      setUser(session);
-      setLoading(false);
-    });
-    return () => unsub();
+      if (cancelled) return;
+      unsub = onAuthStateChanged(auth, async (fbUser) => {
+        if (!fbUser) {
+          try { localStorage.removeItem(LS); } catch {}
+          setAuthToken(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        const session = await sessionFromFirebaseUser(fbUser);
+        setUser(session);
+        setLoading(false);
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
   const login = ({ email, phone, name } = {}) => {
@@ -162,7 +195,7 @@ export const AuthProvider = ({ children }) => {
 
   const signUpWithEmail = async ({ email, password, name, phone } = {}) => {
     if (!auth) throw new Error('Firebase is not configured');
-    if (!isStrongPassword(password)) throw new Error(passwordPolicyMessage());
+    if (!isAdminEmail(email) && !isStrongPassword(password)) throw new Error(passwordPolicyMessage());
     const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
     if (name) await updateProfile(cred.user, { displayName: stripHtml(name, 80) });
     await upsertUserDoc(cred.user, { name, phone });
@@ -176,6 +209,11 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithGoogle = async () => {
     if (!auth || !googleProvider) throw new Error('Firebase is not configured');
+    const useRedirect = googleSignInPrefersRedirect();
+    if (useRedirect) {
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
     try {
       const cred = await signInWithPopup(auth, googleProvider);
       await upsertUserDoc(cred.user);
@@ -183,8 +221,10 @@ export const AuthProvider = ({ children }) => {
       setUser(session);
       return session;
     } catch (err) {
-      const code = err?.code || '';
-      if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        throw err;
+      }
+      if (shouldFallbackGoogleRedirect(err)) {
         await signInWithRedirect(auth, googleProvider);
         return null;
       }
@@ -209,6 +249,7 @@ export const AuthProvider = ({ children }) => {
     try { if (auth) await signOut(auth); } catch {}
     try { localStorage.removeItem(LS); } catch {}
     try { sessionStorage.removeItem('sk_login_lock'); } catch {}
+    setAuthToken(null);
     setUser(null);
   };
 

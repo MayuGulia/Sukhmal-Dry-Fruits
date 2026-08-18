@@ -8,6 +8,7 @@ import ProductCard, { TrustStrip } from '@/components/shared/ProductCard';
 import FlourishTitle from '@/components/home/FlourishTitle';
 import { useProducts, ProductSkeleton } from '@/lib/catalog';
 import { TESTIMONIALS } from '@/data/mockContent';
+import { aiApi } from '@/lib/api';
 import {
   SHOP_CATEGORY_TILES,
   FESTIVAL_TILES,
@@ -17,8 +18,7 @@ import {
   BYOH_BANNER_IMG,
   WEDDING_PROMO_IMG,
   CORP_PROMO_IMG,
-  HERO_SLIDES,
-  HERO_SLIDE_MS,
+  HERO_IMG,
   HERO_VIDEO_LAYOUT,
 } from '@/data/homeBrand';
 import { GiftBasketIcon } from '@/components/brand/BrandSeal';
@@ -64,53 +64,18 @@ const WHY_ICONS = {
   love: HeartHandshake,
 };
 
-function HeroDots({ index, setIndex, className }) {
+function HeroPhoto({ className }) {
   return (
-    <div className={`flex justify-center gap-2 ${className || ''}`}>
-      {HERO_SLIDES.map((slide, i) => (
-        <button
-          key={slide.src}
-          type="button"
-          aria-label={`Show store photo ${i + 1}`}
-          aria-current={i === index}
-          onClick={() => setIndex(i)}
-          className={`h-2 rounded-full transition-all duration-500 ${
-            i === index
-              ? 'w-7 bg-[var(--sk-gold-400)]'
-              : 'w-2 bg-white/55 hover:bg-white/85'
-          }`}
-        />
-      ))}
-    </div>
-  );
-}
-
-function HeroBackgroundSlider({ className, index, setPaused }) {
-  return (
-    <div
-      className="absolute inset-0 overflow-hidden bg-black"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      {HERO_SLIDES.map((slide, i) => (
-        <img
-          key={slide.src}
-          src={slide.src}
-          alt={i === index ? slide.alt : ''}
-          width={1920}
-          height={1080}
-          fetchPriority={i === 0 ? 'high' : 'low'}
-          decoding={i === 0 ? 'sync' : 'async'}
-          className={`${className} sk-hero-slide ${i === index ? 'is-active' : ''} ${i === index ? '' : 'pointer-events-none'}`}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: slide.position || 'center center',
-          }}
-        />
-      ))}
-    </div>
+    <img
+      src={HERO_IMG}
+      alt="Luxury wooden dry fruit gift hamper with gold-lidded jars of almonds, cashews, pistachios, walnuts, dates, figs and raisins"
+      width={1920}
+      height={1080}
+      fetchPriority="high"
+      decoding="sync"
+      className={className}
+      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 48%' }}
+    />
   );
 }
 
@@ -136,18 +101,11 @@ function HeroCopy({ inverted = true }) {
     : 'bg-[var(--sk-espresso)] text-white hover:bg-brand-800';
   return (
     <div className={`relative w-full max-w-[18.5rem] sm:max-w-sm md:max-w-md lg:max-w-lg text-left ${inverted ? 'pr-4' : ''}`}>
-      {inverted && (
-        <div
-          className="pointer-events-none absolute -inset-x-4 -inset-y-6 md:-inset-x-8 md:-inset-y-8 rounded-3xl bg-gradient-to-r from-black/55 via-black/28 to-transparent"
-          aria-hidden
-        />
-      )}
-      <div className="relative">
       <h1 className={`font-display text-[2.15rem] sm:text-[2.6rem] md:text-[3.15rem] lg:text-[3.5rem] font-bold leading-[1.08] tracking-[-0.02em] ${title}`}>
         <span>Crafted with Care.</span>
         <br />
         <span>Gifted with </span>
-        <span className="italic text-[var(--sk-gold-600)]">Love.</span>
+        <span className="italic text-[var(--sk-gold-400)]">Love.</span>
       </h1>
       <p className={`mt-4 md:mt-5 ${body} text-[14px] md:text-[17px] leading-relaxed font-light`}>
         Premium Dry Fruits & Handcrafted Gift Hampers for Every Celebration.
@@ -168,7 +126,6 @@ function HeroCopy({ inverted = true }) {
           Build Your Own Hamper <ChevronRight size={18} />
         </Link>
       </div>
-      </div>
     </div>
   );
 }
@@ -182,26 +139,25 @@ export default function Home() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiPreview, setAiPreview] = useState(null);
   const [aiBusy, setAiBusy] = useState(false);
-  const [heroIndex, setHeroIndex] = useState(0);
-  const [heroPaused, setHeroPaused] = useState(false);
+  const [aiError, setAiError] = useState('');
   const splitHero = HERO_VIDEO_LAYOUT === 'split';
 
-  useEffect(() => {
-    if (heroPaused || HERO_SLIDES.length < 2) return undefined;
-    const id = window.setInterval(() => {
-      setHeroIndex((i) => (i + 1) % HERO_SLIDES.length);
-    }, HERO_SLIDE_MS);
-    return () => window.clearInterval(id);
-  }, [heroPaused]);
-
-  const stubGenerate = (e) => {
+  const generateImage = async (e) => {
     e.preventDefault();
-    if (!aiPrompt.trim()) return;
+    const prompt = aiPrompt.trim();
+    if (!prompt || aiBusy) return;
     setAiBusy(true);
-    setTimeout(() => {
-      setAiPreview(AI_PREVIEW_IMG);
+    setAiError('');
+    try {
+      const r = await aiApi.post('/generate-hamper-image', { prompt }, { timeout: 180000 });
+      if (!r.data?.url) throw new Error('empty');
+      setAiPreview(r.data.url);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Image generation had trouble. Please try again.';
+      setAiError(msg);
+    } finally {
       setAiBusy(false);
-    }, 900);
+    }
   };
 
   const reviews = TESTIMONIALS.slice(0, 4);
@@ -219,16 +175,7 @@ export default function Home() {
             <HeroCopy inverted={false} />
             <div className="relative mx-auto w-full max-w-xl">
               <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-black shadow-sk-lg">
-                <HeroBackgroundSlider
-                  className="absolute inset-0 w-full h-full object-cover"
-                  index={heroIndex}
-                  setPaused={setHeroPaused}
-                />
-                <HeroDots
-                  index={heroIndex}
-                  setIndex={setHeroIndex}
-                  className="absolute inset-x-0 bottom-4 z-10"
-                />
+                <HeroPhoto className="absolute inset-0 w-full h-full object-cover" />
               </div>
             </div>
           </div>
@@ -241,11 +188,7 @@ export default function Home() {
           data-hero-layout="cover"
         >
           <div className="absolute inset-0 overflow-hidden bg-black">
-            <HeroBackgroundSlider
-              className="absolute inset-0 w-full h-full object-cover"
-              index={heroIndex}
-              setPaused={setHeroPaused}
-            />
+            <HeroPhoto className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/62 via-black/28 to-transparent w-full md:w-[58%] pointer-events-none" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/28 via-transparent to-black/10 pointer-events-none" />
           </div>
@@ -255,12 +198,6 @@ export default function Home() {
               <HeroCopy />
             </div>
           </div>
-
-          <HeroDots
-            index={heroIndex}
-            setIndex={setHeroIndex}
-            className="absolute inset-x-0 bottom-[5.85rem] md:bottom-[6.7rem] z-[25]"
-          />
 
           <TrustStrip overlay />
         </section>
@@ -273,7 +210,7 @@ export default function Home() {
             title="Shop by Category"
             cta={<ViewAllLink to="/category/all">View All Categories</ViewAllLink>}
           />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 md:gap-5" data-testid="shop-by-category">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5" data-testid="shop-by-category">
             {SHOP_CATEGORY_TILES.map((c) => (
               <SoftTileLink
                 key={c.name}
@@ -388,7 +325,7 @@ export default function Home() {
                 Describe your dream gift hamper and our AI will create a beautiful visual just for you.
               </p>
               <div className="mt-5 grid sm:grid-cols-[1fr_148px] gap-4 items-start">
-                <form onSubmit={stubGenerate} className="space-y-3">
+                <form onSubmit={generateImage} className="space-y-3">
                   <div className="relative">
                     <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
                     <input
@@ -402,6 +339,7 @@ export default function Home() {
                   <button type="submit" disabled={aiBusy} className="sk-btn-primary !bg-[var(--sk-espresso)]" data-testid="ai-generate">
                     <Sparkles size={16} /> {aiBusy ? 'Generating…' : 'Generate Image'} <ChevronRight size={16} />
                   </button>
+                  {aiError && <p className="text-[12px] text-red-700 leading-snug">{aiError}</p>}
                 </form>
                 <div className="relative w-full max-w-[148px] mx-auto sm:mx-0 rounded-xl overflow-hidden shadow-sk-lg border-4 border-white bg-[#F4EDE3]">
                   <img

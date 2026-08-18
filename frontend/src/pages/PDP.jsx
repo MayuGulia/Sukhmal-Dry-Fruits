@@ -249,7 +249,7 @@ function ProductGallery({ images, name, outOfStock }) {
                     i === idx ? 'border-[var(--sk-gold-400)] shadow-sk-sm' : 'border-line hover:border-brand-700'
                   }`}
                 >
-                  <img src={im} alt={`${name} thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+                  <img src={im} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -839,7 +839,7 @@ export default function PDP() {
                 </ul>
               </div>
               <div className="hidden md:block rounded-2xl overflow-hidden aspect-square bg-cream-200 border border-line">
-                <img src={images[0]} alt={`${p.name} pack`} className="w-full h-full object-cover" />
+                <img src={images[0]} alt="" className="w-full h-full object-cover" />
               </div>
             </div>
           )}

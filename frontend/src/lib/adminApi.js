@@ -29,7 +29,7 @@ import {
 function friendlyFsError(err, fallback) {
   const code = err?.code || '';
   if (code === 'permission-denied') {
-    return 'Firestore blocked this request. Deploy firebase/firestore.rules to sukhmal-website and stay signed in as sukhmaldryfruitskorner2@gmail.com.';
+    return 'Firestore blocked this request. Deploy firebase/firestore.rules to project sukhmal and stay signed in as an admin email.';
   }
   return err?.message || fallback;
 }

@@ -141,9 +141,9 @@ export default function Festival() {
       <div className="sk-container pb-12 md:pb-16 space-y-10 md:space-y-14">
         {FESTIVAL_BLOCKS.map((f) => {
           const match = hampers.filter((h) =>
-            h.tags.some((t) => t.toLowerCase() === f.tag.toLowerCase() || t.toLowerCase() === f.name.toLowerCase()),
+            (h.tags || []).some((t) => t.toLowerCase() === f.tag.toLowerCase() || t.toLowerCase() === f.name.toLowerCase()),
           );
-          const festivalTagged = hampers.filter((h) => h.tags.includes('Festival'));
+          const festivalTagged = hampers.filter((h) => (h.tags || []).includes('Festival'));
           const items = (match.length ? match : festivalTagged.length ? festivalTagged : hampers).slice(0, 4);
           const dark = !f.textDark;
 

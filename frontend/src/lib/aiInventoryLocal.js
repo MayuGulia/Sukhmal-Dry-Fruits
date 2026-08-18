@@ -1,4 +1,5 @@
 import { getLiveProducts, savePreview } from '@/lib/commerceStore';
+import { ADMIN_EMAIL } from '@/lib/adminEmails';
 
 function norm(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -29,7 +30,7 @@ function parseWeight(text) {
   return m ? m[1].replace(/\s+/g, '') : null;
 }
 
-export function resolveInventoryCommand(command, adminEmail = 'sukhmaldryfruitskorner2@gmail.com') {
+export function resolveInventoryCommand(command, adminEmail = ADMIN_EMAIL) {
   const text = (command || '').trim();
   if (!text) return { previewId: null, changes: [], error: 'Type a command first' };
 

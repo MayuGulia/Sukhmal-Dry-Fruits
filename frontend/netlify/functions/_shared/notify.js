@@ -16,7 +16,7 @@ export async function sendResend({ to, subject, html }) {
 export async function addResendContact(email) {
   const key = env('RESEND_API_KEY');
   if (!key) return { skipped: true, reason: 'missing_key' };
-  const admin = env('ADMIN_NOTIFY_EMAIL') || env('REACT_APP_ADMIN_EMAIL') || 'sukhmaldryfruitskorner2@gmail.com';
+  const admin = env('ADMIN_NOTIFY_EMAIL') || env('REACT_APP_ADMIN_EMAIL') || 'mayu.gulia156@gmail.com';
   const from = env('RESEND_FROM') || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
   const send = async (to, subject, html) => fetch('https://api.resend.com/emails', {
     method: 'POST',

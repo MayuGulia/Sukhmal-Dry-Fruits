@@ -1,6 +1,7 @@
 import { generateGeminiContent } from './geminiClient.js';
 import { geminiApiKey } from './geminiEnv.js';
 import { localAdviseGifts } from './localGiftAdvisor.js';
+import { vertexImageEnabled } from './vertexImage.js';
 
 let geminiSkipUntil = 0;
 
@@ -54,7 +55,7 @@ export async function adviseGifts({ messages, catalog }) {
   }
 
   const key = geminiApiKey();
-  if (!key || Date.now() < geminiSkipUntil) {
+  if (!vertexImageEnabled() && (!key || Date.now() < geminiSkipUntil)) {
     if (!key) console.warn('[Sukhmal Gemini] gift-advisor missing API key — using catalogue advisor');
     return localAdviseGifts({ messages, catalog });
   }

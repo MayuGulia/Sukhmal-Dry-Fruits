@@ -1,5 +1,6 @@
 import { generateGeminiContent } from './geminiClient.js';
 import { CUSTOMER_AI_FALLBACK, geminiApiKey } from './geminiEnv.js';
+import { vertexImageEnabled } from './vertexImage.js';
 
 function parseGeminiJson(text) {
   const raw = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
@@ -37,8 +38,8 @@ function matchProducts(catalog, ids) {
 
 export async function adviseGifts({ messages, catalog }) {
   const key = geminiApiKey();
-  if (!key) {
-    console.warn('[Sukhmal Gemini] gift-advisor missing server API key');
+  if (!vertexImageEnabled() && !key) {
+    console.warn('[Sukhmal Gemini] gift-advisor missing Vertex and server API key');
     const err = new Error(CUSTOMER_AI_FALLBACK);
     err.code = 'not_configured';
     throw err;

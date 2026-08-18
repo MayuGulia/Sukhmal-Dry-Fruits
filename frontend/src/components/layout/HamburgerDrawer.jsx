@@ -112,7 +112,9 @@ export default function HamburgerDrawer({ open, onClose }) {
           <div className="px-3 pt-2 pb-1 text-[10px] font-bold tracking-[.18em] uppercase text-gold-400">
             Categories
           </div>
-          {(cats || []).map((c) => (
+          {(cats || [])
+            .filter((c) => c.slug !== 'gift-hampers' && c.slug !== 'festival-collections')
+            .map((c) => (
             <Link
               key={c.slug}
               onClick={onClose}

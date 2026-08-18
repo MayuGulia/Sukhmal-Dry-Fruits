@@ -5,30 +5,9 @@
 
 /** FROZEN — current luxury hamper hero (do not replace). */
 export const HERO_IMG = '/brand/hero-luxury-hamper-v2.png';
-/**
- * Homepage hero still — Sukhmal.png fills the same 16:9 cover frame as sukhmal.mp4.
- */
-export const HERO_STILL_SRC = '/brand/sukhmal.png';
+export const HERO_STILL_SRC = HERO_IMG;
 export const HERO_VIDEO_LAYOUT = 'cover'; // 'cover' | 'split'
-export const HERO_VIDEO_POSITION = 'center center';
-export const HERO_SLIDE_MS = 5500;
-export const HERO_SLIDES = [
-  {
-    src: HERO_STILL_SRC,
-    alt: 'Sukhmal Dry Fruits Korner storefront in Surajmal Vihar',
-    position: 'center center',
-  },
-  {
-    src: '/brand/hero-slide-2.png',
-    alt: 'Sukhmal Roasted and Salted wall of premium nuts and snacks',
-    position: 'center 42%',
-  },
-  {
-    src: '/brand/hero-slide-3.png',
-    alt: 'Sukhmal Hand Mixed Blends store interior with dry fruits and confectionery',
-    position: 'center 38%',
-  },
-];
+export const HERO_VIDEO_POSITION = 'center 48%';
 /**
  * Wedding hero uses homepage-hero.mp4 inside the same full-bleed frame as sukhmal.mp4
  * (min-h 80vh, object-fit cover). The clip is cropped to that landscape frame —
@@ -52,7 +31,8 @@ export const SHOP_CATEGORY_TILES = [
   { name: 'Raisins', sub: 'Sun-dried Afghan', to: '/product/kishmish-indian', image: '/products/kishmish-indian-1.jpg' },
   { name: 'Walnuts', sub: 'Kashmiri Kernels', to: '/product/walnut-premium', image: '/products/walnut-premium-1.jpg' },
   { name: 'Dates', sub: 'Medjool & Ajwa', to: '/category/dates', image: '/products/medjoul-dates-1.jpg' },
-  { name: 'Gift Hampers', sub: 'Festive collections', to: '/gift-hampers', image: '/brand/hampers/hamper-ganesha-goldbox-hero.png' },
+  { name: 'Gift Hampers', sub: 'Curated for every celebration', to: '/gift-hampers', image: '/brand/hampers/hamper-ganesha-goldbox-hero.png' },
+  { name: 'Festive Gift Hampers', sub: 'Diwali, Eid, Rakhi & more', to: '/festival-collections', image: '/brand/hampers/hamper-grand-basket-hero.png' },
 ];
 
 export const FESTIVAL_TILES = [

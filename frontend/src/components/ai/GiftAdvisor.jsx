@@ -5,6 +5,7 @@ import { useCart } from '@/contexts/CartContext';
 import { compactInventoryCatalog, getLiveProducts } from '@/lib/commerceStore';
 import { aiApi } from '@/lib/api';
 import { inr } from '@/lib/utils';
+import { HAMPERS as MOCK_HAMPERS } from '@/data/mockCatalog';
 
 import { storeWhatsAppNumber } from '@/data/storeInfo';
 
@@ -15,6 +16,35 @@ export const OPEN_GIFT_ADVISOR = 'sk-open-gift-advisor';
 
 export function openGiftAdvisor() {
   window.dispatchEvent(new CustomEvent(OPEN_GIFT_ADVISOR));
+}
+
+function productHref(p) {
+  if (p.href) return p.href;
+  if (p.category === 'gift-hampers' || String(p.id || '').startsWith('h_')) {
+    return `/gift-hampers/${p.slug}`;
+  }
+  return `/product/${p.slug}`;
+}
+
+function parseBudget(text) {
+  const m = String(text || '').replace(/,/g, '').match(/(?:₹|rs\.?\s*)?(\d{3,6})/i);
+  return m ? Number(m[1]) : null;
+}
+
+function hamperCatalogItems() {
+  return MOCK_HAMPERS.map((h) => ({
+    id: h.id,
+    slug: h.slug,
+    name: h.name,
+    category: 'gift-hampers',
+    price: h.price,
+    inStock: true,
+    isActive: true,
+    tagline: (h.contents || []).join(', '),
+    image: h.image,
+    images: h.images || [h.image],
+    href: `/gift-hampers/${h.slug}`,
+  }));
 }
 
 function sessionId() {
@@ -80,24 +110,30 @@ export default function GiftAdvisor() {
     setMessages(history);
     setBusy(true);
     try {
-      const catalog = compactInventoryCatalog(getLiveProducts({ activeOnly: true }));
+      const catalog = [...hamperCatalogItems(), ...compactInventoryCatalog(getLiveProducts({ activeOnly: true }))];
       const r = await aiApi.post('/ai-chat', { sessionId: sessionId(), messages: history, catalog });
       const data = r.data;
-      if (!data?.text) throw new Error('empty');
-      setMessages((m) => [...m, { role: 'assistant', text: data.text, products: data.products || [] }]);
-    } catch {
-      const catalog = compactInventoryCatalog(getLiveProducts({ activeOnly: true }));
-      const shown = new Set(
-        messages.flatMap((m) => (m.products || []).map((p) => p.id || p.slug)).filter(Boolean),
-      );
-      const ranked = catalog.filter((p) => p.inStock !== false);
-      const fresh = ranked.filter((p) => !shown.has(p.id) && !shown.has(p.slug));
-      const picks = (fresh.length ? fresh : ranked).slice(0, 3);
+      const reply = data?.text || data?.message;
+      if (!reply) throw new Error('empty');
+      const products = (data.products || []).length
+        ? data.products
+        : hamperCatalogItems().slice(0, 3);
+      setMessages((m) => [...m, { role: 'assistant', text: reply, products }]);
+    } catch (err) {
+      const apiText = err?.response?.data?.text || err?.response?.data?.message;
+      const lastUser = history.filter((m) => m.role === 'user').at(-1)?.text || '';
+      const hamperPicks = hamperCatalogItems().filter((h) => {
+        const budget = parseBudget(lastUser);
+        return !budget || h.price <= budget * 1.15;
+      }).slice(0, 3);
+      const picks = hamperPicks.length ? hamperPicks : hamperCatalogItems().slice(0, 3);
       setMessages((m) => [...m, {
         role: 'assistant',
-        text: picks.length
-          ? 'Here are some other Sukhmal options from the catalogue. Tell me occasion, who it’s for, or a budget and I’ll narrow it.'
-          : `I’m having trouble connecting. WhatsApp us: https://wa.me/${WA}`,
+        text: apiText && !/not_configured|gemini/i.test(apiText)
+          ? apiText
+          : picks.length
+            ? 'Here are festive gift hampers that fit. Tell me occasion, who it’s for, or a budget and I’ll narrow it.'
+            : `I’m having trouble connecting. WhatsApp us: https://wa.me/${WA}`,
         products: picks,
       }]);
     } finally {
@@ -140,12 +176,21 @@ export default function GiftAdvisor() {
                       <div key={p.id || p.slug} className="flex gap-2 items-center rounded-xl border border-line bg-white p-2">
                         <img src={p.images?.[0] || p.image} alt="" className="w-12 h-12 object-cover rounded-lg bg-cream-200" />
                         <div className="flex-1 min-w-0">
-                          <Link to={`/product/${p.slug}`} className="text-[13px] font-semibold truncate block hover:underline">
+                          <Link to={productHref(p)} className="text-[13px] font-semibold truncate block hover:underline">
                             {p.name}
                           </Link>
                           <div className="text-[12px]">{inr(p.price)}</div>
                         </div>
-                        <button type="button" className="sk-btn-primary !py-1.5 !px-2.5 text-[11px]" onClick={() => add(p, { qty: 1 })}>Add</button>
+                        <button
+                          type="button"
+                          className="sk-btn-primary !py-1.5 !px-2.5 text-[11px]"
+                          onClick={() => add(p, {
+                            qty: 1,
+                            source: String(p.id || '').startsWith('h_') ? 'hamper' : 'product',
+                          })}
+                        >
+                          Add
+                        </button>
                       </div>
                     ))}
                   </div>

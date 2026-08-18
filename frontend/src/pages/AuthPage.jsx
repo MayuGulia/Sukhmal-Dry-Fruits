@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, isAdminEmail } from '@/contexts/AuthContext';
 import {
   Mail, Phone, Lock, User, ArrowRight, ShieldCheck, Loader2,
   CheckCircle2, RefreshCw, Eye, EyeOff, ArrowLeft,
@@ -16,10 +16,11 @@ import {
   recordLoginFailure,
   clearLoginFailures,
 } from '@/lib/security';
+import { consumeGoogleAuthError, rememberReturnTo } from '@/lib/authRedirect';
 
 /* UserFlows §5 — enumeration-safe copy (never reveal email/phone existence on login/forgot). */
 const MSG = {
-  credentials: 'Something went wrong. Please check your details and try again.',
+  credentials: 'Email or password is incorrect. If this Gmail uses Google, tap Continue with Google. To set a new password, use Forgot password.',
   otpInvalid: 'Invalid or expired code. Please try again.',
   otpSent: 'We’ve sent a 6-digit code. Enter it below to continue.',
   forgotDone: 'Check your email for a reset link. If you don’t see it, check spam or try again shortly.',
@@ -164,6 +165,45 @@ function SubmitButton({ loading, children, disabled }) {
   );
 }
 
+function mapFirebaseAuthError(err, fallback) {
+  const code = err?.code || '';
+  if (code) console.warn('[Sukhmal Auth]', code, err?.message || '');
+  if (code === 'auth/email-already-in-use') return MSG.signupTaken;
+  if (code === 'auth/weak-password') return MSG.needPassword;
+  if (code === 'auth/invalid-email') return MSG.needEmail;
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return 'Google sign-in was cancelled. Try again when you are ready.';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'This site is not authorised for Google sign-in yet. Add the domain in Firebase Authentication → Settings → Authorised domains.';
+  }
+  if (code === 'auth/popup-blocked') {
+    return 'Your browser blocked the Google window. Allow popups for this site, or we will switch to a full-page Google sign-in.';
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'This sign-in method is not enabled yet in Firebase Authentication.';
+  }
+  if (code === 'auth/account-exists-with-different-credential') {
+    return 'An account already exists with this email. Log in with email and password, then you can link Google.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Too many attempts. Please wait a minute and try again.';
+  }
+  if (code === 'auth/network-request-failed') {
+    return 'Network error. Check your connection and try Google sign-in again.';
+  }
+  if (code === 'auth/web-storage-unsupported') {
+    return 'Turn off private browsing or allow site data, then try Google sign-in again.';
+  }
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-login-credentials') {
+    return MSG.credentials;
+  }
+  if (code === 'auth/internal-error') {
+    return 'Firebase could not complete sign-in. Try Continue with Google, or wait a moment and try again.';
+  }
+  return fallback;
+}
+
 export default function AuthPage({ mode = 'login' }) {
   const { login, signInWithEmail, signUpWithEmail, signInWithGoogle, sendReset, firebaseEnabled } = useAuth();
   const nav = useNavigate();
@@ -192,13 +232,20 @@ export default function AuthPage({ mode = 'login' }) {
   const otpRef = useRef(null);
 
   useEffect(() => {
+    rememberReturnTo(returnTo);
+  }, [returnTo]);
+
+  useEffect(() => {
     if (firebaseEnabled) setTab('email');
   }, [firebaseEnabled]);
 
   useEffect(() => {
-    setMsg({ text: '', tone: 'error' });
     setForgotSent(false);
     setLoading(false);
+    const stored = consumeGoogleAuthError();
+    setMsg(stored
+      ? { text: mapFirebaseAuthError(stored, MSG.credentials), tone: 'error' }
+      : { text: '', tone: 'error' });
     if (mode === 'otp') {
       setResendIn(OTP_COOLDOWN_S);
       if (loc.state?.phone) setForm((f) => ({ ...f, phone: loc.state.phone }));
@@ -231,28 +278,7 @@ export default function AuthPage({ mode = 'login' }) {
     nav(sessionUser?.customClaims?.admin ? '/admin' : returnTo, { replace: true });
   };
 
-  const firebaseError = (err, fallback) => {
-    const code = err?.code || '';
-    if (code === 'auth/email-already-in-use') return MSG.signupTaken;
-    if (code === 'auth/weak-password') return MSG.needPassword;
-    if (code === 'auth/invalid-email') return MSG.needEmail;
-    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-      return 'Google sign-in was cancelled.';
-    }
-    if (code === 'auth/unauthorized-domain') {
-      return 'This domain is not authorised in Firebase. Add it under Authentication → Settings → Authorised domains.';
-    }
-    if (code === 'auth/popup-blocked') {
-      return 'The Google sign-in popup was blocked. Allow popups and try again.';
-    }
-    if (code === 'auth/operation-not-allowed') {
-      return 'This sign-in method is not enabled yet in Firebase Authentication.';
-    }
-    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-login-credentials') {
-      return fallback;
-    }
-    return fallback;
-  };
+  const firebaseError = (err, fallback) => mapFirebaseAuthError(err, fallback);
 
   const delay = (ms = 700) => new Promise((r) => setTimeout(r, ms));
 
@@ -327,7 +353,7 @@ export default function AuthPage({ mode = 'login' }) {
         setMsg({ text: MSG.needEmail, tone: 'error' });
         return;
       }
-      if (!isStrongPassword(form.password)) {
+      if (!isAdminEmail(form.email) && !isStrongPassword(form.password)) {
         setMsg({ text: passwordPolicyMessage(), tone: 'error' });
         return;
       }
@@ -719,19 +745,18 @@ export default function AuthPage({ mode = 'login' }) {
                     <button
                       type="button"
                       disabled={loading}
-                      onClick={() => {
+                      onClick={async () => {
                         if (loading) return;
+                        rememberReturnTo(returnTo);
                         setMsg({ text: '', tone: 'error' });
-                        const pending = signInWithGoogle();
                         setLoading(true);
-                        pending
-                          .then((session) => {
-                            if (session) finishAuth(session);
-                          })
-                          .catch((err) => {
-                            setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
-                            setLoading(false);
-                          });
+                        try {
+                          const session = await signInWithGoogle();
+                          if (session) finishAuth(session);
+                        } catch (err) {
+                          setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
+                          setLoading(false);
+                        }
                       }}
                       className="w-full sk-btn-outline !py-2.5 inline-flex items-center justify-center gap-2.5"
                     >

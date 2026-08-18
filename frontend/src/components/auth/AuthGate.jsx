@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { consumeReturnTo, rememberReturnTo } from '@/lib/authRedirect';
 
 function Splash() {
   return (
@@ -19,7 +20,14 @@ export function RequireAuth({ children }) {
   if (loading) return <Splash />;
   if (!isAuthed) {
     const from = `${loc.pathname}${loc.search || ''}`;
-    return <Navigate to="/login" replace state={{ from, returnTo: from }} />;
+    rememberReturnTo(from);
+    return (
+      <Navigate
+        to={`/login?return=${encodeURIComponent(from)}`}
+        replace
+        state={{ from, returnTo: from }}
+      />
+    );
   }
   return children;
 }
@@ -34,6 +42,8 @@ export function RequireAdmin({ children }) {
 export function PublicOnly({ children }) {
   const { isAuthed, isAdmin, loading } = useAuth();
   if (loading) return <Splash />;
-  if (isAuthed) return <Navigate to={isAdmin ? '/admin' : '/'} replace />;
+  if (isAuthed) {
+    return <Navigate to={isAdmin ? '/admin' : consumeReturnTo()} replace />;
+  }
   return children;
 }

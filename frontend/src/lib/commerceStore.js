@@ -3,6 +3,7 @@
  * Mirrors Firestore collections so the admin dashboard and public catalog stay in sync.
  */
 import { PRODUCTS as MOCK_PRODUCTS } from '@/data/mockCatalog';
+import { ADMIN_EMAIL } from '@/lib/adminEmails';
 
 const LS = 'sk_commerce_v1';
 const EVT = 'sk-catalog-updated';
@@ -213,7 +214,7 @@ export function listOrders({ status = 'all', from, to } = {}) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-export function updateOrderStatus(orderId, newStatus, adminEmail = 'sukhmaldryfruitskorner2@gmail.com') {
+export function updateOrderStatus(orderId, newStatus, adminEmail = ADMIN_EMAIL) {
   const state = load();
   const idx = state.orders.findIndex((o) => o.orderId === orderId || `#${o.orderId}` === orderId);
   if (idx < 0) throw new Error('Order not found');
@@ -241,7 +242,7 @@ export function updateOrderStatus(orderId, newStatus, adminEmail = 'sukhmaldryfr
   return next;
 }
 
-export function createManualOrder(payload, adminEmail = 'sukhmaldryfruitskorner2@gmail.com') {
+export function createManualOrder(payload, adminEmail = ADMIN_EMAIL) {
   const state = load();
   const orderId = Math.random().toString(16).slice(2, 10);
   const order = {
@@ -470,7 +471,7 @@ export function compactInventoryCatalog(products) {
   });
 }
 
-export function applyFieldChange(change, adminEmail = 'sukhmaldryfruitskorner2@gmail.com', existingState) {
+export function applyFieldChange(change, adminEmail = ADMIN_EMAIL, existingState) {
   const persist = !existingState;
   const state = existingState || load();
   const p = state.products.find((x) => x.id === change.productId || x.slug === change.slug);
@@ -518,7 +519,7 @@ export function savePreview({ command, changes, adminEmail }) {
   return state.previews[previewId];
 }
 
-export function applyPreview(previewId, adminEmail = 'sukhmaldryfruitskorner2@gmail.com') {
+export function applyPreview(previewId, adminEmail = ADMIN_EMAIL) {
   const state = load();
   const preview = state.previews[previewId];
   if (!preview) throw new Error('Preview not found');

@@ -11,7 +11,7 @@ const resendKey = defineSecret('RESEND_API_KEY');
 const razorpayWebhookSecret = defineSecret('RAZORPAY_WEBHOOK_SECRET');
 const msg91Key = defineSecret('MSG91_AUTH_KEY');
 
-const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'sukhmaldryfruitskorner2@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'mayu.gulia156@gmail.com';
 const FROM_EMAIL = process.env.RESEND_FROM || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
 const ADMIN_PHONE = process.env.ADMIN_NOTIFY_PHONE || '918595321912';
 

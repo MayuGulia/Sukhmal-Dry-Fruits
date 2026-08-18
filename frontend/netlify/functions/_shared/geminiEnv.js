@@ -31,6 +31,10 @@ export function geminiImageApiKey() {
   return envGet('GEMINI_IMAGE_API_KEY') || geminiApiKey();
 }
 
+export function vertexEnterpriseEnabled() {
+  return /^(1|true|yes)$/i.test(envGet('GOOGLE_GENAI_USE_ENTERPRISE') || envGet('GOOGLE_GENAI_USE_VERTEXAI'));
+}
+
 export function keyFingerprint(key) {
   if (!key) return 'none';
   return `${key.slice(0, 3)}…${key.slice(-4)}`;

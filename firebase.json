@@ -18,14 +18,25 @@
     "rules": "firebase/storage.rules"
   },
   "auth": {
+    "authorizedDomains": [
+      "localhost",
+      "sukhmaldryfruits.com",
+      "www.sukhmaldryfruits.com",
+      "sukhmal.firebaseapp.com",
+      "sukhmal.web.app"
+    ],
     "providers": {
       "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "Sukhmal Dry Fruits Korner",
-        "supportEmail": "sukhmaldryfruitskorner2@gmail.com",
+        "supportEmail": "mayu.gulia156@gmail.com",
         "authorizedRedirectUris": [
           "http://localhost",
-          "https://sukhmal-website.firebaseapp.com"
+          "https://localhost",
+          "https://sukhmaldryfruits.com",
+          "https://www.sukhmaldryfruits.com",
+          "https://sukhmal.firebaseapp.com",
+          "https://sukhmal.web.app"
         ]
       }
     }

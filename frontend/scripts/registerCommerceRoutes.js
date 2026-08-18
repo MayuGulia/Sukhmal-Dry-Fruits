@@ -36,7 +36,7 @@ function json(res, data, status = 200) {
 async function addResendContact(email) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { skipped: true };
-  const admin = process.env.ADMIN_NOTIFY_EMAIL || process.env.REACT_APP_ADMIN_EMAIL || 'sukhmaldryfruitskorner2@gmail.com';
+  const admin = process.env.ADMIN_NOTIFY_EMAIL || process.env.REACT_APP_ADMIN_EMAIL || 'mayu.gulia156@gmail.com';
   const from = process.env.RESEND_FROM || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
   const send = async (to, subject, html) => fetch('https://api.resend.com/emails', {
     method: 'POST',

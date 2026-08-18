@@ -138,6 +138,7 @@ export default function Footer() {
           { to: '/category/dates', label: 'Dates' },
           { to: '/category/berries', label: 'Berries' },
           { to: '/gift-hampers', label: 'Gift Hampers' },
+          { to: '/festival-collections', label: 'Festive Gift Hampers' },
           { to: '/wedding-gifts', label: 'Wedding Gifts' },
           { to: '/corporate-gifts', label: 'Corporate Gifts' },
           { to: '/offers', label: 'Offers' },

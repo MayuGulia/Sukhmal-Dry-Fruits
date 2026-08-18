@@ -71,7 +71,7 @@ function scoreProduct(p, { budget, occasion, query, recipient, hamper, loose }) 
     else s -= 30;
   }
   const b = blob(p);
-  const isHamper = /hamper|gift/i.test(b) || String(p.category || '').toLowerCase() === 'hampers';
+  const isHamper = /hamper|gift/i.test(b) || /hamper/.test(String(p.category || '').toLowerCase());
   if (hamper && isHamper) s += 14;
   if (loose && isHamper) s -= 12;
   if (occasion === 'festive' && /hamper|gift|mix|dry.?fruit|cashew|almond|pista|date/i.test(b)) s += 6;

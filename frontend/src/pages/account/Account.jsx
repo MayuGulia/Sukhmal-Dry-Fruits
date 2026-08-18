@@ -70,7 +70,7 @@ export function AccountLayout() {
   const nav = useNavigate();
 
   React.useEffect(() => {
-    if (!loading && !isAuthed) nav('/login');
+    if (!loading && !isAuthed) nav('/login?return=/account', { state: { from: '/account', returnTo: '/account' } });
   }, [isAuthed, loading, nav]);
 
   if (loading) {

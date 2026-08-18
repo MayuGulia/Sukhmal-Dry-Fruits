@@ -17,12 +17,12 @@ export default function TopUtilityBar() {
   const nav = useNavigate();
 
   return (
-    <div className="hidden lg:block bg-[var(--sk-espresso)] text-cream-200 text-[12px] leading-none">
+    <div className="hidden lg:block bg-[var(--sk-espresso)] text-white text-[12px] leading-none">
       <div className="sk-container flex items-center justify-between h-9">
         <div className="flex items-center gap-5 min-w-0">
           {LEFT.map(({ Icon, label }) => (
-            <span key={label} className="inline-flex items-center gap-1.5 whitespace-nowrap text-cream-200/95">
-              <Icon size={13} strokeWidth={1.75} className="text-gold-400 shrink-0" />
+            <span key={label} className="inline-flex items-center gap-1.5 whitespace-nowrap text-white">
+              <Icon size={13} strokeWidth={1.75} className="text-white shrink-0" />
               {label}
             </span>
           ))}

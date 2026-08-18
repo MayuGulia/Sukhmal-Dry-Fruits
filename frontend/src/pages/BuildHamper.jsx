@@ -500,6 +500,7 @@ export default function BuildHamper() {
   const [done, setDone] = useState(false);
   const [previewThumb, setPreviewThumb] = useState(0);
   const [generatedPreview, setGeneratedPreview] = useState(null);
+  const [generatedViews, setGeneratedViews] = useState([]);
   const [previewNote, setPreviewNote] = useState('');
   const { add } = useCart();
   const { has, toggle } = useWishlist();
@@ -561,10 +562,11 @@ export default function BuildHamper() {
     setPreviewProgress(8);
     setPreviewReady(false);
     setGeneratedPreview(null);
-    setPreviewNote('');
+    setGeneratedViews([]);
+    setPreviewNote('Packing your selected hamper…');
     const iv = setInterval(() => {
-      setPreviewProgress((p) => Math.min(90, p + 2 + Math.floor(Math.random() * 3)));
-    }, 400);
+      setPreviewProgress((p) => Math.min(88, p + 6 + Math.floor(Math.random() * 5)));
+    }, 280);
     try {
       const card = CARDS.find((c) => c.key === state.cardStyle) || CARDS[0];
       const payload = {
@@ -587,19 +589,29 @@ export default function BuildHamper() {
         },
       };
       const r = await aiApi.post('/generate-hamper-image', payload, { timeout: 180000 });
-      if (r.data?.url) {
-        setGeneratedPreview(r.data.url);
-        setPreviewThumb(0);
-        saveHamperBuild({ hamperId: state.style, previewImageUrl: r.data.url, bumpGeneration: true });
+      if (r.data?.url || r.data?.views?.length) {
+        const views = Array.isArray(r.data.views) && r.data.views.length
+          ? r.data.views
+          : [{ key: 'front', label: 'Front', url: r.data.url }];
+        setGeneratedViews(views);
+        const packed = views.find((v) => v.key === 'front') || views.find((v) => v.key !== 'empty') || views[0];
+        setGeneratedPreview(packed?.url || r.data.url);
+        const frontIdx = Math.max(0, views.findIndex((v) => v.key === 'front'));
+        setPreviewThumb(frontIdx);
+        saveHamperBuild({ hamperId: state.style, previewImageUrl: packed?.url || r.data.url, bumpGeneration: true });
+        setPreviewNote('');
       } else {
         setPreviewNote('Preview generation had trouble, here\'s what\'s inside.');
       }
     } catch (err) {
       const quota = err?.response?.data?.error === 'quota';
+      const busy = err?.response?.data?.error === 'busy';
       setPreviewNote(
         quota
-          ? 'AI photo credits are not enabled on this Google key yet, here\'s what\'s inside.'
-          : 'Preview generation had trouble, here\'s what\'s inside.',
+          ? 'AI Studio photo credits on the old key are used up. Retry in a moment — Vertex billing is used instead.'
+          : busy
+            ? 'The photo studio is busy. Wait a few seconds and tap Generate AI Preview again.'
+            : 'Preview generation had trouble, here\'s what\'s inside.',
       );
     } finally {
       clearInterval(iv);
@@ -612,6 +624,7 @@ export default function BuildHamper() {
     if (step !== 'preview') {
       setPreviewProgress(0);
       setPreviewReady(false);
+      setGeneratedViews([]);
       return undefined;
     }
     let cancelled = false;
@@ -736,7 +749,11 @@ export default function BuildHamper() {
     'Your custom hamper is ready.',
   ];
 
-  const previewImages = [generatedPreview, styleObj.img, LIFE_BOX, LIFE_TRAY].filter(Boolean);
+  const previewSlides = generatedViews.length
+    ? generatedViews
+    : generatedPreview
+      ? [{ key: 'front', label: 'Front', url: generatedPreview }]
+      : [];
   const showRightSidebar = idx >= 2 && idx <= 4;
   const showLeftFilters = idx >= 1 && idx <= 4;
 
@@ -1232,7 +1249,7 @@ export default function BuildHamper() {
                         <Gift size={32} />
                       </div>
                       <h2 className="sk-section-title text-2xl md:text-3xl">A Glimpse of Your Masterpiece</h2>
-                      <p className="text-[var(--sk-ink-600)] text-sm">Please wait while we prepare your hamper preview…</p>
+                      <p className="text-[var(--sk-ink-600)] text-sm">Creating a photo of your packed hamper…</p>
                       <div className="max-w-md mx-auto pt-2">
                         <div className="flex items-center gap-3">
                           <div className="flex-1 h-2.5 rounded-full bg-[var(--sk-cream-300)] overflow-hidden">
@@ -1275,7 +1292,7 @@ export default function BuildHamper() {
                     <h2 className="sk-section-title text-xl md:text-2xl">Hamper Preview</h2>
                     <p className="text-sm text-[var(--sk-ink-600)] mt-1">
                       {chosen.length
-                        ? `AI preview for ${chosen.map(hamperProductLabel).join(', ')} in a ${styleObj.type || styleObj.name}.`
+                        ? `AI preview of your ${styleObj.type || styleObj.name} packed with ${chosen.map(hamperProductLabel).join(', ')}.`
                         : 'Add at least one product before generating an AI preview.'}
                     </p>
                     {previewNote && <p className="text-sm text-ink-500 mt-2">{previewNote}</p>}
@@ -1291,38 +1308,56 @@ export default function BuildHamper() {
                     <div className="mt-5 grid md:grid-cols-[1.1fr_1fr] gap-6">
                       <div>
                         <div className="aspect-square rounded-2xl overflow-hidden bg-[var(--sk-cream-200)]">
-                          <img src={previewImages[previewThumb]} alt={styleObj.name} className="w-full h-full object-cover" />
+                          {previewSlides[previewThumb] ? (
+                            <img
+                              src={previewSlides[previewThumb].url}
+                              alt={previewSlides[previewThumb].label || styleObj.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full grid place-items-center text-sm text-[var(--sk-ink-500)] p-6 text-center">
+                              Choose a hamper and products, then generate the AI preview.
+                            </div>
+                          )}
                         </div>
+                        {previewSlides[previewThumb]?.label && (
+                          <div className="mt-2 text-center text-xs font-semibold uppercase tracking-wide text-[var(--sk-brown-700)]">
+                            {previewSlides[previewThumb].label}
+                          </div>
+                        )}
+                        {previewSlides.length > 1 && (
                         <div className="mt-3 flex items-center gap-2">
                           <button
                             type="button"
                             aria-label="Previous image"
-                            onClick={() => setPreviewThumb((t) => (t + previewImages.length - 1) % previewImages.length)}
+                            onClick={() => setPreviewThumb((t) => (t + previewSlides.length - 1) % previewSlides.length)}
                             className="w-8 h-8 rounded-full border border-[var(--sk-line-strong)] grid place-items-center text-[var(--sk-brown-900)]"
                           >
                             <ArrowLeft size={14} />
                           </button>
-                          {previewImages.map((src, i) => (
+                          {previewSlides.map((slide, i) => (
                             <button
-                              key={src}
+                              key={slide.key || slide.url}
                               type="button"
                               onClick={() => setPreviewThumb(i)}
                               className={`w-14 h-14 rounded-lg overflow-hidden border-2 ${
                                 previewThumb === i ? 'border-[var(--sk-brown-900)]' : 'border-transparent'
                               }`}
+                              title={slide.label}
                             >
-                              <img src={src} alt="" className="w-full h-full object-cover" />
+                              <img src={slide.url} alt={slide.label || ''} className="w-full h-full object-cover" />
                             </button>
                           ))}
                           <button
                             type="button"
                             aria-label="Next image"
-                            onClick={() => setPreviewThumb((t) => (t + 1) % previewImages.length)}
+                            onClick={() => setPreviewThumb((t) => (t + 1) % previewSlides.length)}
                             className="w-8 h-8 rounded-full border border-[var(--sk-line-strong)] grid place-items-center text-[var(--sk-brown-900)]"
                           >
                             <ArrowRight size={14} />
                           </button>
                         </div>
+                        )}
                       </div>
 
                       <div className="space-y-4 text-sm">

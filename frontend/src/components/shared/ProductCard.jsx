@@ -38,11 +38,6 @@ function listingWellClass(p) {
     : 'relative block aspect-square overflow-hidden bg-cream-200';
 }
 
-function listingAlt(p) {
-  const pack = p.weight || p.variants?.[0]?.w || '';
-  return [p.name, pack, 'pack'].filter(Boolean).join(' ');
-}
-
 function shortSubtitle(p) {
   if (p.subcategory) return p.subcategory;
   const raw = String(p.tagline || '').split(/[—–.]/)[0].trim();
@@ -100,7 +95,7 @@ export default function ProductCard({ p, variant = 'default' }) {
     return (
       <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full h-full bg-white">
         <Link to={`/product/${p.slug}`} className={listingWellClass(p)}>
-          <img src={listingImage(p)} alt={listingAlt(p)} width={600} height={600} className={listingImgClass(p)} loading="lazy" decoding="async" />
+          <img src={listingImage(p)} alt={p.name} className={listingImgClass(p)} loading="lazy" decoding="async" />
           {p.bestseller && <span className="sk-pill sk-pill-brown absolute top-2 left-2 !py-1 !px-2.5">Bestseller</span>}
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
@@ -143,9 +138,7 @@ export default function ProductCard({ p, variant = 'default' }) {
       <Link to={`/product/${p.slug}`} className={listingWellClass(p)}>
         <img
           src={listingImage(p)}
-          alt={listingAlt(p)}
-          width={600}
-          height={600}
+          alt={p.name}
           className={listingImgClass(p)}
           loading="lazy"
           decoding="async"

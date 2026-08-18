@@ -2,6 +2,9 @@
 export const CUSTOMER_AI_FALLBACK =
   "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
 
+export const GEMINI_AUTH_HELP =
+  'Gemini rejected this API key. Create a new key at https://aistudio.google.com/apikey, set GEMINI_API_KEY in frontend/.env, and restart the server. Do not paste the key into chat.';
+
 export function envGet(name) {
   let fromNetlify = '';
   try {
@@ -18,4 +21,8 @@ export function geminiApiKey() {
 
 export function geminiImageApiKey() {
   return envGet('GEMINI_IMAGE_API_KEY') || geminiApiKey();
+}
+
+export function vertexEnterpriseEnabled() {
+  return /^(1|true|yes)$/i.test(envGet('GOOGLE_GENAI_USE_ENTERPRISE') || envGet('GOOGLE_GENAI_USE_VERTEXAI'));
 }

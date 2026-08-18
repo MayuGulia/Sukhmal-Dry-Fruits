@@ -36,7 +36,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'gift-local-fallback-v7';
+const GEMINI_MODULE_BUST = 'hamper-fast-single-v16';
 const helperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
@@ -54,7 +54,7 @@ function registerAiInventoryRoutes(app) {
   if (!app || app.__skAiInventoryRegistered) return app;
   app.__skAiInventoryRegistered = true;
   console.log(
-    `[Sukhmal Gemini] local routes registered; GEMINI_MODEL=${process.env.GEMINI_MODEL || '(unset → gemini-2.5-flash)'} key=${Boolean(process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY)} helper=${helperUrl}`,
+    `[Sukhmal Gemini] local routes registered; GEMINI_MODEL=${process.env.GEMINI_MODEL || '(unset → gemini-2.5-flash)'} vertex=${process.env.GOOGLE_GENAI_USE_ENTERPRISE || 'false'} project=${process.env.GOOGLE_CLOUD_PROJECT || ''} key=${Boolean(process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY)} helper=${helperUrl}`,
   );
 
   const preview = async (req, res) => {
@@ -111,13 +111,23 @@ function registerAiInventoryRoutes(app) {
       const result = await generateHamperPreview(body);
       send(res, 200, result);
     } catch (err) {
+      console.error('[Sukhmal Gemini] generate-hamper-image failed', err.code || '', String(err.message || '').slice(0, 400));
       const code = err.code || 'gemini_error';
-      const quota = /quota|rate-limit|limit:\s*0/i.test(err.message || '');
-      const status = code === 'not_configured' ? 503 : code === 'bad_request' ? 422 : quota ? 503 : 502;
+      const quota = /prepayment credits are depleted/i.test(err.message || '');
+      const busy = /resource has been exhausted|rate[- ]limit/i.test(err.message || '');
+      const status = code === 'not_configured' || code === 'gemini_auth'
+        ? 503
+        : code === 'bad_request' ? 422 : quota || busy ? 503 : 502;
       const message = code === 'bad_request'
         ? (err.message || 'Add products first')
-        : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
-      send(res, status, { error: quota ? 'quota' : code, message, fallback: true });
+        : quota
+          ? 'Gemini image credits are used up. Add billing in Google AI Studio, then try again.'
+          : busy
+            ? 'The photo studio is busy. Wait a few seconds and tap Generate AI Preview again.'
+          : code === 'gemini_auth'
+            ? (err.message || 'Sign in with gcloud so Vertex can generate the hamper photo.')
+          : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
+      send(res, status, { error: quota ? 'quota' : busy ? 'busy' : code, message, fallback: true });
     }
   });
 

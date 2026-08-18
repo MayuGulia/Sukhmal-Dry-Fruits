@@ -3,7 +3,8 @@
  * Interactions API is for multi-turn server-side sessions — not needed here.
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
-import { envGet } from './geminiEnv.js';
+import { envGet, GEMINI_AUTH_HELP } from './geminiEnv.js';
+import { generateVertexContent, generateVertexImage, vertexImageEnabled } from './vertexImage.js';
 
 const FALLBACK_MODEL = 'gemini-flash-latest';
 const SKIP = /lite|tts|image|video|audio|1\.5|gemini-pro$|gemini-1\.0|computer-use|robotics|lyria|deep-research|antigravity|gemma-|omni-|eap|customtools/i;
@@ -131,6 +132,23 @@ function shouldTryNextModel(status, message) {
 }
 
 export async function generateGeminiContent({ key, label, body }) {
+  if (vertexImageEnabled()) {
+    try {
+      return await generateVertexContent({
+        contents: body.contents,
+        generationConfig: body.generationConfig,
+        label,
+      });
+    } catch (err) {
+      console.warn(`[Sukhmal Gemini] ${label} vertex text failed: ${String(err.message || '').slice(0, 300)}`);
+      if (!key) throw err;
+    }
+  }
+  if (!key) {
+    const err = new Error(GEMINI_AUTH_HELP);
+    err.code = 'not_configured';
+    throw err;
+  }
   const listed = await listModels(key, 'v1beta');
   const ids = generateContentIds(listed);
   const envModel = configuredGeminiModel();
@@ -189,7 +207,7 @@ function firstInlineImage(json) {
   };
 }
 
-export async function generateGeminiImage({ key, prompt, label = 'image' }) {
+async function generateImageWithKey({ key, prompt, label = 'image' }) {
   const listed = await listModels(key, 'v1beta');
   const ids = generateContentIds(listed);
   const listedImage = ids.filter((id) => /image/i.test(id) && !/tts|video|audio|lite/i.test(id));
@@ -240,4 +258,29 @@ export async function generateGeminiImage({ key, prompt, label = 'image' }) {
   }
 
   throw lastErr || new Error('Gemini image request failed');
+}
+
+export async function generateGeminiImage({ key, prompt, label = 'image', referenceImage }) {
+  let vertexErr = null;
+  if (vertexImageEnabled()) {
+    try {
+      return await generateVertexImage({ prompt, label, referenceImage });
+    } catch (err) {
+      vertexErr = err;
+      console.warn(`[Sukhmal Gemini] ${label} vertex path failed: ${String(err.message || '').slice(0, 300)}`);
+      const rateLimited = err.status === 429 || /resource has been exhausted|rate[- ]limit/i.test(err.message || '');
+      if (!rateLimited || !key || referenceImage) throw err;
+    }
+  }
+  if (key && !referenceImage) {
+    try {
+      return await generateImageWithKey({ key, prompt, label });
+    } catch (err) {
+      throw vertexErr || err;
+    }
+  }
+  if (vertexErr) throw vertexErr;
+  const err = new Error(GEMINI_AUTH_HELP);
+  err.code = 'not_configured';
+  throw err;
 }
