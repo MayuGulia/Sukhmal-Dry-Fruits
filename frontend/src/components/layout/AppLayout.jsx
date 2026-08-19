@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import TopUtilityBar from './TopUtilityBar';
 import Header from './Header';
 import Nav from './Nav';
@@ -11,11 +11,34 @@ import RouteSeo from '@/seo/RouteSeo';
 
 export default function AppLayout({ children }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [chromeHidden, setChromeHidden] = useState(false);
+  const lastY = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      const goingDown = y > lastY.current + 4;
+      const goingUp = y < lastY.current - 4;
+      lastY.current = y;
+      if (y < 64 || drawerOpen) {
+        setChromeHidden(false);
+        return;
+      }
+      if (goingDown) setChromeHidden(true);
+      else if (goingUp) setChromeHidden(false);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [drawerOpen]);
 
   return (
     <div className="min-h-screen flex flex-col">
       <RouteSeo />
-      <div className="sticky top-0 z-40 bg-white shadow-[0_1px_0_rgba(31,22,16,0.06)]">
+      <div
+        className={`sticky top-0 z-40 bg-white shadow-[0_1px_0_rgba(31,22,16,0.06)] transition-transform duration-300 ease-out will-change-transform ${
+          chromeHidden ? '-translate-y-full' : 'translate-y-0'
+        }`}
+      >
         <TopUtilityBar />
         <Header onOpenDrawer={() => setDrawerOpen(true)} />
         <Nav />

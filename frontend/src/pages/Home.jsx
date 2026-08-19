@@ -19,7 +19,7 @@ import {
   WEDDING_PROMO_IMG,
   CORP_PROMO_IMG,
   HERO_IMG,
-  HERO_VIDEO_LAYOUT,
+  HERO_VIDEO_POSITION,
 } from '@/data/homeBrand';
 import { GiftBasketIcon } from '@/components/brand/BrandSeal';
 import { STORE_INSTAGRAM, STORE_INSTAGRAM_HANDLE } from '@/data/storeInfo';
@@ -68,13 +68,13 @@ function HeroPhoto({ className }) {
   return (
     <img
       src={HERO_IMG}
-      alt="Luxury wooden dry fruit gift hamper with gold-lidded jars of almonds, cashews, pistachios, walnuts, dates, figs and raisins"
+      alt="Premium walnut wooden gift hamper with gold ribbon bow and gold-lidded jars of almonds, cashews, pistachios, walnuts, dates and raisins"
       width={1920}
       height={1080}
       fetchPriority="high"
       decoding="sync"
       className={className}
-      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 48%' }}
+      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: HERO_VIDEO_POSITION }}
     />
   );
 }
@@ -90,57 +90,52 @@ function ViewAllLink({ to, children }) {
   );
 }
 
-function HeroCopy({ inverted = true }) {
-  const title = inverted ? 'text-white' : 'text-brand-900';
-  const body = inverted ? 'text-white' : 'text-ink-600';
-  const outline = inverted
-    ? 'border-white bg-transparent text-white hover:bg-white/10'
-    : 'border-brand-900/30 bg-transparent text-brand-900 hover:bg-cream-200';
-  const solid = inverted
-    ? 'bg-white text-[var(--sk-espresso)] hover:bg-cream-100'
-    : 'bg-[var(--sk-espresso)] text-white hover:bg-brand-800';
+function HeroCopy() {
   return (
-    <div className={`relative w-full max-w-[18.5rem] sm:max-w-sm md:max-w-md lg:max-w-lg text-left ${inverted ? 'pr-4' : ''}`}>
-      <h1 className={`font-display text-[2.15rem] sm:text-[2.6rem] md:text-[3.15rem] lg:text-[3.5rem] font-bold leading-[1.08] tracking-[-0.02em] ${title}`}>
+    <div className="relative w-full max-w-[20.5rem] sm:max-w-sm md:max-w-md lg:max-w-lg text-left pr-4 md:pr-8">
+      <p className="mb-5 flex items-center gap-3 text-[11px] font-semibold tracking-[0.22em] uppercase text-[var(--sk-gold-600)]">
+        <span className="h-px w-8 bg-[var(--sk-gold-600)]/80" aria-hidden />
+        Estd. 1994 · Premium Gifting
+      </p>
+      <h1 className="font-display text-[2.25rem] sm:text-[2.7rem] md:text-[3.15rem] lg:text-[3.4rem] font-semibold leading-[1.12] tracking-[-0.02em] text-brand-900">
         <span>Crafted with Care.</span>
         <br />
         <span>Gifted with </span>
-        <span className="italic text-[var(--sk-gold-400)]">Love.</span>
+        <span className="italic font-medium text-[var(--sk-gold-600)]">Love.</span>
       </h1>
-      <p className={`mt-4 md:mt-5 ${body} text-[14px] md:text-[17px] leading-relaxed font-light`}>
+      <span className="mt-5 flex items-center gap-2.5" aria-hidden>
+        <span className="h-px w-14 bg-[var(--sk-gold-600)]/70" />
+        <span className="h-1.5 w-1.5 rotate-45 bg-[var(--sk-gold-600)]" />
+      </span>
+      <p className="mt-5 text-ink-600 text-[14px] md:text-[16px] leading-[1.7] font-light max-w-md">
         Premium Dry Fruits & Handcrafted Gift Hampers for Every Celebration.
       </p>
-      <div className="mt-7 md:mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
+      <div className="mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <Link
           to="/gift-hampers"
           data-testid="hero-explore-hampers"
-          className={`inline-flex items-center justify-center gap-2 text-[14px] md:text-[15px] font-semibold !py-3.5 !px-5 md:!px-6 rounded-full border-[1.5px] transition-colors ${outline}`}
+          className="inline-flex items-center justify-center gap-2 text-[14px] font-semibold !py-3.5 !px-6 rounded-full bg-[var(--sk-espresso)] text-white hover:bg-brand-800 transition-colors shadow-[0_8px_20px_rgba(31,22,16,0.16)]"
         >
-          Explore Gift Hampers <ChevronRight size={18} />
+          Explore Gift Hampers <ChevronRight size={16} />
         </Link>
         <Link
           to="/build-hamper/budget"
           data-testid="hero-build-hamper"
-          className={`inline-flex items-center justify-center gap-2 text-[14px] md:text-[15px] font-semibold !py-3.5 !px-5 md:!px-6 rounded-full transition-colors ${solid}`}
+          className="inline-flex items-center justify-center gap-2 text-[14px] font-semibold !py-3.5 !px-6 rounded-full border border-brand-900/30 bg-white/70 text-brand-900 hover:bg-white transition-colors backdrop-blur-[2px]"
         >
-          Build Your Own Hamper <ChevronRight size={18} />
+          Build Your Own Hamper <ChevronRight size={16} />
         </Link>
       </div>
     </div>
   );
 }
 
-/**
- * Homepage rebuilt against Images/.../01-home-page.jpeg
- * HERO IMAGE IS FROZEN — only copy/CTA position may change.
- */
 export default function Home() {
   const { data: bestSellers, loading: loadingBS } = useProducts({ bestseller: true, limit: 6 });
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiPreview, setAiPreview] = useState(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState('');
-  const splitHero = HERO_VIDEO_LAYOUT === 'split';
 
   const generateImage = async (e) => {
     e.preventDefault();
@@ -165,43 +160,23 @@ export default function Home() {
   return (
     <div className="home-page bg-white">
       {/* ─── HERO ─── */}
-      {splitHero ? (
-        <section
-          className="relative overflow-hidden bg-cream-100 min-h-[560px] md:min-h-[620px] lg:min-h-[680px]"
-          data-testid="home-hero"
-          data-hero-layout="split"
-        >
-          <div className="sk-container grid md:grid-cols-2 gap-8 md:gap-12 items-center py-12 md:py-16">
-            <HeroCopy inverted={false} />
-            <div className="relative mx-auto w-full max-w-xl">
-              <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-black shadow-sk-lg">
-                <HeroPhoto className="absolute inset-0 w-full h-full object-cover" />
-              </div>
-            </div>
-          </div>
-          <TrustStrip />
-        </section>
-      ) : (
-        <section
-          className="relative overflow-hidden w-full aspect-[16/9] min-h-[280px] max-h-[min(82vh,860px)] flex flex-col justify-end bg-black"
-          data-testid="home-hero"
-          data-hero-layout="cover"
-        >
-          <div className="absolute inset-0 overflow-hidden bg-black">
-            <HeroPhoto className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/62 via-black/28 to-transparent w-full md:w-[58%] pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/28 via-transparent to-black/10 pointer-events-none" />
-          </div>
+      <section
+        className="relative overflow-hidden w-full aspect-[16/9] min-h-[420px] max-h-[min(82vh,820px)] flex flex-col justify-center bg-[#F3EBE0]"
+        data-testid="home-hero"
+        data-hero-layout="cover"
+      >
+        <div className="absolute inset-0 overflow-hidden">
+          <HeroPhoto className="absolute inset-0 w-full h-full object-cover" />
+          <div className="sk-hero-shade" />
+        </div>
 
-          <div className="relative z-10 w-full pb-28 md:pb-32 pt-20 md:pt-24">
-            <div className="sk-container">
-              <HeroCopy />
-            </div>
+        <div className="relative z-10 w-full py-14 md:py-16 lg:py-20">
+          <div className="sk-container">
+            <HeroCopy />
           </div>
-
-          <TrustStrip overlay />
-        </section>
-      )}
+        </div>
+      </section>
+      <TrustStrip />
 
       {/* ─── Shop by Category ─── */}
       <section className="bg-white py-12 md:py-16" data-testid="home-categories">

@@ -204,6 +204,40 @@ html, body, #root {
   position: absolute; inset: 0; background: linear-gradient(180deg, rgba(60,36,21,0) 0%, rgba(60,36,21,0.15) 40%, rgba(60,36,21,0.55) 100%);
 }
 
+/* Homepage hero — warm cream veil on the left so espresso copy stays readable */
+.sk-hero-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(250, 247, 242, 0.90) 0%,
+      rgba(250, 247, 242, 0.72) 24%,
+      rgba(250, 247, 242, 0.32) 44%,
+      rgba(250, 247, 242, 0.00) 62%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(250, 247, 242, 0.18) 0%,
+      transparent 28%,
+      transparent 78%,
+      rgba(243, 235, 224, 0.35) 100%
+    );
+}
+@media (max-width: 767px) {
+  .sk-hero-shade {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(250, 247, 242, 0.92) 0%,
+        rgba(250, 247, 242, 0.78) 38%,
+        rgba(250, 247, 242, 0.28) 68%,
+        rgba(250, 247, 242, 0.08) 100%
+      );
+  }
+}
+
 @keyframes sk-soft-in {
   from { opacity: 0; transform: translateY(12px) scale(0.985); }
   to { opacity: 1; transform: none; }

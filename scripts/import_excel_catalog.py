@@ -5,14 +5,17 @@ Source of truth (products only):
   - Product_Listings_Master.xlsx  (copy, prices, SEO, allergens, Image 1–5)
 
 Outputs:
-  - frontend/public/products/<slug>-{1..5}.jpg
-  - frontend/src/data/mockCatalog.js
+  - frontend/public/products/<slug>-{1..5}.jpg   (--images-only or --catalog)
+  - frontend/src/data/mockCatalog.js             (--catalog only)
+
+Run with --help for flags. A bare run does nothing (avoids wiping images).
 """
 
 from __future__ import annotations
 
 import json
 import re
+import sys
 import zipfile
 from collections import defaultdict
 from io import BytesIO
@@ -321,32 +324,121 @@ def enhance_sheet_image(im: Image.Image) -> Image.Image:
     return canvas
 
 
-def save_product_images(slug: str, embeds: list) -> list[str]:
-    """Save all sheet embeds (Image 1–5) as clear 1024px JPEGs.
+# Excel drawing columns M–Q (0-based 12–16) = Image 1–5, in that order.
+# Image 1 is the product close-up; 2 jar; 3 feature graphic; 4 lifestyle; 5 nutrition.
+DISPLAY_IMAGE_COLS = [12, 13, 14, 15, 16]
+SAME_SHOT_MSE = 20000
+_ICLOUD_CACHE = None
 
-    Display order: largest product shot first (card/PDP hero), then remaining
-    sheet images by column, with Image 5 (nutrition, col 16) last.
+
+def _icloud_maps():
+    """High-res originals live in iCloud `images/image1`…`image5`, matching Excel Image 1–5."""
+    global _ICLOUD_CACHE
+    if _ICLOUD_CACHE is None:
+        scripts_dir = str(Path(__file__).resolve().parent)
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        try:
+            from apply_icloud_product_images import collect, to_jpeg
+
+            assignments, unmapped = collect()
+            if unmapped:
+                print(f"  iCloud unmapped keys ignored: {len(unmapped)}")
+            _ICLOUD_CACHE = (assignments, to_jpeg)
+            print(f"  iCloud hi-res slots: {len(assignments)}")
+        except Exception as exc:
+            print(f"  iCloud images unavailable ({exc}); falling back to Excel embeds")
+            _ICLOUD_CACHE = ({}, None)
+    return _ICLOUD_CACHE
+
+
+def _crop_letterbox(im: Image.Image, thresh: int = 248) -> Image.Image:
+    """Trim white padding so 140px Excel thumbs can be compared to landscape photos."""
+    rgb = im.convert("RGB")
+    px = rgb.load()
+    w, h = rgb.size
+
+    def white(x: int, y: int) -> bool:
+        r, g, b = px[x, y]
+        return r >= thresh and g >= thresh and b >= thresh
+
+    top = 0
+    while top < h - 1 and all(white(x, top) for x in range(w)):
+        top += 1
+    bot = h - 1
+    while bot > top and all(white(x, bot) for y in range(h)):
+        bot -= 1
+    left = 0
+    while left < w - 1 and all(white(left, y) for y in range(h)):
+        left += 1
+    right = w - 1
+    while right > left and all(white(right, y) for y in range(h)):
+        right -= 1
+    return rgb.crop((left, top, right + 1, bot + 1))
+
+
+def _content_thumb(im: Image.Image, n: int = 32) -> Image.Image:
+    return _crop_letterbox(im).resize((n, n), Image.Resampling.LANCZOS)
+
+
+def _mse(a: Image.Image, b: Image.Image) -> float:
+    pa, pb = list(a.getdata()), list(b.getdata())
+    return sum(
+        (r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2
+        for (r1, g1, b1), (r2, g2, b2) in zip(pa, pb)
+    ) / len(pa)
+
+
+def _same_excel_slot(existing: Image.Image, native: Image.Image, other_natives: list) -> bool:
+    """True when the local file is a sharper copy of this Excel slot, not a different column."""
+    this = _mse(_content_thumb(existing), _content_thumb(native))
+    if this >= SAME_SHOT_MSE:
+        return False
+    for other in other_natives:
+        if _mse(_content_thumb(existing), _content_thumb(other)) < this:
+            return False
+    return True
+
+
+def save_product_images(slug: str, embeds: list) -> list[str]:
+    """Save sheet Image 1–5 as gallery JPEGs.
+
+    Prefer the matching iCloud original (same slot as Excel Image N).
+    If that file is missing, enhance the Excel embed — and never keep a
+    different shot (e.g. the feature graphic) in slot 1.
     """
     paths = []
     OUT_IMG.mkdir(parents=True, exist_ok=True)
+    by_col = {item[0]: item for item in embeds}
+    assignments, to_jpeg = _icloud_maps()
 
-    def max_side(item):
-        return max(Image.open(BytesIO(item[2])).size)
-
-    nutrition = [e for e in embeds if e[0] >= 16]
-    others = [e for e in embeds if e[0] < 16]
-    # Hero = sharpest non-nutrition shot; then other angles by sheet column; nutrition last
-    others_sorted = sorted(others, key=lambda e: (-max_side(e), e[0]))
-    if others_sorted:
-        hero, rest = others_sorted[0], sorted(others_sorted[1:], key=lambda e: e[0])
-        ordered = [hero] + rest + sorted(nutrition, key=lambda e: e[0])
-    else:
-        ordered = sorted(embeds, key=lambda e: (-max_side(e), e[0]))
-
-    for i, (_col, _media, data, _fmt) in enumerate(ordered, start=1):
-        im = enhance_sheet_image(Image.open(BytesIO(data)))
+    for i, col in enumerate(DISPLAY_IMAGE_COLS, start=1):
         fname = f"{slug}-{i}.jpg"
         dest = OUT_IMG / fname
+        pair = assignments.get((slug, i))
+        if pair and to_jpeg:
+            to_jpeg(pair[0], dest)
+            paths.append(f"/products/{fname}")
+            continue
+
+        picked = by_col.get(col)
+        if not picked:
+            used = set(DISPLAY_IMAGE_COLS[: i - 1])
+            picked = next((by_col[c] for c in sorted(by_col) if c not in used), None)
+        if not picked:
+            break
+        native = Image.open(BytesIO(picked[2]))
+        native_side = max(native.size)
+        if dest.exists() and native_side < 400:
+            try:
+                existing = Image.open(dest)
+                others = [Image.open(BytesIO(by_col[c][2])) for c in by_col if c != col]
+                if max(existing.size) >= 800 and _same_excel_slot(existing, native, others):
+                    paths.append(f"/products/{fname}")
+                    continue
+            except Exception:
+                pass
+        im = enhance_sheet_image(native)
         im.save(
             dest,
             "JPEG",
@@ -357,6 +449,7 @@ def save_product_images(slug: str, embeds: list) -> list[str]:
         )
         paths.append(f"/products/{fname}")
     return paths
+
 
 def js_string(s: str) -> str:
     return json.dumps(s, ensure_ascii=False)
@@ -404,18 +497,120 @@ def emit_product(obj: dict) -> str:
     return "\n".join(parts)
 
 
-# Preserve existing hampers / festivals / testimonials from current file structure
+def existing_export_block(name: str, fallback: str) -> str:
+    """Keep curated gift hampers (not in Excel) when regenerating the catalog."""
+    if not OUT_CATALOG.exists():
+        return fallback
+    text = OUT_CATALOG.read_text(encoding="utf-8")
+    m = re.search(rf"(export const {name} = \[.*?\n\];)", text, re.S)
+    if m and "silver-crystal-tray" in m.group(1):
+        return m.group(1).strip()
+    return fallback
+
+
+# Original 10 Sukhmal gift hampers — never replace with placeholder festival SKUs.
 HAMPERS_BLOCK = r'''
 export const HAMPERS = [
-  { id: 'h_royal_gold', slug: 'royal-gold-hamper', name: 'Royal Gold Hamper', tier: 'Luxury', weight: '1.2 kg', price: 2499, mrp: 2999, image: verifiedImg('royal-gold'), tags: ['Wedding', 'Luxury'], contents: ['Californian Almonds 250g', 'Kashmiri Walnuts 200g', 'Medjool Dates 250g', 'Roasted Cashews 250g', 'Dried Apricots 150g', 'Gift Card + Wooden Basket'] },
-  { id: 'h_diwali_delight', slug: 'diwali-delight-hamper', name: 'Diwali Delight Hamper', tier: 'Premium', weight: '900 g', price: 1799, mrp: 2199, image: verifiedImg('diwali'), tags: ['Festival', 'Diwali'], contents: ['Almonds 200g', 'Cashews 200g', 'Pistachios 150g', 'Raisins 200g', 'Anjeer 150g', 'Diyas + Gift Card'] },
-  { id: 'h_wedding_classic', slug: 'wedding-classic-hamper', name: 'Wedding Classic Hamper', tier: 'Deluxe', weight: '1.5 kg', price: 3499, mrp: 3999, image: verifiedImg('wedding-c'), tags: ['Wedding'], contents: ['Almonds 300g', 'Cashews 300g', 'Pistachios 250g', 'Walnuts 250g', 'Medjool Dates 200g', 'Wooden Box + Ribbon'] },
-  { id: 'h_corporate_elite', slug: 'corporate-elite-hamper', name: 'Corporate Elite Hamper', tier: 'Premium', weight: '800 g', price: 1499, mrp: 1899, image: verifiedImg('corp-elite'), tags: ['Corporate'], contents: ['Almonds 200g', 'Cashews 200g', 'Pistachios 100g', 'Cranberries 100g', 'Branded Box'] },
-  { id: 'h_birthday_bliss', slug: 'birthday-bliss-hamper', name: 'Birthday Bliss Hamper', tier: 'Premium', weight: '700 g', price: 1299, mrp: 1599, image: verifiedImg('birthday'), tags: ['Birthday'], contents: ['Almonds 150g', 'Cashews 150g', 'Chocolate-covered Dates', 'Personalized Card'] },
-  { id: 'h_rakhi_special', slug: 'rakhi-special-hamper', name: 'Rakhi Special Hamper', tier: 'Deluxe', weight: '1 kg', price: 1999, mrp: 2499, image: verifiedImg('rakhi'), tags: ['Festival', 'Rakhi'], contents: ['Almonds 200g', 'Cashews 200g', 'Pistachios 150g', 'Anjeer 150g', 'Rakhi + Roli-Chawal', 'Gift Card'] },
-  { id: 'h_eid_mubarak', slug: 'eid-mubarak-hamper', name: 'Eid Mubarak Hamper', tier: 'Premium', weight: '900 g', price: 1899, mrp: 2299, image: verifiedImg('eid'), tags: ['Festival', 'Eid'], contents: ['Ajwa Dates 200g', 'Almonds 200g', 'Pistachios 150g', 'Anjeer 150g', 'Gift Card'] },
-  { id: 'h_christmas_cheer', slug: 'christmas-cheer-hamper', name: 'Christmas Cheer Hamper', tier: 'Deluxe', weight: '1.1 kg', price: 2299, mrp: 2799, image: verifiedImg('christmas'), tags: ['Festival', 'Christmas'], contents: ['Assorted Nuts Tin', 'Dried Cranberries', 'Chocolate Almonds', 'Xmas Card'] },
-  { id: 'h_new_year_glow', slug: 'new-year-glow-hamper', name: 'New Year Glow Hamper', tier: 'Premium', weight: '1 kg', price: 1799, mrp: 2199, image: verifiedImg('new-year'), tags: ['Festival', 'New Year'], contents: ['Almonds 250g', 'Cashews 200g', 'Dates 200g', 'Berries 150g', 'Gift Card'] },
+  {
+    id: 'h_silver_crystal_tray', slug: 'silver-crystal-tray', name: 'Silver Crystal Tray',
+    tier: 'Premium', weight: '700 g', price: 3299, mrp: 3299, trayPrice: 2041,
+    packagingKind: 'tray', packaging: 'Silver crystal tray',
+    image: '/brand/hampers/hamper-silver-tray-hero.png',
+    images: ['/brand/hampers/hamper-silver-tray-hero.png', '/brand/hampers/hamper-silver-tray-overhead.png', '/brand/hampers/hamper-silver-tray-detail.png'],
+    tags: ['Wedding', 'Luxury', 'Festival'],
+    contents: ['Badam 350g', 'Kaju 350g', 'Silver crystal tray'],
+    description: '350g Badam and 350g Kaju presented in a silver mirrored tray with crystal-knob boxes. Tray value ₹2,041 (hamper ₹3,299 − products ₹1,258).',
+  },
+  {
+    id: 'h_pearl_namkeen_basket', slug: 'pearl-namkeen-basket', name: 'Pearl Namkeen Basket',
+    tier: 'Luxury', weight: '2.2 kg', price: 4399, mrp: 4399, trayPrice: 484,
+    packagingKind: 'basket', packaging: 'Tan rope basket with pearls',
+    image: '/brand/hampers/hamper-tan-rope-hero.png',
+    images: ['/brand/hampers/hamper-tan-rope-hero.png', '/brand/hampers/hamper-tan-rope-angle.png', '/brand/hampers/hamper-tan-rope-detail.png'],
+    tags: ['Wedding', 'Festival', 'Luxury'],
+    contents: ['Pista 500g', 'Kaju 500g', 'Badam 500g', 'Roasted Namkeen 3 boxes', 'Basket'],
+    description: '500g Pista, 500g Kaju, 500g Badam and 3 boxes of roasted namkeen in a tan rope basket with pearls and pompoms.',
+  },
+  {
+    id: 'h_navy_peacock_box', slug: 'navy-peacock-box', name: 'Navy Peacock Box',
+    tier: 'Premium', weight: '1 kg', price: 3399, mrp: 3399, trayPrice: 1603,
+    packagingKind: 'box', packaging: 'Navy peacock gift box',
+    image: '/brand/hampers/hamper-navy-crocodile-closed-hero.png',
+    images: ['/brand/hampers/hamper-navy-crocodile-closed-hero.png', '/brand/hampers/hamper-navy-crocodile-open.png', '/brand/hampers/hamper-navy-crocodile-overhead.png'],
+    tags: ['Wedding', 'Luxury', 'Corporate', 'Festival'],
+    contents: ['Kaju 250g', 'Badam 250g', 'Pista 250g', 'Kishmish 250g', 'Decorative box'],
+    description: '250g each of Kaju, Badam, Pista and Kishmish in a navy gift box with a peacock lid.',
+  },
+  {
+    id: 'h_ganesha_blessing_box', slug: 'ganesha-blessing-box', name: 'Ganesha Blessing Box',
+    tier: 'Deluxe', weight: '500 g', price: 1699, mrp: 1699, trayPrice: 801,
+    packagingKind: 'box', packaging: 'Sage-and-gold window box',
+    image: '/brand/hampers/hamper-ganesha-goldbox-hero.png',
+    images: ['/brand/hampers/hamper-ganesha-goldbox-hero.png', '/brand/hampers/hamper-ganesha-goldbox-overhead.png', '/brand/hampers/hamper-sage-window-hero.png'],
+    tags: ['Festival', 'Diwali', 'Rakhi', 'Wedding'],
+    contents: ['Kaju 250g', 'Badam 250g', 'Ganesh ji', 'Diya'],
+    description: '250g Kaju, 250g Badam, Ganesh ji and a diya in a sage-and-gold window box.',
+  },
+  {
+    id: 'h_classic_four_nut_basket', slug: 'classic-four-nut-basket', name: 'Classic Four Nut Basket',
+    tier: 'Premium', weight: '1 kg', price: 3299, mrp: 3299, trayPrice: 1503,
+    packagingKind: 'basket', packaging: 'Round wicker basket',
+    image: '/brand/hampers/hamper-classic-basket-hero.png',
+    images: ['/brand/hampers/hamper-classic-basket-hero.png', '/brand/hampers/hamper-classic-basket-angle.png', '/brand/hampers/hamper-classic-basket-detail.png'],
+    tags: ['Festival', 'Birthday', 'Wedding'],
+    contents: ['Kaju 250g', 'Badam 250g', 'Pista 250g', 'Kishmish 250g', 'Basket'],
+    description: '250g each of Kaju, Badam, Pista and Kishmish in a round wicker basket with pearls and flowers.',
+  },
+  {
+    id: 'h_orchard_mixed_basket', slug: 'orchard-mixed-basket', name: 'Orchard Mixed Basket',
+    tier: 'Premium', weight: '1.5 kg', price: 3299, mrp: 3299, trayPrice: 605,
+    packagingKind: 'basket', packaging: 'Festive woven basket',
+    image: '/brand/hampers/hamper-orchard-basket-hero.png',
+    images: ['/brand/hampers/hamper-orchard-basket-hero.png', '/brand/hampers/hamper-orchard-basket-detail.png', '/brand/hampers/hamper-orchard-basket-angle.png'],
+    tags: ['Festival', 'Birthday', 'Wedding'],
+    contents: ['Kaju 250g', 'Badam 250g', 'Pista 250g', 'Raisins 250g', 'Mix Seeds 250g', 'Apricot 250g', 'Basket'],
+    description: '250g each of Kaju, Badam, Pista, Raisins, Mix Seeds and Apricot in a festive woven basket.',
+  },
+  {
+    id: 'h_grand_celebration_basket', slug: 'grand-celebration-basket', name: 'Grand Celebration Basket',
+    tier: 'Luxury', weight: '3 kg', price: 6399, mrp: 6399, trayPrice: 806,
+    packagingKind: 'basket', packaging: 'Large round celebration basket',
+    image: '/brand/hampers/hamper-grand-basket-hero.png',
+    images: ['/brand/hampers/hamper-grand-basket-hero.png', '/brand/hampers/hamper-grand-basket-overhead.png', '/brand/hampers/hamper-grand-basket-detail.png'],
+    tags: ['Wedding', 'Luxury', 'Festival', 'Corporate'],
+    contents: ['Roasted Namkeen 750g', 'Kaju 500g', 'Badam 500g', 'Pista 500g', 'Kishmish 500g', 'Walnut 250g', 'Basket'],
+    description: '750g roasted namkeen, 500g each of Kaju, Badam, Pista and Kishmish, plus 250g Walnut in a large round basket.',
+  },
+  {
+    id: 'h_pink_tulle_basket', slug: 'pink-tulle-basket', name: 'Pink Tulle Basket',
+    tier: 'Premium', weight: '1.5 kg', price: 3599, mrp: 3599, trayPrice: 405,
+    packagingKind: 'basket', packaging: 'Rope basket with pink tulle',
+    image: '/brand/hampers/hamper-pink-tulle-hero.png',
+    images: ['/brand/hampers/hamper-pink-tulle-hero.png', '/brand/hampers/hamper-pink-tulle-angle.png', '/brand/hampers/hamper-pink-tulle-front.png'],
+    tags: ['Birthday', 'Festival', 'Wedding'],
+    contents: ['Kaju 250g', 'Badam 250g', 'Pista 250g', 'Kishmish 250g', 'Akhrot 250g', 'Roasted Namkeen', 'Basket'],
+    description: '250g each of Kaju, Badam, Pista, Kishmish and Akhrot, plus roasted namkeen, in a rope basket with pink tulle.',
+  },
+  {
+    id: 'h_royal_copper_tray', slug: 'royal-copper-tray', name: 'Royal Copper Tray',
+    tier: 'Luxury', weight: '2 kg', price: 4299, mrp: 4299, trayPrice: 803,
+    packagingKind: 'tray', packaging: 'Ornate round copper tray',
+    image: '/brand/hampers/hamper-copper-tray-hero.png',
+    images: ['/brand/hampers/hamper-copper-tray-hero.png', '/brand/hampers/hamper-copper-tray-overhead.png', '/brand/hampers/hamper-copper-tray-detail.png'],
+    tags: ['Wedding', 'Luxury', 'Festival', 'Diwali', 'Eid'],
+    contents: ['Cashew 500g', 'Almond 500g', 'Raisins 500g', 'Pistachio 500g', 'Copper tray'],
+    description: '500g each of Cashew, Almond, Raisins and Pistachio arranged on an ornate round copper tray.',
+  },
+  {
+    id: 'h_gold_elephant_stand', slug: 'gold-elephant-stand', name: 'Gold Elephant Stand',
+    tier: 'Luxury', weight: '1 kg', price: 3999, mrp: 3999, trayPrice: 2203,
+    packagingKind: 'tray', packaging: 'Gold elephant stand',
+    image: '/brand/hampers/hamper-gold-elephant-hero.png',
+    images: ['/brand/hampers/hamper-gold-elephant-hero.png', '/brand/hampers/hamper-gold-elephant-profile.png', '/brand/hampers/hamper-gold-elephant-detail.png'],
+    tags: ['Wedding', 'Luxury', 'Festival', 'Diwali'],
+    contents: ['Kaju 250g', 'Badam 250g', 'Pista 250g', 'Kishmish 250g', 'Gold elephant stand'],
+    description: '250g each of Kaju, Badam, Pista and Kishmish presented on an ornate gold elephant stand.',
+  },
 ];
 '''.strip()
 
@@ -453,11 +648,9 @@ def main():
         {n: sum(1 for v in embeds.values() if len(v) == n) for n in sorted({len(v) for v in embeds.values()})},
     )
 
-    # Clear old product images (keep _media archive if present)
+    # Update gallery JPEGs in place. Never wipe the folder — that deleted
+    # sharper iCloud originals and leftover assets on a full import.
     OUT_IMG.mkdir(parents=True, exist_ok=True)
-    for old in OUT_IMG.iterdir():
-        if old.is_file():
-            old.unlink()
 
     products = []
     used_slugs = set()
@@ -499,9 +692,10 @@ def main():
         row0 = row["excel_row"] - 1
         img_embeds = embeds.get(row0, [])
         images = save_product_images(slug, img_embeds) if img_embeds else []
+        images = [f"/products/{slug}-{i}.jpg" for i in range(1, 6) if (OUT_IMG / f"{slug}-{i}.jpg").exists()] or images
         if not images:
             issues.append(f"No images for {name} (row {row['excel_row']})")
-        elif len(images) < 5 and name != "Makhana":
+        elif len(images) != 5:
             issues.append(f"Expected 5 images for {name}, got {len(images)} (row {row['excel_row']})")
 
         natural = any(h in name.lower() for h in NATURAL_HINTS)
@@ -558,6 +752,7 @@ def main():
         cover = cover_for(slug if slug != "gift-hampers" else "nuts")
         count = cat_counts.get(slug, 0)
         if slug == "gift-hampers":
+            cover = "/brand/hampers/hamper-copper-tray-hero.png"
             cat_lines.append(
                 f"  {{ slug: '{slug}', name: '{name}', tagline: {js_string(tagline)}, image: {js_string(cover)} }},"
             )
@@ -583,7 +778,7 @@ export const PRODUCTS = [
 {product_block}
 ];
 
-{HAMPERS_BLOCK}
+{existing_export_block("HAMPERS", HAMPERS_BLOCK)}
 
 {FESTIVALS_BLOCK}
 
@@ -605,5 +800,68 @@ export const INSTAGRAM_POSTS = Array.from({{ length: 6 }}).map((_, i) => verifie
             print(f" - … +{len(issues) - 40} more")
 
 
+def sync_images_only():
+    """Align `{slug}-1.jpg`…`{slug}-5.jpg` to Excel Image 1–5 without rewriting the catalog."""
+    print("Loading master listings…")
+    master = load_master_rows()
+    print(f"  {len(master)} products")
+    print("Mapping embedded product images (Image 1–5)…")
+    embeds = extract_row_images()
+    written = 0
+    kept = 0
+    used_slugs = set()
+    for row in master:
+        name = row["name"]
+        slug = slugify(name)
+        if slug in used_slugs:
+            slug = slugify(f"{name}-{row['sno']}")
+        used_slugs.add(slug)
+        row0 = row["excel_row"] - 1
+        img_embeds = embeds.get(row0, [])
+        before = {
+            i: (OUT_IMG / f"{slug}-{i}.jpg").stat().st_mtime
+            for i in range(1, 6)
+            if (OUT_IMG / f"{slug}-{i}.jpg").exists()
+        }
+        save_product_images(slug, img_embeds)
+        for i in range(1, 6):
+            dest = OUT_IMG / f"{slug}-{i}.jpg"
+            if not dest.exists():
+                continue
+            if before.get(i) == dest.stat().st_mtime:
+                kept += 1
+            else:
+                written += 1
+                print(f"  wrote {dest.name}")
+    print(f"\nUpdated {written} files, kept {kept} matching sharper locals.")
+
+
+def _print_usage() -> None:
+    print(
+        """Import Sukhmal products from data/Product_Listings_Master.xlsx
+
+  python3 scripts/import_excel_catalog.py --images-only
+      Sync frontend/public/products/{slug}-1.jpg … -5.jpg to Excel Image 1–5
+      (uses iCloud originals when present). Does not rewrite mockCatalog.js.
+
+  python3 scripts/import_excel_catalog.py --catalog
+      Rewrite frontend/src/data/mockCatalog.js from the sheet. Keeps the
+      10 gift hampers. Updates product images in place (does not delete the folder).
+
+  python3 scripts/import_excel_catalog.py --help
+"""
+    )
+
+
 if __name__ == "__main__":
-    main()
+    args = set(sys.argv[1:])
+    if not args or "--help" in args or "-h" in args:
+        _print_usage()
+        sys.exit(0)
+    if "--images-only" in args:
+        sync_images_only()
+    elif "--catalog" in args:
+        main()
+    else:
+        _print_usage()
+        sys.exit(2)

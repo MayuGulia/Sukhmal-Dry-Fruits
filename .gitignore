@@ -30,6 +30,10 @@ venv/
 # Source spreadsheets (catalog already lives in frontend/src/data/mockCatalog.js)
 data/Product_Listings_Master.xlsx
 
+# Excel lock files
+**/~$*.xlsx
+**/~$*.xls
+
 # Local / OS
 .DS_Store
 .idea/

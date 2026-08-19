@@ -7,6 +7,7 @@ import { verifiedImg } from '@/data/verifiedImages';
 import { aiApi } from '@/lib/api';
 import { saveHamperBuild } from '@/lib/commerceStore';
 import { listHamperBuilderProducts, mapHamperBuilderProduct, subscribeLiveProducts } from '@/lib/liveCatalog';
+import { HAMPERS } from '@/data/mockCatalog';
 import {
   ArrowLeft, ArrowRight, Sparkles, Plus, Minus, Check, X, Gift, ShieldCheck,
   Crown, Heart, Pencil, Truck, Package, Leaf, Star, Box, ShoppingBag,
@@ -16,55 +17,47 @@ import {
 const STEPS = ['budget', 'hamper', 'products', 'gift-card', 'preview', 'confirm'];
 const LABELS = ['Budget', 'Hampers', 'Products', 'Gift Card', 'Preview', 'Confirm'];
 const BUDGETS = [1000, 2500, 5000, 7500, 10000, 15000];
-const LS = 'sk_hamper_wizard_v1';
+const LS = 'sk_hamper_wizard_v2';
 
 const LIFE_NUTS = verifiedImg('nuts', 480);
 const LIFE_BOX = '/brand/hero-luxury-hamper-v2.png';
 const LIFE_TRAY = '/brand/byoh-lifestyle.png';
 const LIFE_RIBBON = verifiedImg('royal-gold', 360);
 
-const STYLES = [
-  {
-    key: 'basket',
-    name: 'Classic Elegance Basket',
-    type: 'Woven Basket',
-    category: 'basket',
-    capacity: '4 - 6 Items',
-    serves: 'Serves 4 - 6',
-    price: 2299,
-    img: verifiedImg('gift-hampers', 600),
-  },
-  {
-    key: 'box',
-    name: 'Signature Box',
-    type: 'Premium Rigid Box',
-    category: 'box',
-    capacity: '4 - 6 Items',
-    serves: 'Serves 4 - 6',
-    price: 2499,
-    img: verifiedImg('royal-gold', 600),
-  },
-  {
-    key: 'crate',
-    name: 'Wooden Treasure Crate',
-    type: 'Mango Wood Crate',
-    category: 'wooden',
-    capacity: '4 - 6 Items',
-    serves: 'Serves 4 - 6',
-    price: 2599,
-    img: verifiedImg('wedding-c', 600),
-  },
-  {
-    key: 'round',
-    name: 'Luxury Round Box',
-    type: 'Premium Round Box',
-    category: 'luxury',
-    capacity: '4 - 6 Items',
-    serves: 'Serves 4 - 6',
-    price: 2499,
-    img: verifiedImg('corp-elite', 600),
-  },
-];
+const PACKAGING_TYPE = {
+  basket: 'Woven Basket',
+  box: 'Gift Box',
+  tray: 'Tray / Stand',
+};
+
+const BESTSELLER_HAMPER_SLUGS = new Set([
+  'silver-crystal-tray',
+  'pearl-namkeen-basket',
+  'classic-four-nut-basket',
+  'grand-celebration-basket',
+  'royal-copper-tray',
+]);
+
+const STYLES = HAMPERS.map((h) => {
+  const fillCount = (h.contents || []).filter((c) => {
+    const s = String(c);
+    if (/\d+\s*(g|kg|boxes?)/i.test(s)) return true;
+    return !/(tray|basket|box|stand|ganesh|diya)/i.test(s);
+  }).length;
+  const kind = h.packagingKind || 'basket';
+  return {
+    key: h.slug,
+    name: h.name,
+    type: h.packaging || PACKAGING_TYPE[kind] || 'Hamper',
+    category: kind === 'stand' ? 'tray' : kind,
+    tier: h.tier,
+    capacity: `${fillCount} Item${fillCount === 1 ? '' : 's'}`,
+    serves: h.weight,
+    price: Number(h.trayPrice) || 0,
+    img: h.image,
+    bestseller: BESTSELLER_HAMPER_SLUGS.has(h.slug),
+  };
+});
 
 const CARDS = [
   { key: 'especially', name: 'Especially For You', tone: 'bg-[#F3E8D8]', accent: '#8B6914' },
@@ -89,7 +82,7 @@ const HAMPER_CATS = [
   { key: 'bestsellers', label: 'Bestsellers', Icon: Star },
   { key: 'premium', label: 'Premium Hampers', Icon: Crown },
   { key: 'luxury', label: 'Luxury Hampers', Icon: Sparkle },
-  { key: 'wooden', label: 'Wooden Hampers', Icon: Box },
+  { key: 'tray', label: 'Tray Hampers', Icon: Box },
   { key: 'basket', label: 'Basket Hampers', Icon: ShoppingBag },
   { key: 'box', label: 'Box Hampers', Icon: Gift },
 ];
@@ -126,19 +119,25 @@ const MOCK_PRODUCTS = [
 
 function HamperProductSkeleton() {
   return (
-    <div className="sk-wizard-card overflow-hidden animate-pulse" aria-hidden>
+    <div className="rounded-xl border border-[#E8E4DF] bg-white overflow-hidden animate-pulse" aria-hidden>
       <div className="aspect-square bg-[#EFE8DC]" />
-      <div className="p-3.5 space-y-2">
-        <div className="h-4 bg-[#EFE8DC] rounded w-4/5" />
+      <div className="p-2.5 space-y-2">
+        <div className="h-3.5 bg-[#EFE8DC] rounded w-4/5" />
         <div className="h-3 bg-[#EFE8DC] rounded w-1/3" />
-        <div className="h-9 bg-[#EFE8DC] rounded-full mt-3" />
+        <div className="h-8 bg-[#EFE8DC] rounded-full mt-2" />
       </div>
     </div>
   );
 }
 
 function loadState() {
-  try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS)) || {};
+    if (raw.style && !STYLES.some((s) => s.key === raw.style)) delete raw.style;
+    return raw;
+  } catch {
+    return {};
+  }
 }
 
 function approxRange(budget) {
@@ -648,8 +647,9 @@ export default function BuildHamper() {
 
   const filteredHampers = useMemo(() => {
     let list = [...STYLES];
-    if (sideCat === 'bestsellers') list = list.filter((_, i) => i < 2);
-    else if (sideCat === 'premium' || sideCat === 'luxury') list = list.filter((s) => s.price >= 2499);
+    if (sideCat === 'bestsellers') list = list.filter((s) => s.bestseller);
+    else if (sideCat === 'premium') list = list.filter((s) => s.tier === 'Premium' || s.tier === 'Deluxe');
+    else if (sideCat === 'luxury') list = list.filter((s) => s.tier === 'Luxury');
     else if (sideCat !== 'all') list = list.filter((s) => s.category === sideCat);
     if (sortBy === 'price-asc') list.sort((a, b) => a.price - b.price);
     if (sortBy === 'price-desc') list.sort((a, b) => b.price - a.price);
@@ -925,12 +925,15 @@ export default function BuildHamper() {
                       </div>
                       <div className="p-4">
                         <div className="font-display font-bold text-[var(--sk-brown-900)] text-lg leading-tight">{s.name}</div>
-                        <div className="text-[12px] text-[var(--sk-ink-500)] mt-1">{s.type}</div>
+                        <div className="text-[12px] text-[var(--sk-ink-500)] mt-1">
+                          {s.tier} {s.serves}
+                        </div>
                         <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-[var(--sk-ink-500)]">
-                          <span className="inline-flex items-center gap-1"><Box size={12} /> {s.capacity}</span>
-                          <span className="inline-flex items-center gap-1"><Gift size={12} /> {s.serves}</span>
+                          <span className="inline-flex items-center gap-1"><Box size={12} /> {s.type}</span>
+                          <span className="inline-flex items-center gap-1"><Gift size={12} /> {s.capacity}</span>
                         </div>
                         <div className="mt-2 font-bold text-[var(--sk-brown-900)] text-lg">{inr(s.price)}</div>
+                        <div className="text-[11px] text-[var(--sk-ink-400)]">Packaging price</div>
                         <div
                           className={`mt-3 w-full text-center text-sm font-semibold py-2.5 rounded-lg ${
                             selected ? 'bg-[var(--sk-brown-900)] text-white' : 'bg-[var(--sk-brown-900)] text-white'
@@ -1009,7 +1012,7 @@ export default function BuildHamper() {
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-5 md:gap-6" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+              <div className="mt-5 grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
                 {productsLoading
                   ? Array.from({ length: 8 }).map((_, i) => <HamperProductSkeleton key={`sk-${i}`} />)
                   : filteredProducts.map((p) => {
@@ -1017,25 +1020,29 @@ export default function BuildHamper() {
                   const added = qty > 0;
                   const wished = has(p.id);
                   const href = `/product/${p.slug || p.id}`;
+                  const frontImg = p.img || `/products/${p.slug}-1.jpg`;
                   return (
-                    <div key={p.id} className="sk-wizard-card overflow-hidden flex flex-col">
-                      <div className="relative aspect-square bg-[#F7F3EC] overflow-hidden">
+                    <div
+                      key={p.id}
+                      className="rounded-xl bg-white border border-[#E8E4DF] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(60,36,21,0.04)] hover:shadow-[0_8px_20px_rgba(60,36,21,0.08)] transition-shadow"
+                    >
+                      <div className="relative aspect-square bg-[#F4EDE3] overflow-hidden">
                         <Link to={href} className="absolute inset-0 block">
                           <img
-                            src={p.img || p.images?.[0]}
+                            src={frontImg}
                             alt={p.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover object-center"
                             loading="lazy"
                             decoding="async"
                           />
                         </Link>
                         {p.bestseller && (
-                          <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-bold tracking-wide bg-[var(--sk-espresso)] text-white px-2.5 py-1 rounded-full pointer-events-none">
+                          <span className="absolute top-2 left-2 z-10 text-[9px] font-bold tracking-wide bg-[var(--sk-espresso)] text-white px-2 py-0.5 rounded-full pointer-events-none">
                             Bestseller
                           </span>
                         )}
                         {p.premium && !p.bestseller && (
-                          <span className="absolute top-2.5 left-2.5 z-10 text-[10px] font-bold tracking-wide bg-[var(--sk-gold-600)] text-white px-2.5 py-1 rounded-full pointer-events-none">
+                          <span className="absolute top-2 left-2 z-10 text-[9px] font-bold tracking-wide bg-[var(--sk-gold-600)] text-white px-2 py-0.5 rounded-full pointer-events-none">
                             Premium
                           </span>
                         )}
@@ -1043,22 +1050,22 @@ export default function BuildHamper() {
                           type="button"
                           aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
-                          className="absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-full bg-white grid place-items-center shadow-sm text-[var(--sk-espresso)]"
+                          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-white/95 grid place-items-center shadow-sm text-[var(--sk-espresso)]"
                         >
-                          <Heart size={14} strokeWidth={1.75} fill={wished ? 'currentColor' : 'none'} className={wished ? 'text-red-500' : ''} />
+                          <Heart size={13} strokeWidth={1.75} fill={wished ? 'currentColor' : 'none'} className={wished ? 'text-red-500' : ''} />
                         </button>
                       </div>
-                      <div className="p-3.5 flex flex-col flex-1">
-                        <Link to={href} className="font-display font-bold text-[var(--sk-espresso)] text-[15px] md:text-base leading-snug line-clamp-2 hover:underline">
+                      <div className="p-2.5 flex flex-col flex-1">
+                        <Link to={href} className="font-display font-semibold text-[var(--sk-espresso)] text-[13px] leading-snug line-clamp-2 hover:underline">
                           {p.name}
                         </Link>
-                        <div className="text-[14px] text-[#555555] mt-1">
+                        <div className="text-[12px] text-[#6B635A] mt-1 tabular-nums">
                           {inr(p.price)} <span className="text-[var(--sk-ink-400)]">/ {p.weight}</span>
                         </div>
 
-                        <div className="mt-auto pt-3 flex items-center gap-2 relative z-10">
+                        <div className="mt-auto pt-2.5 flex items-center gap-1.5 relative z-10">
                           <div
-                            className="inline-flex items-center border border-[#E8E4DF] rounded-full bg-white"
+                            className="inline-flex items-center border border-[#E8E4DF] rounded-full bg-white shrink-0"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button
@@ -1066,28 +1073,28 @@ export default function BuildHamper() {
                               aria-label="Decrease"
                               disabled={qty === 0}
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(p.id, qty - 1); }}
-                              className="p-1.5 pl-2.5 disabled:opacity-30"
+                              className="p-1.5 pl-2 disabled:opacity-30"
                             >
-                              <Minus size={12} />
+                              <Minus size={11} />
                             </button>
-                            <span className="text-sm w-5 text-center font-bold text-[var(--sk-espresso)]">{qty}</span>
+                            <span className="text-[12px] w-4 text-center font-bold text-[var(--sk-espresso)]">{qty}</span>
                             <button
                               type="button"
                               aria-label="Increase"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); addOne(p); }}
-                              className="p-1.5 pr-2.5"
+                              className="p-1.5 pr-2"
                             >
-                              <Plus size={12} />
+                              <Plus size={11} />
                             </button>
                           </div>
                           <button
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!added) addOne(p); }}
-                            className={`flex-1 text-[13px] font-semibold py-2 rounded-full inline-flex items-center justify-center gap-1 bg-[var(--sk-espresso)] text-white ${
+                            className={`flex-1 min-w-0 text-[12px] font-semibold py-1.5 rounded-full inline-flex items-center justify-center gap-1 bg-[var(--sk-espresso)] text-white ${
                               added ? 'opacity-90 cursor-default' : 'hover:bg-[#2a1e16]'
                             }`}
                           >
-                            {added ? <>Added <Check size={13} strokeWidth={3} /></> : 'Add'}
+                            {added ? <>Added <Check size={12} strokeWidth={3} /></> : 'Add'}
                           </button>
                         </div>
                       </div>
@@ -1125,11 +1132,9 @@ export default function BuildHamper() {
 
           {/* ——— STEP 4: GIFT CARD ——— */}
           {step === 'gift-card' && (
-            <div className="relative">
-              <LifestyleChrome variant="gift" />
-              <div className="relative">
-                <h2 className="sk-section-title text-2xl md:text-3xl">Choose Your Gift Card</h2>
-                <p className="text-[var(--sk-ink-600)] mt-1 text-sm">Select a card design or create your own.</p>
+            <div>
+              <h2 className="sk-section-title text-2xl md:text-3xl">Choose Your Gift Card</h2>
+              <p className="text-[var(--sk-ink-600)] mt-1 text-sm">Select a card design or create your own.</p>
 
                 <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                   {CARDS.map((c) => {
@@ -1233,7 +1238,6 @@ export default function BuildHamper() {
                     Continue to Preview <ArrowRight size={14} />
                   </button>
                 </div>
-              </div>
             </div>
           )}
 

@@ -29,7 +29,7 @@ export function hydrateStorefrontProduct(id, data) {
     slug: raw.slug || id,
     name: raw.name,
     price: Number(raw.price) || first?.price || 0,
-    images: Array.isArray(raw.images) && raw.images.length ? raw.images : (raw.img ? [raw.img] : []),
+    images: productGalleryImages({ slug: raw.slug || id, images: Array.isArray(raw.images) ? raw.images : (raw.img ? [raw.img] : []) }),
     weightVariants,
     variants: variants.length ? variants : (raw.variants || []),
     isActive: raw.isActive !== false,
@@ -107,7 +107,7 @@ export function subscribeLiveProduct(slug, onRow) {
     onRow({
       ...local,
       ...row,
-      images: Array.isArray(row.images) && row.images.length ? row.images : local.images,
+      images: productGalleryImages({ ...local, ...row, slug: row.slug || local.slug }),
       name: row.name || local.name,
       description: row.description || local.description,
       highlights: row.highlights?.length ? row.highlights : local.highlights,
@@ -150,13 +150,47 @@ export function subscribeLiveProduct(slug, onRow) {
 
 export const HAMPER_BUILDER_PAGE_SIZE = 24;
 
+/** Always the five catalog gallery shots (`{slug}-1.jpg` … `{slug}-5.jpg`), matching the PDP thumbs. */
+export function productGalleryImages(p) {
+  const slug = String(p?.slug || '').trim();
+  if (slug && !/^p_/i.test(slug)) {
+    return [1, 2, 3, 4, 5].map((n) => `/products/${slug}-${n}.jpg?v=3`);
+  }
+  const listed = (Array.isArray(p?.images) ? p.images : []).filter(Boolean);
+  if (listed.length) return listed.slice(0, 5);
+  if (p?.img) return [p.img];
+  if (p?.image) return [p.image];
+  return [];
+}
+
+/** Always the catalog front shot (`{slug}-1.jpg`), never packaging or gallery extras. */
+export function firstCatalogShot(p) {
+  if (!p) return '';
+  const pool = [
+    ...(Array.isArray(p.images) ? p.images : []),
+    p.img,
+    p.image,
+  ].filter(Boolean);
+  const shot1 = pool.find((src) => /-1\.(jpe?g|png|webp)(\?|#|$)/i.test(String(src)));
+  if (shot1) {
+    const s = String(shot1);
+    return /[?&]v=/.test(s) ? s : `${s}?v=3`;
+  }
+  const slug = String(p.slug || '').trim();
+  if (slug && !/^p_/i.test(slug)) return `/products/${slug}-1.jpg?v=3`;
+  const any = String(pool[0] || '');
+  if (/-\d+\.(jpe?g|png|webp)/i.test(any)) {
+    return any.replace(/-\d+\.(jpe?g|png|webp)/i, '-1.$1');
+  }
+  return any;
+}
+
 export function mapHamperBuilderProduct(p) {
   if (!p) return null;
   const variants = p.weightVariants || p.variants || [];
   const first = variants[0] || {};
   const weight = first.weight || first.w || p.weight || '250g';
   const price = Number(first.price ?? p.price) || 0;
-  const rawImg = (Array.isArray(p.images) && p.images[0]) || p.img || p.image || '';
   return {
     id: p.id,
     slug: p.slug || p.id,
@@ -166,7 +200,7 @@ export function mapHamperBuilderProduct(p) {
     category: p.category || '',
     bestseller: Boolean(p.bestseller || p.isBestseller),
     premium: Boolean(p.premium || p.tier === 'premium' || price >= 399),
-    img: rawImg,
+    img: firstCatalogShot(p),
   };
 }
 

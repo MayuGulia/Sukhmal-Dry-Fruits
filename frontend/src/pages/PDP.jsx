@@ -16,6 +16,7 @@ import ProductCard from '@/components/shared/ProductCard';
 import { api } from '@/lib/api';
 import { CATEGORIES } from '@/data/mockCatalog';
 import { STORE_WHATSAPP } from '@/data/storeInfo';
+import { productGalleryImages } from '@/lib/liveCatalog';
 
 const TRUST = [
   { Ic: Leaf, l: '100% Natural', s: 'No Preservatives' },
@@ -548,7 +549,9 @@ export default function PDP() {
   const disc = p.mrp && p.mrp > activeVariant.price
     ? Math.round(((p.mrp - activeVariant.price) / p.mrp) * 100)
     : 0;
-  const images = p.images?.length ? p.images : ['https://loremflickr.com/800/800/nuts?lock=1'];
+  const images = productGalleryImages(p).length
+    ? productGalleryImages(p)
+    : ['https://loremflickr.com/800/800/nuts?lock=1'];
   const catName = categoryLabel(p.category);
   const highlights = p.highlights?.length
     ? p.highlights

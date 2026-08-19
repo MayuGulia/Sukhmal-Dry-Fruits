@@ -1,13 +1,12 @@
 /**
  * Homepage assets locked to 01-home-page.jpeg structure.
- * HERO_IMG must not be swapped without explicit user approval.
  */
 
-/** FROZEN — current luxury hamper hero (do not replace). */
-export const HERO_IMG = '/brand/hero-luxury-hamper-v2.png';
+/** Full-bleed walnut gift hamper with gold bow. */
+export const HERO_IMG = '/brand/hero-luxury-hamper-v5.png';
 export const HERO_STILL_SRC = HERO_IMG;
 export const HERO_VIDEO_LAYOUT = 'cover'; // 'cover' | 'split'
-export const HERO_VIDEO_POSITION = 'center 48%';
+export const HERO_VIDEO_POSITION = '72% 48%';
 /**
  * Wedding hero uses homepage-hero.mp4 inside the same full-bleed frame as sukhmal.mp4
  * (min-h 80vh, object-fit cover). The clip is cropped to that landscape frame —

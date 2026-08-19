@@ -256,21 +256,22 @@ export function TrustStrip({ overlay = false }) {
     { Ic: Truck, label: 'Express Delivery', sub: 'Across India' },
   ];
   const inner = (
-    <div className={`grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-2 ${overlay ? 'py-4 md:py-5' : 'py-6'}`}>
-      {items.map(({ Ic, label, sub }) => (
-        <div key={label} className="flex items-center gap-3 justify-center px-2">
-          <div
-            className={`shrink-0 h-11 w-11 grid place-items-center rounded-full border-[1.5px] ${
-              overlay
-                ? 'border-[var(--sk-gold-600)] text-[var(--sk-gold-300)]'
-                : 'border-[var(--sk-gold-600)] text-[var(--sk-gold-600)]'
-            }`}
-          >
-            <Ic size={overlay ? 18 : 20} strokeWidth={1.6} />
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-6 gap-x-6 py-7 md:py-8">
+      {items.map(({ Ic, label, sub }, i) => (
+        <div
+          key={label}
+          className={`flex items-center gap-3.5 justify-center px-2 ${
+            i > 0 ? 'lg:border-l lg:border-[var(--sk-line-strong)]/70' : ''
+          }`}
+        >
+          <div className="shrink-0 h-10 w-10 grid place-items-center rounded-full border border-[var(--sk-gold-600)] text-[var(--sk-gold-600)]">
+            <Ic size={16} strokeWidth={1.35} />
           </div>
           <div className="min-w-0">
-            <div className={`font-semibold text-sm md:text-[15px] leading-tight ${overlay ? 'text-white' : 'text-brand-900'}`}>{label}</div>
-            <div className={`text-[11px] mt-0.5 leading-tight ${overlay ? 'text-white' : 'text-ink-500'}`}>{sub}</div>
+            <div className="font-display font-semibold text-[14px] md:text-[15px] leading-tight tracking-[0.02em] text-brand-900">
+              {label}
+            </div>
+            <div className="text-[11px] mt-0.5 leading-snug tracking-[0.04em] text-ink-500">{sub}</div>
           </div>
         </div>
       ))}
@@ -278,13 +279,13 @@ export function TrustStrip({ overlay = false }) {
   );
   if (overlay) {
     return (
-      <div className="absolute inset-x-0 bottom-0 z-20 bg-[rgba(62,39,21,0.72)] backdrop-blur-[2px] border-t border-white/10">
+      <div className="absolute inset-x-0 bottom-0 z-20 bg-[#F3EBE0]/95 backdrop-blur-[2px] border-t border-[var(--sk-line)]">
         <div className="sk-container">{inner}</div>
       </div>
     );
   }
   return (
-    <div className="bg-white border-y border-line">
+    <div className="bg-[#F3EBE0] border-y border-[var(--sk-line)]">
       <div className="sk-container">{inner}</div>
     </div>
   );
