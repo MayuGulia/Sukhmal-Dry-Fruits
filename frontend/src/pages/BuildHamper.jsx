@@ -607,7 +607,7 @@ export default function BuildHamper() {
       const busy = err?.response?.data?.error === 'busy';
       setPreviewNote(
         quota
-          ? 'AI Studio photo credits on the old key are used up. Retry in a moment — Vertex billing is used instead.'
+          ? 'Image models have no free quota on this Gemini key. Add billing in Google AI Studio (or Vertex AI) to generate hamper photos.'
           : busy
             ? 'The photo studio is busy. Wait a few seconds and tap Generate AI Preview again.'
             : 'Preview generation had trouble, here\'s what\'s inside.',

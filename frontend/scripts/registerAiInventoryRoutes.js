@@ -36,7 +36,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'hamper-fast-single-v16';
+const GEMINI_MODULE_BUST = 'hamper-quota-classify-v18';
 const helperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
@@ -113,15 +113,17 @@ function registerAiInventoryRoutes(app) {
     } catch (err) {
       console.error('[Sukhmal Gemini] generate-hamper-image failed', err.code || '', String(err.message || '').slice(0, 400));
       const code = err.code || 'gemini_error';
-      const quota = /prepayment credits are depleted/i.test(err.message || '');
-      const busy = /resource has been exhausted|rate[- ]limit/i.test(err.message || '');
+      const { classifyGeminiFailure } = await import(
+        `${pathToFileURL(path.join(__dirname, '../netlify/functions/_shared/geminiEnv.js')).href}?v=${GEMINI_MODULE_BUST}`
+      );
+      const { quota, busy } = classifyGeminiFailure(err);
       const status = code === 'not_configured' || code === 'gemini_auth'
         ? 503
         : code === 'bad_request' ? 422 : quota || busy ? 503 : 502;
       const message = code === 'bad_request'
         ? (err.message || 'Add products first')
         : quota
-          ? 'Gemini image credits are used up. Add billing in Google AI Studio, then try again.'
+          ? 'Gemini image models have no free-tier quota on this key. Turn on billing in Google AI Studio or Vertex AI, then try again.'
           : busy
             ? 'The photo studio is busy. Wait a few seconds and tap Generate AI Preview again.'
           : code === 'gemini_auth'

@@ -13,6 +13,27 @@ export function isGeminiAuthFailure(status, message) {
   );
 }
 
+export function isZeroImageQuota(status, message) {
+  const msg = String(message || '');
+  return (
+    status === 429
+    && (/limit:\s*0/i.test(msg) || /free_tier/i.test(msg) || /exceeded your current quota/i.test(msg))
+  );
+}
+
+export function classifyGeminiFailure(err) {
+  const msg = String(err?.message || '');
+  const status = err?.status || 0;
+  const quota = err?.code === 'quota'
+    || /prepayment credits are depleted/i.test(msg)
+    || isZeroImageQuota(status, msg);
+  const busy = !quota && (
+    status === 429
+    || /resource has been exhausted|please retry in /i.test(msg)
+  );
+  return { quota, busy, message: msg, status };
+}
+
 export function envGet(name) {
   let fromNetlify = '';
   try {

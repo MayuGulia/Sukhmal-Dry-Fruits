@@ -64,7 +64,7 @@ const WHY_ICONS = {
   love: HeartHandshake,
 };
 
-function HeroPhoto({ className }) {
+function HeroPhoto({ className, position = HERO_VIDEO_POSITION }) {
   return (
     <img
       src={HERO_IMG}
@@ -74,7 +74,7 @@ function HeroPhoto({ className }) {
       fetchPriority="high"
       decoding="sync"
       className={className}
-      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: HERO_VIDEO_POSITION }}
+      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: position }}
     />
   );
 }
@@ -121,7 +121,7 @@ function HeroCopy() {
         <Link
           to="/build-hamper/budget"
           data-testid="hero-build-hamper"
-          className="inline-flex items-center justify-center gap-2 text-[14px] font-semibold !py-3.5 !px-6 rounded-full border border-brand-900/30 bg-white/70 text-brand-900 hover:bg-white transition-colors backdrop-blur-[2px]"
+          className="inline-flex items-center justify-center gap-2 text-[14px] font-semibold !py-3.5 !px-6 rounded-full border border-brand-900/30 bg-white/80 text-brand-900 hover:bg-white transition-colors backdrop-blur-[2px]"
         >
           Build Your Own Hamper <ChevronRight size={16} />
         </Link>

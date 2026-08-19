@@ -1,6 +1,6 @@
 import { json } from './_shared/http.js';
 import { generateHamperPreview } from './_shared/generateHamperPreview.js';
-import { CUSTOMER_AI_FALLBACK, GEMINI_AUTH_HELP } from './_shared/geminiEnv.js';
+import { classifyGeminiFailure, CUSTOMER_AI_FALLBACK, GEMINI_AUTH_HELP } from './_shared/geminiEnv.js';
 
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'method', message: 'POST required' }, 405);
@@ -17,8 +17,7 @@ export default async (req) => {
     return json(result);
   } catch (err) {
     const code = err.code || 'gemini_error';
-    const quota = /prepayment credits are depleted/i.test(err.message || '');
-    const busy = /resource has been exhausted|rate[- ]limit/i.test(err.message || '');
+    const { quota, busy } = classifyGeminiFailure(err);
     const status = code === 'not_configured' || code === 'gemini_auth'
       ? 503
       : code === 'bad_request' ? 422 : quota || busy ? 503 : 502;
@@ -27,7 +26,7 @@ export default async (req) => {
       : code === 'gemini_auth'
         ? (err.message || GEMINI_AUTH_HELP)
         : quota
-          ? 'Gemini image credits are used up. Add billing in Google AI Studio, then try again.'
+          ? 'Gemini image models have no free-tier quota on this key. Turn on billing in Google AI Studio or Vertex AI, then try again.'
           : busy
             ? 'The photo studio is busy. Wait a few seconds and tap Generate AI Preview again.'
           : CUSTOMER_AI_FALLBACK;
