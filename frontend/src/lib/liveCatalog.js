@@ -150,11 +150,42 @@ export function subscribeLiveProduct(slug, onRow) {
 
 export const HAMPER_BUILDER_PAGE_SIZE = 24;
 
+/** New branded jar shots dropped in the repo root — used as catalog display (gallery slot 2). */
+const PACK_SHOT_PNG = new Set([
+  'amla-murabba',
+  'apple-murabba',
+  'beetroot-chips',
+  'broccoli-chips',
+  'gaund-katira',
+  'jawar-puff',
+  'kesar-mishri',
+  'mango-candy',
+  'millets-bhujia',
+  'millets-namkeen',
+  'mishri-dhaga',
+  'mix-fruits-chips',
+  'mix-veg-chips',
+  'nachos',
+  'paan-mix-saunf',
+  'quinoa-fingers',
+  'roasted-namkeen',
+  'silver-mishri',
+  'soya-sticks',
+  'sweet-saunf',
+]);
+
+const GALLERY_VER = 'v=pack4';
+
+function gallerySlotSrc(slug, n) {
+  if (n === 2 && PACK_SHOT_PNG.has(slug)) return `/products/${slug}-2.png?${GALLERY_VER}`;
+  return `/products/${slug}-${n}.jpg?v=3`;
+}
+
 /** Always the five catalog gallery shots (`{slug}-1.jpg` … `{slug}-5.jpg`), matching the PDP thumbs. */
 export function productGalleryImages(p) {
   const slug = String(p?.slug || '').trim();
   if (slug && !/^p_/i.test(slug)) {
-    return [1, 2, 3, 4, 5].map((n) => `/products/${slug}-${n}.jpg?v=3`);
+    return [1, 2, 3, 4, 5].map((n) => gallerySlotSrc(slug, n));
   }
   const listed = (Array.isArray(p?.images) ? p.images : []).filter(Boolean);
   if (listed.length) return listed.slice(0, 5);
@@ -163,26 +194,40 @@ export function productGalleryImages(p) {
   return [];
 }
 
-/** Always the catalog front shot (`{slug}-1.jpg`), never packaging or gallery extras. */
-export function firstCatalogShot(p) {
+function withShotVersion(src) {
+  const s = String(src || '');
+  if (!s) return '';
+  return /[?&]v=/.test(s) ? s : `${s}?v=3`;
+}
+
+function catalogSlotShot(p, slot) {
   if (!p) return '';
+  const n = Number(slot) || 1;
+  const slug = String(p.slug || '').trim();
+  if (slug && !/^p_/i.test(slug)) return gallerySlotSrc(slug, n);
   const pool = [
     ...(Array.isArray(p.images) ? p.images : []),
     p.img,
     p.image,
   ].filter(Boolean);
-  const shot1 = pool.find((src) => /-1\.(jpe?g|png|webp)(\?|#|$)/i.test(String(src)));
-  if (shot1) {
-    const s = String(shot1);
-    return /[?&]v=/.test(s) ? s : `${s}?v=3`;
-  }
-  const slug = String(p.slug || '').trim();
-  if (slug && !/^p_/i.test(slug)) return `/products/${slug}-1.jpg?v=3`;
+  const re = new RegExp(`-${n}\\.(jpe?g|png|webp)(\\?|#|$)`, 'i');
+  const hit = pool.find((src) => re.test(String(src)));
+  if (hit) return withShotVersion(hit);
   const any = String(pool[0] || '');
   if (/-\d+\.(jpe?g|png|webp)/i.test(any)) {
-    return any.replace(/-\d+\.(jpe?g|png|webp)/i, '-1.$1');
+    return withShotVersion(any.replace(/-\d+\.(jpe?g|png|webp)/i, `-${n}.$1`));
   }
   return any;
+}
+
+/** Catalog close-up (`{slug}-1.jpg`) — PDP gallery first frame. */
+export function firstCatalogShot(p) {
+  return catalogSlotShot(p, 1);
+}
+
+/** Sukhmal box/jar (`{slug}-2.jpg`) — listing and Choose Products display image. */
+export function boxCatalogShot(p) {
+  return catalogSlotShot(p, 2) || catalogSlotShot(p, 1);
 }
 
 export function mapHamperBuilderProduct(p) {
@@ -200,7 +245,7 @@ export function mapHamperBuilderProduct(p) {
     category: p.category || '',
     bestseller: Boolean(p.bestseller || p.isBestseller),
     premium: Boolean(p.premium || p.tier === 'premium' || price >= 399),
-    img: firstCatalogShot(p),
+    img: boxCatalogShot(p),
   };
 }
 

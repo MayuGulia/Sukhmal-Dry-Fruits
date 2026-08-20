@@ -33,7 +33,35 @@ export async function sendResend({ to, subject, html }) {
     body: JSON.stringify({ from, to: Array.isArray(to) ? to : [to], subject, html }),
   });
   const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  return { ok: res.ok, status: res.status, id: data?.id || null, data };
+}
+
+export async function notifyOwnerOfOrder(order = {}) {
+  const orderId = order.orderId || '';
+  if (!orderId) return { skipped: true, reason: 'missing_order' };
+  const sent = await sendResend({
+    to: ownerNotifyTo(),
+    subject: `New order ${orderId}`,
+    html: ownerOrderHtml(order),
+  });
+  if (!sent?.ok) console.error('owner order email failed', orderId, sent);
+  return sent;
+}
+
+export async function notifyCustomerOfOrder(order = {}) {
+  const to = order.customer?.email || '';
+  const orderId = order.orderId || '';
+  if (!to || !orderId) return { skipped: true, reason: 'missing_customer_email' };
+  const eta = order.eta || '2–4 business days';
+  return sendResend({
+    to,
+    subject: `Order ${orderId} received — Sukhmal Dry Fruits`,
+    html: `
+      ${ownerOrderHtml(order)}
+      <p>We’ll pack your order with care. Expected delivery: <strong>${eta}</strong>.</p>
+      <p>Track it with Order ID <strong>${orderId}</strong>.</p>
+    `,
+  });
 }
 
 export async function addResendContact(email) {

@@ -204,38 +204,95 @@ html, body, #root {
   position: absolute; inset: 0; background: linear-gradient(180deg, rgba(60,36,21,0) 0%, rgba(60,36,21,0.15) 40%, rgba(60,36,21,0.55) 100%);
 }
 
-/* Homepage hero — warm cream veil on the left so espresso copy stays readable */
+/* Homepage hero — full-bleed hamper, cinematic left light, image stays sharp */
+.sk-hero-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 72% 46%;
+  filter: brightness(1.06) contrast(1.08) saturate(1.08);
+  transform: scale(1.04);
+  animation: sk-hero-ken 16s ease-out forwards;
+}
+@keyframes sk-hero-ken {
+  from { transform: scale(1.04); }
+  to { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-hero-photo {
+    animation: none;
+    transform: none;
+  }
+}
 .sk-hero-shade {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(
-      90deg,
-      rgba(250, 247, 242, 0.90) 0%,
-      rgba(250, 247, 242, 0.72) 24%,
-      rgba(250, 247, 242, 0.32) 44%,
-      rgba(250, 247, 242, 0.00) 62%
+    radial-gradient(
+      ellipse 48% 78% at 8% 42%,
+      rgba(255, 246, 224, 0.38) 0%,
+      rgba(255, 232, 186, 0.12) 42%,
+      rgba(255, 214, 150, 0) 70%
     ),
     linear-gradient(
-      180deg,
-      rgba(250, 247, 242, 0.18) 0%,
-      transparent 28%,
-      transparent 78%,
-      rgba(243, 235, 224, 0.35) 100%
+      90deg,
+      rgba(255, 248, 236, 0.22) 0%,
+      rgba(255, 244, 228, 0.08) 22%,
+      transparent 42%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at 100% 80%,
+      rgba(40, 24, 12, 0.14) 0%,
+      transparent 62%
     );
 }
 @media (max-width: 767px) {
+  .sk-hero-photo {
+    object-position: 78% 42%;
+    transform: none;
+    animation: none;
+  }
   .sk-hero-shade {
     background:
       linear-gradient(
         180deg,
-        rgba(250, 247, 242, 0.92) 0%,
-        rgba(250, 247, 242, 0.78) 38%,
-        rgba(250, 247, 242, 0.28) 68%,
-        rgba(250, 247, 242, 0.08) 100%
+        rgba(255, 248, 236, 0.42) 0%,
+        rgba(255, 248, 236, 0.14) 28%,
+        transparent 52%
+      ),
+      radial-gradient(
+        ellipse 80% 50% at 85% 70%,
+        rgba(40, 24, 12, 0.1) 0%,
+        transparent 70%
       );
   }
+}
+
+/* Soft fade from hero photo into the white trust strip */
+.sk-hero-to-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5.5rem;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 55%,
+    rgba(255, 255, 255, 1) 100%
+  );
+}
+
+/* Trust strip overlay (unused on homepage; kept for other pages) */
+.sk-trust-mix {
+  position: absolute;
+  inset-x: 0;
+  bottom: 0;
+  z-index: 20;
+  background: #fff;
 }
 
 @keyframes sk-soft-in {

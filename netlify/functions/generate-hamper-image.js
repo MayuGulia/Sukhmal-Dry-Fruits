@@ -26,7 +26,7 @@ export default async (req) => {
       : code === 'gemini_auth'
         ? (err.message || GEMINI_AUTH_HELP)
         : quota
-          ? 'Gemini image models have no free-tier quota on this key. Turn on billing in Google AI Studio or Vertex AI, then try again.'
+          ? 'Gemini image models have no free-tier quota on this key. Turn on billing in Google AI Studio, then try again.'
           : busy
             ? 'The photo studio is busy. Wait a few seconds and tap Generate AI Preview again.'
           : CUSTOMER_AI_FALLBACK;

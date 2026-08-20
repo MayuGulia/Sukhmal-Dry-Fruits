@@ -205,6 +205,30 @@ export default function Checkout() {
       });
       const orderId = created.orderId;
 
+      if (method === 'cod') {
+        try {
+          const notify = await api.post('/create-order', {
+            orderId,
+            paymentMethod: 'cod',
+            order: {
+              orderId,
+              customer: created.customer,
+              shippingAddress: created.shippingAddress,
+              items: created.items,
+              totals: created.totals,
+              total: created.total,
+              paymentMethod: 'cod',
+              eta: created.eta,
+            },
+          });
+          if (!notify.data?.ownerNotified) {
+            console.error('COD owner notify did not confirm', notify.data);
+          }
+        } catch (err) {
+          console.error('COD owner notify request failed', err);
+        }
+      }
+
       if (method === 'razorpay') {
         try {
           const r = await api.post('/create-order', {

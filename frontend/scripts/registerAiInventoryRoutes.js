@@ -36,7 +36,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'hamper-quota-classify-v18';
+const GEMINI_MODULE_BUST = 'hamper-image-two-step-v8';
 const helperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
@@ -54,7 +54,7 @@ function registerAiInventoryRoutes(app) {
   if (!app || app.__skAiInventoryRegistered) return app;
   app.__skAiInventoryRegistered = true;
   console.log(
-    `[Sukhmal Gemini] local routes registered; GEMINI_MODEL=${process.env.GEMINI_MODEL || '(unset → gemini-2.5-flash)'} vertex=${process.env.GOOGLE_GENAI_USE_ENTERPRISE || 'false'} project=${process.env.GOOGLE_CLOUD_PROJECT || ''} key=${Boolean(process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY)} helper=${helperUrl}`,
+    `[Sukhmal Gemini] local routes registered; GEMINI_MODEL=${process.env.GEMINI_MODEL || '(unset → gemini-2.5-flash)'} imageKey=${Boolean(process.env.GEMINI_IMAGE_API_KEY || process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY)} helper=${helperUrl}`,
   );
 
   const preview = async (req, res) => {
@@ -123,11 +123,11 @@ function registerAiInventoryRoutes(app) {
       const message = code === 'bad_request'
         ? (err.message || 'Add products first')
         : quota
-          ? 'Gemini image models have no free-tier quota on this key. Turn on billing in Google AI Studio or Vertex AI, then try again.'
+          ? 'Gemini image models have no free-tier quota on this key. Turn on billing in Google AI Studio, then try again.'
           : busy
             ? 'The photo studio is busy. Wait a few seconds and tap Generate AI Preview again.'
           : code === 'gemini_auth'
-            ? (err.message || 'Sign in with gcloud so Vertex can generate the hamper photo.')
+            ? (err.message || 'Gemini rejected this API key. Add GEMINI_IMAGE_API_KEY in frontend/.env and restart.')
           : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
       send(res, status, { error: quota ? 'quota' : busy ? 'busy' : code, message, fallback: true });
     }

@@ -21,6 +21,7 @@
   "auth": {
     "authorizedDomains": [
       "localhost",
+      "127.0.0.1",
       "sukhmaldryfruits.com",
       "www.sukhmaldryfruits.com",
       "sukhmal.firebaseapp.com",
@@ -33,7 +34,9 @@
         "supportEmail": "mayu.gulia156@gmail.com",
         "authorizedRedirectUris": [
           "http://localhost",
+          "http://127.0.0.1",
           "https://localhost",
+          "https://127.0.0.1",
           "https://sukhmaldryfruits.com",
           "https://www.sukhmaldryfruits.com",
           "https://sukhmal.firebaseapp.com",

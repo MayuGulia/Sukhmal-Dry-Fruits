@@ -45,16 +45,28 @@ const STYLES = HAMPERS.map((h) => {
     return !/(tray|basket|box|stand|ganesh|diya)/i.test(s);
   }).length;
   const kind = h.packagingKind || 'basket';
+  const explicitLayout = String(h.layoutType || '').toLowerCase();
+  const layoutType = explicitLayout === 'compartment' || explicitLayout === 'open_arrangement'
+    ? explicitLayout
+    : (/box|compartment/.test(kind) ? 'compartment' : 'open_arrangement');
+  const gallery = [h.image, ...(Array.isArray(h.images) ? h.images : [])].filter(Boolean);
+  const uniqueGallery = [...new Set(gallery)];
+  const img = layoutType === 'compartment'
+    ? (uniqueGallery.find((u) => /open|overhead|inside/i.test(String(u))) || uniqueGallery[0] || '')
+    : (uniqueGallery[0] || '');
   return {
     key: h.slug,
     name: h.name,
     type: h.packaging || PACKAGING_TYPE[kind] || 'Hamper',
     category: kind === 'stand' ? 'tray' : kind,
+    packagingKind: kind,
+    layoutType,
     tier: h.tier,
     capacity: `${fillCount} Item${fillCount === 1 ? '' : 's'}`,
     serves: h.weight,
     price: Number(h.trayPrice) || 0,
-    img: h.image,
+    img,
+    images: uniqueGallery,
     bestseller: BESTSELLER_HAMPER_SLUGS.has(h.slug),
   };
 });
@@ -103,18 +115,18 @@ function hamperProductLabel(p) {
 }
 
 const MOCK_PRODUCTS = [
-  { id: 'mp1', slug: 'badam-cf', name: 'California Almonds', price: 299, weight: '250g', category: 'nuts', bestseller: true, img: '/products/badam-cf-1.jpg' },
-  { id: 'mp2', slug: 'kaju-320-n', name: 'Premium Cashews', price: 349, weight: '250g', category: 'nuts', bestseller: true, img: '/products/kaju-320-n-1.jpg' },
-  { id: 'mp3', slug: 'pista', name: 'Pistachios (Roasted)', price: 399, weight: '250g', category: 'nuts', premium: true, img: '/products/pista-1.jpg' },
-  { id: 'mp4', slug: 'walnut-premium', name: 'Walnut Kernels', price: 379, weight: '250g', category: 'nuts', img: '/products/walnut-premium-1.jpg' },
-  { id: 'mp5', slug: 'medjoul-dates', name: 'Premium Medjool Dates', price: 449, weight: '250g', category: 'dates', bestseller: true, premium: true, img: '/products/medjoul-dates-1.jpg' },
-  { id: 'mp6', slug: 'kishmish-indian', name: 'Golden Raisins', price: 199, weight: '250g', category: 'dry-fruits', img: '/products/kishmish-indian-1.jpg' },
-  { id: 'mp7', slug: 'cranberries', name: 'Dried Cranberries', price: 279, weight: '200g', category: 'berries', img: '/products/cranberries-1.jpg' },
-  { id: 'mp8', slug: 'blue-berry', name: 'Blueberry Delight', price: 329, weight: '200g', category: 'berries', premium: true, img: '/products/blue-berry-1.jpg' },
-  { id: 'mp9', slug: 'pumpkin-seeds', name: 'Pumpkin Seeds', price: 249, weight: '250g', category: 'seeds', img: '/products/pumpkin-seeds-1.jpg' },
-  { id: 'mp10', slug: 'chia-seeds', name: 'Chia Seeds', price: 229, weight: '250g', category: 'seeds', img: '/products/chia-seeds-1.jpg' },
-  { id: 'mp11', slug: 'medjoul-dates', name: 'Ajwa Dates', price: 599, weight: '250g', category: 'dates', premium: true, img: '/products/medjoul-dates-1.jpg' },
-  { id: 'mp12', slug: 'badam-roasted', name: 'Dark Chocolate Almonds', price: 399, weight: '200g', category: 'chocolate', bestseller: true, img: '/products/badam-roasted-1.jpg' },
+  { id: 'mp1', slug: 'badam-cf', name: 'California Almonds', price: 299, weight: '250g', category: 'nuts', bestseller: true, img: '/products/badam-cf-2.jpg' },
+  { id: 'mp2', slug: 'kaju-320-n', name: 'Premium Cashews', price: 349, weight: '250g', category: 'nuts', bestseller: true, img: '/products/kaju-320-n-2.jpg' },
+  { id: 'mp3', slug: 'pista', name: 'Pistachios (Roasted)', price: 399, weight: '250g', category: 'nuts', premium: true, img: '/products/pista-2.jpg' },
+  { id: 'mp4', slug: 'walnut-premium', name: 'Walnut Kernels', price: 379, weight: '250g', category: 'nuts', img: '/products/walnut-premium-2.jpg' },
+  { id: 'mp5', slug: 'medjoul-dates', name: 'Premium Medjool Dates', price: 449, weight: '250g', category: 'dates', bestseller: true, premium: true, img: '/products/medjoul-dates-2.jpg' },
+  { id: 'mp6', slug: 'kishmish-indian', name: 'Golden Raisins', price: 199, weight: '250g', category: 'dry-fruits', img: '/products/kishmish-indian-2.jpg' },
+  { id: 'mp7', slug: 'cranberries', name: 'Dried Cranberries', price: 279, weight: '200g', category: 'berries', img: '/products/cranberries-2.jpg' },
+  { id: 'mp8', slug: 'blue-berry', name: 'Blueberry Delight', price: 329, weight: '200g', category: 'berries', premium: true, img: '/products/blue-berry-2.jpg' },
+  { id: 'mp9', slug: 'pumpkin-seeds', name: 'Pumpkin Seeds', price: 249, weight: '250g', category: 'seeds', img: '/products/pumpkin-seeds-2.jpg' },
+  { id: 'mp10', slug: 'chia-seeds', name: 'Chia Seeds', price: 229, weight: '250g', category: 'seeds', img: '/products/chia-seeds-2.jpg' },
+  { id: 'mp11', slug: 'medjoul-dates', name: 'Ajwa Dates', price: 599, weight: '250g', category: 'dates', premium: true, img: '/products/medjoul-dates-2.jpg' },
+  { id: 'mp12', slug: 'badam-roasted', name: 'Dark Chocolate Almonds', price: 399, weight: '200g', category: 'chocolate', bestseller: true, img: '/products/badam-roasted-2.jpg' },
 ];
 
 function HamperProductSkeleton() {
@@ -366,8 +378,8 @@ function HamperSidebar({
           <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
             {chosen.map((p) => (
               <div key={p.id} className="flex items-start gap-2.5">
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#F7F3EC] shrink-0">
-                  <img src={p.img} alt="" className="w-full h-full object-cover" />
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shrink-0">
+                  <img src={p.img} alt="" className="w-full h-full object-contain" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] text-[var(--sk-espresso)] font-semibold truncate leading-tight">{p.name}</div>
@@ -562,29 +574,43 @@ export default function BuildHamper() {
     setPreviewReady(false);
     setGeneratedPreview(null);
     setGeneratedViews([]);
-    setPreviewNote('Packing your selected hamper…');
+        setPreviewNote('Describing your product photos, then composing the hamper preview…');
     const iv = setInterval(() => {
       setPreviewProgress((p) => Math.min(88, p + 6 + Math.floor(Math.random() * 5)));
     }, 280);
     try {
       const card = CARDS.find((c) => c.key === state.cardStyle) || CARDS[0];
-      const payload = {
-        products,
-        boxType: styleObj.type || styleObj.name,
-        packaging: styleObj.type || styleObj.name,
-        hamperId: state.style,
-        hamperName: styleObj.name,
-        budget: state.budget,
-        productSelections: chosen.map((p) => ({
+      const productPayload = chosen.map((p) => {
+        const slug = String(p.slug || '').trim();
+        const boxShot = String(p.img || '').replace(/[?#].*$/, '') || (slug ? `/products/${slug}-2.jpg` : '');
+        return {
           productId: p.id,
+          slug,
           name: p.name,
           weight: p.weight || p.variants?.[0]?.w || p.variants?.[0]?.weight || '',
           qty: p.qty,
-        })),
+          imageUrl: boxShot,
+          images: [boxShot, slug ? `/products/${slug}-2.jpg` : '', slug ? `/products/${slug}-1.jpg` : ''].filter(Boolean),
+        };
+      });
+      const payload = {
+        products: productPayload,
+        boxType: styleObj.type || styleObj.name,
+        packaging: styleObj.type || styleObj.name,
+        packagingKind: styleObj.packagingKind || styleObj.category,
+        layoutType: styleObj.layoutType,
+        hamperId: state.style,
+        hamperName: styleObj.name,
+        hamperImage: styleObj.img,
+        hamperImages: styleObj.images || [],
+        budget: state.budget,
+        productSelections: productPayload,
         giftCard: {
           name: card.custom && state.message ? 'Custom Gift Card' : card.name,
           message: state.message || '',
           recipient: state.recipient || '',
+          included: Boolean(String(state.message || '').trim()),
+          style: card.name,
         },
       };
       const r = await requestHamperPreview(payload);
@@ -603,15 +629,7 @@ export default function BuildHamper() {
         setPreviewNote('Preview generation had trouble, here\'s what\'s inside.');
       }
     } catch (err) {
-      const quota = err?.response?.data?.error === 'quota';
-      const busy = err?.response?.data?.error === 'busy';
-      setPreviewNote(
-        quota
-          ? 'Image models have no free quota on this Gemini key. Add billing in Google AI Studio (or Vertex AI) to generate hamper photos.'
-          : busy
-            ? 'The photo studio is busy. Wait a few seconds and tap Generate AI Preview again.'
-            : 'Preview generation had trouble, here\'s what\'s inside.',
-      );
+      setPreviewNote(err?.message || 'Preview generation had trouble, here\'s what\'s inside.');
     } finally {
       clearInterval(iv);
       setPreviewProgress(100);
@@ -1020,18 +1038,18 @@ export default function BuildHamper() {
                   const added = qty > 0;
                   const wished = has(p.id);
                   const href = `/product/${p.slug || p.id}`;
-                  const frontImg = p.img || `/products/${p.slug}-1.jpg`;
+                  const frontImg = p.img || `/products/${p.slug}-2.jpg`;
                   return (
                     <div
                       key={p.id}
                       className="rounded-xl bg-white border border-[#E8E4DF] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(60,36,21,0.04)] hover:shadow-[0_8px_20px_rgba(60,36,21,0.08)] transition-shadow"
                     >
-                      <div className="relative aspect-square bg-[#F4EDE3] overflow-hidden">
+                      <div className="relative aspect-square bg-white overflow-hidden">
                         <Link to={href} className="absolute inset-0 block">
                           <img
                             src={frontImg}
                             alt={p.name}
-                            className="w-full h-full object-cover object-center"
+                            className="w-full h-full object-contain object-center"
                             loading="lazy"
                             decoding="async"
                           />
@@ -1296,8 +1314,8 @@ export default function BuildHamper() {
                     <h2 className="sk-section-title text-xl md:text-2xl">Hamper Preview</h2>
                     <p className="text-sm text-[var(--sk-ink-600)] mt-1">
                       {chosen.length
-                        ? `AI preview of your ${styleObj.type || styleObj.name} packed with ${chosen.map(hamperProductLabel).join(', ')}.`
-                        : 'Add at least one product before generating an AI preview.'}
+                        ? `Preview of your ${styleObj.name} packed with ${chosen.map(hamperProductLabel).join(', ')}.`
+                        : 'Add at least one product before generating a preview.'}
                     </p>
                     {previewNote && <p className="text-sm text-ink-500 mt-2">{previewNote}</p>}
                     <button
@@ -1320,7 +1338,7 @@ export default function BuildHamper() {
                             />
                           ) : (
                             <div className="w-full h-full grid place-items-center text-sm text-[var(--sk-ink-500)] p-6 text-center">
-                              Choose a hamper and products, then generate the AI preview.
+                              Choose a hamper and products, then generate the preview.
                             </div>
                           )}
                         </div>

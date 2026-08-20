@@ -4,7 +4,7 @@
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
 import { envGet, GEMINI_AUTH_HELP, isGeminiAuthFailure } from './geminiEnv.js';
-import { generateVertexContent, generateVertexImage, vertexImageEnabled } from './vertexImage.js';
+import { generateVertexContent, vertexImageEnabled } from './vertexImage.js';
 
 const FALLBACK_MODEL = 'gemini-flash-latest';
 const SKIP = /lite|tts|image|video|audio|1\.5|gemini-pro$|gemini-1\.0|computer-use|robotics|lyria|deep-research|antigravity|gemma-|omni-|eap|customtools/i;
@@ -208,18 +208,27 @@ function firstInlineImage(json) {
   };
 }
 
-async function generateImageWithKey({ key, prompt, label = 'image' }) {
+async function generateImageWithKey({ key, prompt, label = 'image', referenceImages }) {
   const listed = await listModels(key, 'v1beta');
   const ids = generateContentIds(listed);
   const listedImage = ids.filter((id) => /image/i.test(id) && !/tts|video|audio|lite/i.test(id));
+  const envModel = (envGet('GEMINI_IMAGE_MODEL') || '').trim().replace(/^models\//, '');
   const queue = [
+    envModel,
     ...IMAGE_MODELS.filter((id) => !ids.length || ids.includes(id)),
     ...listedImage.filter((id) => !IMAGE_MODELS.includes(id)),
-  ];
+  ].filter(Boolean);
   const seen = new Set();
   let lastErr = null;
+  const refs = Array.isArray(referenceImages) ? referenceImages.filter((img) => img?.data) : [];
+  const parts = [
+    { text: prompt },
+    ...refs.map((img) => ({
+      inlineData: { mimeType: img.mimeType || 'image/jpeg', data: img.data },
+    })),
+  ];
 
-  console.log(`[Sukhmal Gemini] ${label} candidate image models: ${queue.join(', ') || '(none)'}`);
+  console.log(`[Sukhmal Gemini] ${label} candidate image models: ${queue.join(', ') || '(none)'} refs=${refs.length}`);
 
   for (const model of queue) {
     if (!model || seen.has(model)) continue;
@@ -235,8 +244,11 @@ async function generateImageWithKey({ key, prompt, label = 'image' }) {
         'x-goog-api-key': key,
       },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+        contents: [{ role: 'user', parts }],
+        generationConfig: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          imageConfig: { aspectRatio: '1:1' },
+        },
       }),
     });
     const json = await res.json().catch(() => ({}));
@@ -262,26 +274,17 @@ async function generateImageWithKey({ key, prompt, label = 'image' }) {
   throw lastErr || new Error('Gemini image request failed');
 }
 
-export async function generateGeminiImage({ key, prompt, label = 'image', referenceImage }) {
-  let vertexErr = null;
-  if (vertexImageEnabled()) {
-    try {
-      return await generateVertexImage({ prompt, label, referenceImage });
-    } catch (err) {
-      vertexErr = err;
-      console.warn(`[Sukhmal Gemini] ${label} vertex path failed: ${String(err.message || '').slice(0, 300)}`);
-      const rateLimited = err.status === 429 || /resource has been exhausted|rate[- ]limit/i.test(err.message || '');
-      if (!rateLimited || !key || referenceImage) throw err;
-    }
+export async function generateGeminiImage({ key, prompt, label = 'image', referenceImage, referenceImages }) {
+  const refs = [];
+  const push = (img) => {
+    if (img?.data) refs.push(img);
+  };
+  push(referenceImage);
+  (Array.isArray(referenceImages) ? referenceImages : []).forEach(push);
+
+  if (key) {
+    return generateImageWithKey({ key, prompt, label, referenceImages: refs });
   }
-  if (key && !referenceImage) {
-    try {
-      return await generateImageWithKey({ key, prompt, label });
-    } catch (err) {
-      throw vertexErr || err;
-    }
-  }
-  if (vertexErr) throw vertexErr;
   const err = new Error(GEMINI_AUTH_HELP);
   err.code = 'not_configured';
   throw err;

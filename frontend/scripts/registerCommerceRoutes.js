@@ -69,7 +69,51 @@ function registerCommerceRoutes(app) {
   app.post('/api/create-order', async (req, res) => {
     const body = await readJson(req).catch(() => ({}));
     const orderId = String(body.orderId || '').trim();
-    if (body.paymentMethod === 'cod') return json(res, { orderId, paymentMethod: 'cod', skipPayment: true });
+    if (body.paymentMethod === 'cod') {
+      const key = process.env.RESEND_API_KEY;
+      const to = process.env.ADMIN_NOTIFY_EMAIL || process.env.REACT_APP_ADMIN_EMAIL || 'mayu.gulia156@gmail.com';
+      const from = process.env.RESEND_FROM || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
+      const order = body.order && typeof body.order === 'object' ? body.order : { orderId };
+      const customer = order.customer || {};
+      const addr = order.shippingAddress || {};
+      const items = Array.isArray(order.items) ? order.items : [];
+      const html = `
+        <p><strong>Order ID:</strong> ${order.orderId || orderId}</p>
+        <p><strong>Customer:</strong> ${customer.name || addr.name || ''} · ${customer.phone || addr.phone || ''}</p>
+        <p><strong>Payment:</strong> ${order.paymentMethod || 'cod'}</p>
+        <p><strong>Total:</strong> ₹${order.total ?? order.totals?.total ?? 0}</p>
+        <ul>${items.map((it) => `<li>${it.qty || 1} × ${it.name || it.productId || ''} — ₹${it.price || 0}</li>`).join('')}</ul>
+      `;
+      let owner = { skipped: true, reason: 'missing_key_or_to' };
+      if (key && to) {
+        const r = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from, to: [to], subject: `New order ${order.orderId || orderId}`, html }),
+        });
+        const data = await r.json().catch(() => ({}));
+        owner = { ok: r.ok, status: r.status, id: data.id || null, skipped: false, reason: data.message || null };
+        if (customer.email) {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from,
+              to: [customer.email],
+              subject: `Order ${order.orderId || orderId} received — Sukhmal Dry Fruits`,
+              html: `${html}<p>Track it with Order ID <strong>${order.orderId || orderId}</strong>.</p>`,
+            }),
+          }).catch(() => {});
+        }
+      }
+      return json(res, {
+        orderId,
+        paymentMethod: 'cod',
+        skipPayment: true,
+        ownerNotified: Boolean(owner.ok),
+        ownerNotify: owner,
+      });
+    }
     const keyId = process.env.RAZORPAY_KEY_ID;
     const secret = process.env.RAZORPAY_KEY_SECRET;
     if (!keyId || !secret) {

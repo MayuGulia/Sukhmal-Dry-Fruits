@@ -1,54 +1,153 @@
-export function normalizeHamperProducts(body) {
-  const names = [];
-  const push = (raw) => {
-    const text = String(raw || '').replace(/\s+/g, ' ').trim();
-    if (text) names.push(text);
-  };
+export function layoutFromHamper(body = {}) {
+  const explicit = String(body.layoutType || body.layout_type || '').toLowerCase();
+  if (explicit === 'compartment' || explicit === 'open_arrangement') return explicit;
+  const kind = String(
+    body.packagingKind || body.packaging || body.boxType || body.category || '',
+  ).toLowerCase();
+  return /box|compartment/.test(kind) ? 'compartment' : 'open_arrangement';
+}
+
+export function normalizeHamperProductItems(body) {
+  const items = [];
   const fromItem = (item) => {
     if (!item) return;
     if (typeof item === 'string') {
-      push(item);
+      const name = item.replace(/\s+/g, ' ').trim();
+      if (name) items.push({ name, quantity: 1, imageUrl: '' });
       return;
     }
-    const name = item.name || item.productName || '';
+    const name = String(item.name || item.productName || '').replace(/\s+/g, ' ').trim();
     if (!name) return;
-    const weight = item.weight || item.variant || '';
-    const qty = Number(item.qty) > 1 ? ` ×${item.qty}` : '';
-    push(`${name}${weight ? ` ${weight}` : ''}${qty}`);
+    const weight = String(item.weight || item.variant || '').trim();
+    const qty = Math.max(1, Number(item.qty || item.quantity) || 1);
+    const imageUrl = String(
+      item.imageUrl
+        || item.img
+        || item.image
+        || item.referenceImageUrl
+        || (Array.isArray(item.images) ? item.images[0] : '')
+        || '',
+    ).trim();
+    items.push({
+      name: `${name}${weight ? ` ${weight}` : ''}`.trim(),
+      quantity: qty,
+      imageUrl,
+    });
   };
 
-  (Array.isArray(body?.products) ? body.products : []).forEach(fromItem);
-  if (!names.length) {
-    (Array.isArray(body?.productSelections) ? body.productSelections : []).forEach(fromItem);
-  }
-  return [...new Set(names)].slice(0, 12);
+  const selections = Array.isArray(body?.productSelections) ? body.productSelections : [];
+  const products = Array.isArray(body?.products) ? body.products : [];
+  (selections.length ? selections : products).forEach(fromItem);
+  if (!items.length) products.forEach(fromItem);
+
+  const seen = new Set();
+  return items.filter((item) => {
+    if (seen.has(item.name)) return false;
+    seen.add(item.name);
+    return true;
+  }).slice(0, 12);
+}
+
+export function normalizeHamperProducts(body) {
+  return normalizeHamperProductItems(body).map((item) => (
+    item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name
+  ));
 }
 
 export function normalizeGiftCard(raw) {
-  if (!raw) return { name: 'Especially For You', message: '', recipient: '' };
-  if (typeof raw === 'string') return { name: raw.trim() || 'Especially For You', message: '', recipient: '' };
+  if (!raw) return { name: 'Especially For You', message: '', recipient: '', included: false, style: '' };
+  if (typeof raw === 'string') {
+    const name = raw.trim() || 'Especially For You';
+    return { name, message: '', recipient: '', included: false, style: name };
+  }
+  const message = String(raw.message || '').trim().slice(0, 150);
+  const name = String(raw.name || raw.title || 'Especially For You').trim() || 'Especially For You';
+  const included = raw.included === true || (raw.included !== false && Boolean(message));
   return {
-    name: String(raw.name || raw.title || 'Especially For You').trim() || 'Especially For You',
-    message: String(raw.message || '').trim().slice(0, 150),
+    name,
+    message,
     recipient: String(raw.recipient || raw.to || '').trim().slice(0, 80),
+    included,
+    style: String(raw.style || raw.design || name).trim(),
   };
 }
 
-export function buildHamperImagePrompt({ products, boxType, hamperName, packaging, giftCard }) {
-  const list = (products || []).join(', ');
+function arrangementInstructions(layout, packaging) {
+  const kind = String(packaging || '').toLowerCase();
+  if (layout === 'compartment' || /box/.test(kind)) {
+    return `Box: populate the interior ONLY if the box is shown open in reference image 1.
+If the lid is closed in the reference, keep that closed look and do not invent an open interior.
+If it is open, fill visible compartments with the selected jars/packs. Preserve box material,
+color, compartment count/shape, ribbon, and lid. Fewer products than compartments: leave
+the rest empty — never duplicate or invent items.`;
+  }
+  if (/tray/.test(kind)) {
+    return `Tray: lay the selected products side by side on the tray surface. Keep the tray
+material, color, rim, and any handles exactly as in reference image 1. Do not stack extra
+items around the tray.`;
+  }
+  return `Open basket: nestle the selected jars/packs inside the basket so they sit naturally
+and slightly overlap, as a curated dry-fruit gift would. Keep basket weave, rim color,
+cellophane, ribbon, pearls, flowers, and other garnish from reference image 1.`;
+}
+
+export function buildHamperImagePrompt({
+  products,
+  boxType,
+  hamperName,
+  packaging,
+  giftCard,
+  layoutType,
+  hasHamperRef = false,
+  hasProductRefs = false,
+  hasCardRef = false,
+}) {
+  const items = Array.isArray(products) && products[0] && typeof products[0] === 'object'
+    ? products
+    : (products || []).map((name) => ({ name, quantity: 1 }));
   const hamper = String(hamperName || 'Sukhmal luxury gift hamper').trim();
   const box = String(packaging || boxType || 'luxury gift box').trim();
+  const layout = layoutType === 'compartment' ? 'compartment' : 'open_arrangement';
+  const productList = items
+    .map((item) => `- ${item.name} (qty ${item.quantity || 1})`)
+    .join('\n') || '- (none)';
   const card = normalizeGiftCard(giftCard);
-  const toLine = card.recipient ? ` addressed to ${card.recipient}` : '';
-  const msgLine = card.message ? ` The card text reads: "${card.message}".` : '';
+  const printedMessage = card.message || 'Especially For You';
+  const showCard = Boolean(hasCardRef || card.included);
 
-  return `Photorealistic commercial product photo of a Sukhmal Dry Fruits Korner gift hamper.
-Start from a completely EMPTY "${hamper}" in ${box} packaging, then pack it.
-The hamper is filled only with these selected dry-fruit products, in branded jars or pouches: ${list}.
-Each pack is distinct and recognizable. Do not invent extra snacks. Do not keep leftover fruits from a catalogue photo.
-A physical paper gift card titled "${card.name}"${toLine} sits in the front of the hamper.${msgLine}
-Gold ribbon, festive Indian gifting style, warm golden lighting, dark velvet surface, shallow depth of field, 4K product photography, front-facing view.
-The finished image must look like a real packed gift: the chosen empty hamper filled with the chosen products, the ${box} packaging, and the gift card together.`;
+  const hamperRefNote = hasHamperRef
+    ? 'attached as reference image 1 (the selected hamper/container)'
+    : `no photo attached — recreate a realistic ${box} named "${hamper}"`;
+  const productRefNote = hasProductRefs
+    ? 'attached after the hamper photo, in the same order as the list below. Use ONLY these exact jars/packs.'
+    : 'no product photos attached — match the listed Sukhmal jars exactly; do not invent other SKUs.';
+
+  const giftCardSection = showCard
+    ? `
+
+If a gift card design reference is attached, include a small card propped against the hamper
+(front-right), matching that design. Print the message "${printedMessage}" in a clean, readable
+handwritten-style font. If no custom message was provided, the printed line is "Especially For You"
+(or leave the writing area blank if the card artwork already shows that title).`
+    : `
+
+Do not add a gift card.`;
+
+  return `You are compositing a product preview image for an e-commerce gift hamper website.
+You will be given reference images:
+1. A reference hamper/container image showing the packaging style (basket weave, box type, tray, ribbon, color scheme): ${hamperRefNote}. Hamper name: "${hamper}". Packaging: "${box}". layout_type: "${layout}".
+2. One or more individual product photos (jars/packs of dry fruits, nuts, or snacks) that the customer has actually selected and added to this hamper: ${productRefNote}
+${productList}
+3. (Optional) A gift card design reference with a handwritten-style message area. included = ${showCard}.
+
+Your task: Generate ONE photorealistic image of the hamper from reference image 1, but populate/arrange it using ONLY the exact products shown in the product reference images — do not invent, substitute, or add any product not explicitly provided. Preserve the container's material, color, ribbon, and overall style exactly as shown in reference image 1. Match the lighting, camera angle, and background style of reference image 1 as closely as possible.
+
+Arrangement for this container:
+${arrangementInstructions(layout, box)}
+Match each product's real packaging, label, lid, and contents from its reference photo.
+${giftCardSection}
+
+Do not add text overlays, watermarks, logos, or price information anywhere in the image. Output should look like a professional product photography shot suitable for an e-commerce preview, front-facing angle, soft studio lighting, plain neutral background matching reference image 1. Aspect ratio 1:1, at least 1024x1024.`;
 }
 
 export function buildEmptyHamperPrompt({ boxType, hamperName, packaging }) {
@@ -62,32 +161,13 @@ Warm golden lighting, dark velvet surface, 4K catalog photography, front-facing 
 Do not add any products.`;
 }
 
-export function buildPackedHamperPrompt({ products, boxType, hamperName, packaging, giftCard, angle }) {
-  const list = (products || []).join(', ');
-  const hamper = String(hamperName || 'Sukhmal luxury gift hamper').trim();
-  const box = String(packaging || boxType || 'luxury gift box').trim();
-  const card = normalizeGiftCard(giftCard);
-  const toLine = card.recipient ? ` addressed to ${card.recipient}` : '';
-  const msgLine = card.message ? ` The card text reads: "${card.message}".` : '';
-  const views = {
-    front: 'Camera: eye-level FRONT view, looking straight at the open hamper.',
-    side: 'Camera: LEFT three-quarter view, showing the left side and front of the open hamper.',
-    top: 'Camera: TOP-DOWN view looking into the packed hamper from above.',
-  };
-  const camera = views[angle] || views.front;
-
-  return `The attached photo is the EMPTY selected "${hamper}" in ${box} packaging. Keep that same vessel, wood/weave/box material, lighting, and dark velvet surface.
-Fill the empty hamper only with these selected products in branded jars or pouches: ${list}.
-Do not invent extra snacks. Do not leave the hamper empty. Do not copy random catalogue fruit mixes.
-A physical paper gift card titled "${card.name}"${toLine} sits at the front of the packed hamper.${msgLine}
-${camera}
-Gold ribbon, festive Indian gifting style, warm golden lighting, 4K product photography.
-The result must be this exact hamper, packed with only the selected products, plus the gift card.`;
+export function buildPackedHamperPrompt(args) {
+  return buildHamperImagePrompt(args);
 }
 
 export function buildFreeformHamperPrompt(userPrompt) {
   const text = String(userPrompt || '').replace(/\s+/g, ' ').trim().slice(0, 500);
   return `Photorealistic commercial product photo for Sukhmal Dry Fruits Korner.
 ${text}
-Luxury Indian dry-fruit gift hamper, gold ribbon, warm studio lighting, cream marble or dark velvet surface, 4K catalog photography, no text overlay, no watermarks, no logos other than the product itself.`;
+Luxury Indian dry-fruit gift hamper, gold ribbon, warm studio lighting, cream marble or dark velvet surface, 4K catalog photography, no text overlay, no watermarks, no logos other than the product itself. Aspect ratio 1:1.`;
 }

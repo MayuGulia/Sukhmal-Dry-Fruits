@@ -1,5 +1,5 @@
 import { env } from './http.js';
-import { sendResend, ownerNotifyTo, ownerOrderHtml } from './notify.js';
+import { notifyCustomerOfOrder, notifyOwnerOfOrder } from './notify.js';
 
 let cached = null;
 
@@ -21,7 +21,7 @@ export async function adminDb() {
           }),
         });
       } else {
-        initializeApp({ projectId: 'sukhmal' });
+        initializeApp({ projectId });
       }
     }
     cached = { db: getFirestore('default'), FieldValue };
@@ -104,14 +104,8 @@ export async function confirmOrderPayment(orderId, extra = {}) {
 
   if (result.updated === true && result.order) {
     const order = result.order;
-    const sent = await sendResend({
-      to: ownerNotifyTo(),
-      subject: `New order ${order.orderId}`,
-      html: ownerOrderHtml(order),
-    });
-    if (!sent?.ok) {
-      console.error('owner order email failed', order.orderId, sent);
-    }
+    await notifyOwnerOfOrder(order);
+    await notifyCustomerOfOrder(order);
   }
 
   return result;

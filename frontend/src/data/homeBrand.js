@@ -2,11 +2,11 @@
  * Homepage assets locked to 01-home-page.jpeg structure.
  */
 
-/** Full-bleed walnut gift hamper with gold bow. */
-export const HERO_IMG = '/brand/hero-luxury-hamper-v5.png';
+/** Full-bleed walnut gift hamper with gold bow — native 1535×1024 (3:2). */
+export const HERO_IMG = '/brand/hero-luxury-hamper-v6.png';
 export const HERO_STILL_SRC = HERO_IMG;
 export const HERO_VIDEO_LAYOUT = 'cover';
-export const HERO_VIDEO_POSITION = '68% 46%';
+export const HERO_VIDEO_POSITION = '72% 46%';
 /**
  * Wedding hero uses homepage-hero.mp4 inside the same full-bleed frame as sukhmal.mp4
  * (min-h 80vh, object-fit cover). The clip is cropped to that landscape frame —

@@ -5,24 +5,15 @@ import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { packVariants } from '@/lib/commerceStore';
+import { boxCatalogShot } from '@/lib/liveCatalog';
 
-/** Category / offers cards use the packaged jar/box (gallery image 2). Gift hampers stay on image 1. */
-const PACKAGING_LISTING_CATEGORIES = new Set([
-  'dry-fruits',
-  'nuts',
-  'seeds',
-  'dates',
-  'berries',
-]);
-
+/** Product catalog cards use the packaged jar/box (gallery image 2). Gift hampers stay on image 1. */
 export function listingImage(p) {
-  const imgs = Array.isArray(p?.images) ? p.images.filter(Boolean) : [];
-  if (PACKAGING_LISTING_CATEGORIES.has(p?.category) && imgs[1]) return imgs[1];
-  return imgs[0] || p?.img || p?.image || '';
+  return boxCatalogShot(p) || p?.img || p?.image || '';
 }
 
 function usesPackShot(p) {
-  return PACKAGING_LISTING_CATEGORIES.has(p?.category);
+  return Boolean(listingImage(p));
 }
 
 function listingImgClass(p) {
@@ -256,22 +247,22 @@ export function TrustStrip({ overlay = false }) {
     { Ic: Truck, label: 'Express Delivery', sub: 'Across India' },
   ];
   const inner = (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-6 gap-x-6 py-7 md:py-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-4 gap-x-6 py-5 md:py-6">
       {items.map(({ Ic, label, sub }, i) => (
         <div
           key={label}
           className={`flex items-center gap-3.5 justify-center px-2 ${
-            i > 0 ? 'lg:border-l lg:border-[var(--sk-line-strong)]/70' : ''
+            i > 0 ? 'lg:border-l lg:border-[#E8DFD3]' : ''
           }`}
         >
-          <div className="shrink-0 h-10 w-10 grid place-items-center rounded-full border border-[var(--sk-gold-600)] text-[var(--sk-gold-600)]">
-            <Ic size={16} strokeWidth={1.35} />
+          <div className="shrink-0 h-10 w-10 grid place-items-center rounded-full border-2 border-[#D4AF37] text-[#C59B27] bg-white">
+            <Ic size={16} strokeWidth={1.75} />
           </div>
           <div className="min-w-0">
-            <div className="font-display font-semibold text-[14px] md:text-[15px] leading-tight tracking-[0.02em] text-brand-900">
+            <div className="font-display font-semibold text-[14px] md:text-[15px] leading-tight tracking-[0.02em] text-[var(--sk-brown-900)]">
               {label}
             </div>
-            <div className="text-[11px] mt-0.5 leading-snug tracking-[0.04em] text-ink-500">{sub}</div>
+            <div className="text-[11px] mt-0.5 leading-snug tracking-[0.04em] text-[var(--sk-brown-700)]">{sub}</div>
           </div>
         </div>
       ))}
@@ -279,13 +270,13 @@ export function TrustStrip({ overlay = false }) {
   );
   if (overlay) {
     return (
-      <div className="absolute inset-x-0 bottom-0 z-20 bg-[#F3EBE0]/95 backdrop-blur-[2px] border-t border-[var(--sk-line)]">
+      <div className="sk-trust-mix">
         <div className="sk-container">{inner}</div>
       </div>
     );
   }
   return (
-    <div className="bg-[#F3EBE0] border-y border-[var(--sk-line)]">
+    <div className="bg-white border-b border-[#EDE6DC]">
       <div className="sk-container">{inner}</div>
     </div>
   );

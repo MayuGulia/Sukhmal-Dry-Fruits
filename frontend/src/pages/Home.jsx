@@ -68,12 +68,12 @@ function HeroPhoto({ className, position = HERO_VIDEO_POSITION }) {
   return (
     <img
       src={HERO_IMG}
-      alt="Premium walnut wooden gift hamper with gold ribbon bow and gold-lidded jars of almonds, cashews, pistachios, walnuts, dates and raisins"
-      width={1920}
-      height={1080}
+      alt="Sukhmal premium dry fruit gift hamper in a walnut wooden caddy with gold ribbon bow and gold-lidded jars of almonds, cashews, pistachios, walnuts, dates and raisins"
+      width={1535}
+      height={1024}
       fetchPriority="high"
       decoding="sync"
-      className={className}
+      className={`sk-hero-photo ${className || ''}`}
       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: position }}
     />
   );
@@ -92,12 +92,12 @@ function ViewAllLink({ to, children }) {
 
 function HeroCopy() {
   return (
-    <div className="relative w-full max-w-[20.5rem] sm:max-w-sm md:max-w-md lg:max-w-lg text-left pr-4 md:pr-8">
-      <p className="mb-5 flex items-center gap-3 text-[11px] font-semibold tracking-[0.22em] uppercase text-[var(--sk-gold-600)]">
+    <div className="relative w-full max-w-[20.5rem] sm:max-w-sm md:max-w-md lg:max-w-lg text-left pr-4 md:pr-8 home-fade-up">
+      <p className="mb-5 flex items-center gap-3 text-[11px] font-semibold tracking-[0.22em] uppercase text-[var(--sk-gold-600)] drop-shadow-[0_1px_8px_rgba(255,252,247,0.85)]">
         <span className="h-px w-8 bg-[var(--sk-gold-600)]/80" aria-hidden />
         Estd. 1994 · Premium Gifting
       </p>
-      <h1 className="font-display text-[2.25rem] sm:text-[2.7rem] md:text-[3.15rem] lg:text-[3.4rem] font-semibold leading-[1.12] tracking-[-0.02em] text-brand-900">
+      <h1 className="font-display text-[2.35rem] sm:text-[2.85rem] md:text-[3.25rem] lg:text-[3.55rem] font-semibold leading-[1.1] tracking-[-0.02em] text-brand-900 [text-shadow:0_2px_24px_rgba(255,250,242,0.9)]">
         <span>Crafted with Care.</span>
         <br />
         <span>Gifted with </span>
@@ -107,21 +107,21 @@ function HeroCopy() {
         <span className="h-px w-14 bg-[var(--sk-gold-600)]/70" />
         <span className="h-1.5 w-1.5 rotate-45 bg-[var(--sk-gold-600)]" />
       </span>
-      <p className="mt-5 text-ink-600 text-[14px] md:text-[16px] leading-[1.7] font-light max-w-md">
+      <p className="mt-5 text-ink-600 text-[14px] md:text-[16px] leading-[1.7] font-light max-w-md [text-shadow:0_1px_12px_rgba(255,250,242,0.95)]">
         Premium Dry Fruits & Handcrafted Gift Hampers for Every Celebration.
       </p>
       <div className="mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <Link
           to="/gift-hampers"
           data-testid="hero-explore-hampers"
-          className="inline-flex items-center justify-center gap-2 text-[14px] font-semibold !py-3.5 !px-6 rounded-full bg-[var(--sk-espresso)] text-white hover:bg-brand-800 transition-colors shadow-[0_8px_20px_rgba(31,22,16,0.16)]"
+          className="inline-flex items-center justify-center gap-2 text-[14px] font-semibold !py-3.5 !px-6 rounded-full bg-[var(--sk-espresso)] text-white hover:bg-brand-800 transition-colors shadow-[0_10px_28px_rgba(31,22,16,0.22)]"
         >
           Explore Gift Hampers <ChevronRight size={16} />
         </Link>
         <Link
           to="/build-hamper/budget"
           data-testid="hero-build-hamper"
-          className="inline-flex items-center justify-center gap-2 text-[14px] font-semibold !py-3.5 !px-6 rounded-full border border-brand-900/30 bg-white/80 text-brand-900 hover:bg-white transition-colors backdrop-blur-[2px]"
+          className="inline-flex items-center justify-center gap-2 text-[14px] font-semibold !py-3.5 !px-6 rounded-full border border-brand-900/20 bg-white/70 text-brand-900 hover:bg-white transition-colors backdrop-blur-md shadow-[0_6px_20px_rgba(31,22,16,0.08)]"
         >
           Build Your Own Hamper <ChevronRight size={16} />
         </Link>
@@ -161,13 +161,13 @@ export default function Home() {
     <div className="home-page bg-white">
       {/* ─── HERO ─── */}
       <section
-        className="relative overflow-hidden w-full aspect-[16/9] min-h-[420px] max-h-[min(82vh,820px)] flex flex-col justify-center bg-[#F3EBE0]"
+        className="relative overflow-hidden w-full min-h-[580px] h-[min(84vh,860px)] flex flex-col justify-center bg-[#E8DCC8]"
         data-testid="home-hero"
         data-hero-layout="cover"
       >
         <div className="absolute inset-0 overflow-hidden">
           <HeroPhoto className="absolute inset-0 w-full h-full object-cover" />
-          <div className="sk-hero-shade" />
+          <div className="sk-hero-shade" aria-hidden />
         </div>
 
         <div className="relative z-10 w-full py-14 md:py-16 lg:py-20">
@@ -175,6 +175,7 @@ export default function Home() {
             <HeroCopy />
           </div>
         </div>
+        <div className="sk-hero-to-strip" aria-hidden />
       </section>
       <TrustStrip />
 

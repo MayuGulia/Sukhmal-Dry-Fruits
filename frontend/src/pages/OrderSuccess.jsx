@@ -164,7 +164,7 @@ export default function OrderSuccess() {
               </div>
 
               <p className="text-sm text-ink-600 mt-5 text-center">
-                We have sent the order details to your registered email and phone number.
+                The store has been notified. If you used an email account, a confirmation is sent there. Save your Order ID to track this order. SMS is not sent yet.
               </p>
             </div>
 
@@ -242,7 +242,7 @@ export default function OrderSuccess() {
               </div>
             ) : (
               <p className="mt-4 text-sm text-ink-500 text-center">
-                Order <span className="font-mono text-brand-900">{orderId}</span> is confirmed. A full receipt was emailed to you.
+                Order <span className="font-mono text-brand-900">{orderId}</span> is confirmed. Save this ID to track it.
               </p>
             )}
           </aside>

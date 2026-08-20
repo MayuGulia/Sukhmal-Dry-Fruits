@@ -4,7 +4,7 @@
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
 import { envGet, GEMINI_AUTH_HELP, isGeminiAuthFailure, isZeroImageQuota } from './geminiEnv.js';
-import { generateVertexContent, generateVertexImage, vertexImageEnabled } from './vertexImage.js';
+import { generateVertexContent, vertexImageEnabled } from './vertexImage.js';
 
 const FALLBACK_MODEL = 'gemini-flash-latest';
 const SKIP = /lite|tts|image|video|audio|1\.5|gemini-pro$|gemini-1\.0|computer-use|robotics|lyria|deep-research|antigravity|gemma-|omni-|eap|customtools/i;
@@ -22,6 +22,17 @@ const IMAGE_MODELS = [
   'gemini-3-pro-image-preview',
   'gemini-3.1-flash-image',
   'gemini-3.1-flash-lite-image',
+];
+const DESCRIBE_MODELS = [
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-001',
+  'gemini-flash-latest',
+];
+const TEXT_TO_IMAGE_MODELS = [
+  'gemini-2.0-flash-preview-image-generation',
+  'gemini-2.0-flash-exp-image-generation',
+  'gemini-2.5-flash-image',
+  'gemini-2.5-flash-image-preview',
 ];
 
 export function configuredGeminiModel() {
@@ -435,11 +446,82 @@ function firstInteractionsImage(json) {
   return null;
 }
 
-function imageModelQueue() {
-  return [...IMAGE_MODELS];
+function imageModelQueue(editFirstImage, textToImage) {
+  const envModel = (envGet('GEMINI_IMAGE_MODEL') || '').trim().replace(/^models\//, '');
+  if (textToImage) {
+    return [...new Set([envModel, ...TEXT_TO_IMAGE_MODELS].filter(Boolean))];
+  }
+  const preferred = editFirstImage
+    ? ['gemini-2.5-flash-image', ...IMAGE_MODELS]
+    : IMAGE_MODELS;
+  return [...new Set([envModel, ...preferred].filter(Boolean))];
 }
 
-async function generateWithInteractions({ key, prompt, label, model, auth }) {
+function normalizeImageRefs(referenceImage, referenceImages) {
+  const list = [];
+  const push = (img) => {
+    if (!img) return;
+    const data = img.data || img.inlineData?.data;
+    if (!data) return;
+    list.push({
+      mimeType: img.mimeType || img.inlineData?.mimeType || 'image/jpeg',
+      data: String(data).replace(/\s/g, ''),
+    });
+  };
+  push(referenceImage);
+  (Array.isArray(referenceImages) ? referenceImages : []).forEach(push);
+  return list.slice(0, 8);
+}
+
+function interactionsInput(prompt, referenceImages, imageLabels, editFirstImage) {
+  const refs = referenceImages || [];
+  if (!refs.length) return prompt;
+  const chunks = [];
+  const label = (i) => imageLabels?.[i] || (i === 0 && editFirstImage
+    ? 'PHOTO TO EDIT:'
+    : `Reference photo ${i + 1}:`);
+  if (editFirstImage && refs[0]) {
+    chunks.push({ type: 'text', text: label(0) });
+    chunks.push({ type: 'image', mime_type: refs[0].mimeType, data: refs[0].data });
+    chunks.push({ type: 'text', text: prompt });
+    refs.slice(1).forEach((img, i) => {
+      chunks.push({ type: 'text', text: label(i + 1) });
+      chunks.push({ type: 'image', mime_type: img.mimeType, data: img.data });
+    });
+    return chunks;
+  }
+  return [
+    { type: 'text', text: prompt },
+    ...refs.map((img, i) => ({ type: 'text', text: label(i) })),
+    ...refs.map((img) => ({
+      type: 'image',
+      mime_type: img.mimeType,
+      data: img.data,
+    })),
+  ];
+}
+
+function generateContentParts(prompt, referenceImages, imageLabels, editFirstImage) {
+  const refs = referenceImages || [];
+  if (editFirstImage && refs[0]) {
+    const parts = [{ inlineData: { mimeType: refs[0].mimeType, data: refs[0].data } }];
+    parts.push({ text: prompt });
+    refs.slice(1).forEach((img) => {
+      parts.push({ inlineData: { mimeType: img.mimeType, data: img.data } });
+    });
+    return parts;
+  }
+  const label = (i) => imageLabels?.[i] || `Reference photo ${i + 1}:`;
+  return [
+    { text: prompt },
+    ...refs.flatMap((img, i) => [
+      { text: label(i) },
+      { inlineData: { mimeType: img.mimeType, data: img.data } },
+    ]),
+  ];
+}
+
+async function generateWithInteractions({ key, prompt, label, model, auth, referenceImages, imageLabels, editFirstImage }) {
   const { res, json, msg } = await postJson(
     'https://generativelanguage.googleapis.com/v1beta/interactions',
     {
@@ -448,7 +530,7 @@ async function generateWithInteractions({ key, prompt, label, model, auth }) {
       extraHeaders: { 'Api-Revision': '2026-05-20' },
       body: {
         model,
-        input: prompt,
+        input: interactionsInput(prompt, referenceImages, imageLabels, editFirstImage),
         response_format: {
           type: 'image',
           mime_type: 'image/jpeg',
@@ -477,13 +559,16 @@ async function generateWithInteractions({ key, prompt, label, model, auth }) {
   return { ...image, model, apiVersion: 'v1beta' };
 }
 
-async function generateImageWithContent({ key, prompt, label, model, auth }) {
+async function generateImageWithContent({ key, prompt, label, model, auth, referenceImages, imageLabels, editFirstImage }) {
   const { res, json, msg } = await postJson(geminiGenerateUrl('v1beta', model), {
     key,
     auth,
     body: {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+      contents: [{ role: 'user', parts: generateContentParts(prompt, referenceImages, imageLabels, editFirstImage) }],
+      generationConfig: {
+        responseModalities: ['TEXT', 'IMAGE'],
+        imageConfig: { aspectRatio: '1:1' },
+      },
     },
     label: `${label}:generateContent`,
     model,
@@ -505,10 +590,12 @@ async function generateImageWithContent({ key, prompt, label, model, auth }) {
   return { ...image, model, apiVersion: 'v1beta' };
 }
 
-function imageTransports(key) {
-  const apis = isAuthKey(key)
-    ? [generateWithInteractions, generateImageWithContent]
-    : [generateImageWithContent, generateWithInteractions];
+function imageTransports(key, editFirstImage, textToImage) {
+  const apis = (editFirstImage || textToImage)
+    ? [generateImageWithContent]
+    : (isAuthKey(key)
+      ? [generateWithInteractions, generateImageWithContent]
+      : [generateImageWithContent, generateWithInteractions]);
   const attempts = [];
   for (const api of apis) {
     for (const auth of authAttempts(key)) {
@@ -518,17 +605,21 @@ function imageTransports(key) {
   return attempts;
 }
 
-async function generateImageWithKey({ key, prompt, label }) {
-  const queue = imageModelQueue();
-  const transports = imageTransports(key);
+async function generateImageWithKey({ key, prompt, label, referenceImages, imageLabels, editFirstImage, textToImage }) {
+  const queue = imageModelQueue(editFirstImage, textToImage);
+  const transports = imageTransports(key, editFirstImage, textToImage);
   let lastErr = null;
   let sawAuthFailure = false;
-  console.log(`[Sukhmal Gemini] ${label} image candidates: ${queue.join(', ')}`);
+  console.log(
+    `[Sukhmal Gemini] ${label} image candidates: ${queue.join(', ')} refs=${(referenceImages || []).length} img2img=${Boolean(editFirstImage)} t2i=${Boolean(textToImage)}`,
+  );
 
   for (const model of queue) {
     for (const { api, auth } of transports) {
       try {
-        return await api({ key, prompt, label, model, auth });
+        return await api({
+          key, prompt, label, model, auth, referenceImages, imageLabels, editFirstImage,
+        });
       } catch (err) {
         const msg = err.message || '';
         const status = err.status || 0;
@@ -556,26 +647,76 @@ async function generateImageWithKey({ key, prompt, label }) {
   throw lastErr || new Error('Gemini image request failed');
 }
 
-export async function generateGeminiImage({ key, prompt, label = 'image', referenceImage }) {
-  let vertexErr = null;
-  if (vertexImageEnabled()) {
-    try {
-      return await generateVertexImage({ prompt, label, referenceImage });
-    } catch (err) {
-      vertexErr = err;
-      console.warn(`[Sukhmal Gemini] ${label} vertex path failed: ${String(err.message || '').slice(0, 300)}`);
-      const rateLimited = err.status === 429 || /resource has been exhausted|rate[- ]limit/i.test(err.message || '');
-      if (!rateLimited || !key || referenceImage) throw err;
+export async function generateGeminiDescribe({ key, prompt, images, label = 'describe' }) {
+  if (!key) {
+    const err = new Error(GEMINI_AUTH_HELP);
+    err.code = 'not_configured';
+    throw err;
+  }
+  const parts = [
+    { text: prompt },
+    ...(images || []).filter((img) => img?.data).map((img) => ({
+      inlineData: { mimeType: img.mimeType || 'image/jpeg', data: img.data },
+    })),
+  ];
+  const body = { contents: [{ role: 'user', parts }] };
+  const queue = [...new Set(DESCRIBE_MODELS)];
+  const attempts = authAttempts(key).map((auth) => ({ api: generateWithContent, auth }));
+  let lastErr = null;
+  console.log(`[Sukhmal Gemini] ${label} describe models: ${queue.join(', ')} images=${(images || []).length}`);
+
+  for (const model of queue) {
+    for (const { api, auth } of attempts) {
+      try {
+        return await api({ key, model, body, label, auth });
+      } catch (err) {
+        const status = err.status || 0;
+        const msg = err.message || '';
+        console.warn(
+          `[Sukhmal Gemini] ${label} failed model=${model} api=${api.name} auth=${auth.name} status=${status} message=${msg}`,
+        );
+        lastErr = err;
+        if (isGeminiAuthFailure(status, msg)) continue;
+        if (shouldTryNextModel(status, msg) || /empty response/i.test(msg)) continue;
+        throw err;
+      }
     }
   }
-  if (key && !referenceImage) {
-    try {
-      return await generateImageWithKey({ key, prompt, label });
-    } catch (err) {
-      throw vertexErr || err;
-    }
+  if (lastErr && isGeminiAuthFailure(lastErr.status, lastErr.message)) throw authError(lastErr.message);
+  throw lastErr || new Error('Gemini describe request failed');
+}
+
+export async function generateGeminiImageFromText({ key, prompt, label = 'image' }) {
+  if (!key) {
+    const err = new Error(GEMINI_AUTH_HELP);
+    err.code = 'not_configured';
+    throw err;
   }
-  if (vertexErr) throw vertexErr;
+  return generateImageWithKey({
+    key,
+    prompt,
+    label,
+    referenceImages: [],
+    editFirstImage: false,
+    textToImage: true,
+  });
+}
+
+export async function generateGeminiImage({
+  key,
+  prompt,
+  label = 'image',
+  referenceImage,
+  referenceImages,
+  imageLabels,
+  editFirstImage = true,
+}) {
+  const refs = normalizeImageRefs(referenceImage, referenceImages);
+  if (key) {
+    return generateImageWithKey({
+      key, prompt, label, referenceImages: refs, imageLabels, editFirstImage: Boolean(editFirstImage && refs.length),
+    });
+  }
   const err = new Error(GEMINI_AUTH_HELP);
   err.code = 'not_configured';
   throw err;

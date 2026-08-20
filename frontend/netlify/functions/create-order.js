@@ -1,6 +1,47 @@
 import { json, env } from './_shared/http.js';
 import { adminDb, orderAmountPaise } from './_shared/firebaseAdmin.js';
-import { sendResend, ownerNotifyTo, ownerOrderHtml } from './_shared/notify.js';
+import { notifyCustomerOfOrder, notifyOwnerOfOrder } from './_shared/notify.js';
+
+function orderFromBody(body, orderId) {
+  const raw = body.order && typeof body.order === 'object' ? body.order : body;
+  return {
+    orderId: raw.orderId || orderId,
+    customer: raw.customer || {},
+    shippingAddress: raw.shippingAddress || null,
+    items: Array.isArray(raw.items) ? raw.items : [],
+    totals: raw.totals || {},
+    total: raw.total ?? raw.totals?.total ?? 0,
+    paymentMethod: raw.paymentMethod || 'cod',
+    eta: raw.eta || '',
+  };
+}
+
+async function loadCodOrder(orderId, body) {
+  const admin = await adminDb();
+  if (admin) {
+    try {
+      const snap = await admin.db.collection('orders').doc(orderId).get();
+      if (snap.exists) {
+        const data = snap.data() || {};
+        return { ...data, orderId: data.orderId || orderId };
+      }
+    } catch (err) {
+      console.error('cod order firestore read failed', orderId, err?.message);
+    }
+  }
+  return orderFromBody(body, orderId);
+}
+
+async function notifyCodOrder(order) {
+  const owner = await notifyOwnerOfOrder(order);
+  const customer = await notifyCustomerOfOrder(order);
+  return {
+    ownerNotified: Boolean(owner?.ok),
+    customerNotified: Boolean(customer?.ok),
+    ownerNotify: { ok: owner?.ok || false, status: owner?.status || null, id: owner?.id || null, skipped: owner?.skipped || false, reason: owner?.reason || owner?.data?.message || null },
+    customerNotify: { ok: customer?.ok || false, status: customer?.status || null, id: customer?.id || null, skipped: customer?.skipped || false, reason: customer?.reason || customer?.data?.message || null },
+  };
+}
 
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -12,23 +53,9 @@ export default async (req) => {
 
   if (!orderId) return json({ error: 'invalid_order' }, 400);
   if (method === 'cod') {
-    const admin = await adminDb();
-    if (admin) {
-      const snap = await admin.db.collection('orders').doc(orderId).get();
-      if (snap.exists) {
-        const data = snap.data() || {};
-        const order = { ...data, orderId: data.orderId || orderId };
-        const sent = await sendResend({
-          to: ownerNotifyTo(),
-          subject: `New order ${order.orderId}`,
-          html: ownerOrderHtml(order),
-        });
-        if (!sent?.ok) {
-          console.error('owner order email failed', order.orderId, sent);
-        }
-      }
-    }
-    return json({ orderId, paymentMethod: 'cod', skipPayment: true });
+    const order = await loadCodOrder(orderId, body);
+    const notify = await notifyCodOrder(order);
+    return json({ orderId, paymentMethod: 'cod', skipPayment: true, ...notify });
   }
   if (!keyId || !secret) {
     return json({
@@ -44,7 +71,8 @@ export default async (req) => {
   if (!snap.exists) return json({ error: 'order_not_found' }, 404);
   const data = snap.data() || {};
   if (data.paymentMethod === 'cod') {
-    return json({ orderId, paymentMethod: 'cod', skipPayment: true });
+    const notify = await notifyCodOrder({ ...data, orderId: data.orderId || orderId });
+    return json({ orderId, paymentMethod: 'cod', skipPayment: true, ...notify });
   }
   if (data.paymentStatus === 'paid') return json({ error: 'already_paid' }, 409);
 
