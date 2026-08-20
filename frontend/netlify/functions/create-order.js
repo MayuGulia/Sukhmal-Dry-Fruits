@@ -1,5 +1,6 @@
 import { json, env } from './_shared/http.js';
 import { adminDb, orderAmountPaise } from './_shared/firebaseAdmin.js';
+import { sendResend, ownerNotifyTo, ownerOrderHtml } from './_shared/notify.js';
 
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -11,6 +12,22 @@ export default async (req) => {
 
   if (!orderId) return json({ error: 'invalid_order' }, 400);
   if (method === 'cod') {
+    const admin = await adminDb();
+    if (admin) {
+      const snap = await admin.db.collection('orders').doc(orderId).get();
+      if (snap.exists) {
+        const data = snap.data() || {};
+        const order = { ...data, orderId: data.orderId || orderId };
+        const sent = await sendResend({
+          to: ownerNotifyTo(),
+          subject: `New order ${order.orderId}`,
+          html: ownerOrderHtml(order),
+        });
+        if (!sent?.ok) {
+          console.error('owner order email failed', order.orderId, sent);
+        }
+      }
+    }
     return json({ orderId, paymentMethod: 'cod', skipPayment: true });
   }
   if (!keyId || !secret) {

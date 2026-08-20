@@ -1,15 +1,11 @@
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
-const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const { getFirestore } = require('firebase-admin/firestore');
 
-if (!admin.apps.length) admin.initializeApp();
-const db = admin.firestore();
-
-const resendKey = defineSecret('RESEND_API_KEY');
-const razorpayWebhookSecret = defineSecret('RAZORPAY_WEBHOOK_SECRET');
-const msg91Key = defineSecret('MSG91_AUTH_KEY');
+if (!admin.apps.length) admin.initializeApp({ projectId: 'sukhmal' });
+const db = getFirestore('default');
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'mayu.gulia156@gmail.com';
 const FROM_EMAIL = process.env.RESEND_FROM || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
@@ -100,13 +96,13 @@ async function markConfirmed(orderId, extra = {}) {
 }
 
 exports.onOrderCreated = onDocumentCreated(
-  { document: 'orders/{orderId}', secrets: [resendKey, msg91Key] },
+  { document: 'orders/{orderId}', database: 'default', secrets: ['RESEND_API_KEY', 'MSG91_AUTH_KEY'] },
   async (event) => {
     const order = event.data?.data() || {};
     const orderId = event.params.orderId;
     const payload = { ...order, orderId: order.orderId || orderId };
-    const apiKey = resendKey.value();
-    const smsKey = msg91Key.value();
+    const apiKey = process.env.RESEND_API_KEY;
+    const smsKey = process.env.MSG91_AUTH_KEY;
 
     await sendEmail({
       apiKey,
@@ -143,7 +139,7 @@ exports.onOrderCreated = onDocumentCreated(
 );
 
 exports.onOrderUpdated = onDocumentUpdated(
-  { document: 'orders/{orderId}' },
+  { document: 'orders/{orderId}', database: 'default' },
   async (event) => {
     const before = event.data?.before?.data() || {};
     const after = event.data?.after?.data() || {};
@@ -163,14 +159,16 @@ exports.onOrderUpdated = onDocumentUpdated(
   },
 );
 
+exports.generateHamperImage = require('./generateHamperImage').generateHamperImage;
+
 exports.razorpayWebhook = onRequest(
-  { secrets: [razorpayWebhookSecret, resendKey] },
+  { secrets: ['RAZORPAY_WEBHOOK_SECRET', 'RESEND_API_KEY'] },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('method');
       return;
     }
-    const secret = razorpayWebhookSecret.value();
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const raw = typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.body || {});
     const sig = req.get('x-razorpay-signature') || '';
     const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');

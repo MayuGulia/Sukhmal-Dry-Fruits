@@ -109,6 +109,9 @@ service cloud.firestore {
     match /aiPreviews/{id} {
       allow read, write: if false;
     }
+    match /imageCache/{id} {
+      allow read, write: if false;
+    }
     match /chatSessions/{id} {
       allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;

@@ -5,6 +5,35 @@ export const CUSTOMER_AI_FALLBACK =
 export const GEMINI_AUTH_HELP =
   'Gemini rejected this API key. Create a new key at https://aistudio.google.com/apikey, set GEMINI_API_KEY in frontend/.env, and restart the server. Do not paste the key into chat.';
 
+export function isGeminiAuthFailure(status, message) {
+  return (
+    status === 401 ||
+    status === 403 ||
+    /UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|invalid authentication credentials/i.test(message || '')
+  );
+}
+
+export function isZeroImageQuota(status, message) {
+  const msg = String(message || '');
+  return (
+    status === 429
+    && (/limit:\s*0/i.test(msg) || /free_tier/i.test(msg) || /exceeded your current quota/i.test(msg))
+  );
+}
+
+export function classifyGeminiFailure(err) {
+  const msg = String(err?.message || '');
+  const status = err?.status || 0;
+  const quota = err?.code === 'quota'
+    || /prepayment credits are depleted/i.test(msg)
+    || isZeroImageQuota(status, msg);
+  const busy = !quota && (
+    status === 429
+    || /resource has been exhausted|please retry in /i.test(msg)
+  );
+  return { quota, busy, message: msg, status };
+}
+
 export function envGet(name) {
   let fromNetlify = '';
   try {
@@ -25,4 +54,9 @@ export function geminiImageApiKey() {
 
 export function vertexEnterpriseEnabled() {
   return /^(1|true|yes)$/i.test(envGet('GOOGLE_GENAI_USE_ENTERPRISE') || envGet('GOOGLE_GENAI_USE_VERTEXAI'));
+}
+
+export function keyFingerprint(key) {
+  if (!key) return 'none';
+  return `${key.slice(0, 3)}…${key.slice(-4)}`;
 }

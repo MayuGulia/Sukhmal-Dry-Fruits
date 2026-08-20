@@ -1,5 +1,6 @@
 import { json, env } from './_shared/http.js';
 import { previewInventoryCommand, buildPreviewPayload } from './_shared/geminiInventory.js';
+import { CUSTOMER_AI_FALLBACK, GEMINI_AUTH_HELP } from './_shared/geminiEnv.js';
 
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'method', message: 'POST required' }, 405);
@@ -39,8 +40,14 @@ export default async (req) => {
     return json(buildPreviewPayload(result));
   } catch (err) {
     const code = err.code || 'gemini_error';
-    const status = code === 'not_configured' ? 501 : code === 'bad_request' || code === 'no_match' ? 422 : 502;
-    return json({ error: code, message: err.message || 'AI preview failed' }, status);
+    const status = code === 'not_configured' || code === 'gemini_auth' ? 501 : code === 'bad_request' || code === 'no_match' ? 422 : 502;
+    const message =
+      code === 'bad_request' || code === 'no_match'
+        ? (err.message || 'Could not understand that command')
+        : code === 'gemini_auth' || code === 'not_configured'
+          ? (err.message || GEMINI_AUTH_HELP)
+          : CUSTOMER_AI_FALLBACK;
+    return json({ error: code, message }, status);
   }
 };
 

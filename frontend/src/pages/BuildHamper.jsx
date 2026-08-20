@@ -4,7 +4,7 @@ import { inr } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { verifiedImg } from '@/data/verifiedImages';
-import { aiApi } from '@/lib/api';
+import { requestHamperPreview } from '@/lib/hamperImageCloud';
 import { saveHamperBuild } from '@/lib/commerceStore';
 import { listHamperBuilderProducts, mapHamperBuilderProduct, subscribeLiveProducts } from '@/lib/liveCatalog';
 import { HAMPERS } from '@/data/mockCatalog';
@@ -587,17 +587,17 @@ export default function BuildHamper() {
           recipient: state.recipient || '',
         },
       };
-      const r = await aiApi.post('/generate-hamper-image', payload, { timeout: 180000 });
-      if (r.data?.url || r.data?.views?.length) {
-        const views = Array.isArray(r.data.views) && r.data.views.length
-          ? r.data.views
-          : [{ key: 'front', label: 'Front', url: r.data.url }];
+      const r = await requestHamperPreview(payload);
+      if (r?.url || r?.views?.length) {
+        const views = Array.isArray(r.views) && r.views.length
+          ? r.views
+          : [{ key: 'front', label: 'Front', url: r.url }];
         setGeneratedViews(views);
         const packed = views.find((v) => v.key === 'front') || views.find((v) => v.key !== 'empty') || views[0];
-        setGeneratedPreview(packed?.url || r.data.url);
+        setGeneratedPreview(packed?.url || r.url);
         const frontIdx = Math.max(0, views.findIndex((v) => v.key === 'front'));
         setPreviewThumb(frontIdx);
-        saveHamperBuild({ hamperId: state.style, previewImageUrl: packed?.url || r.data.url, bumpGeneration: true });
+        saveHamperBuild({ hamperId: state.style, previewImageUrl: packed?.url || r.url, bumpGeneration: true });
         setPreviewNote('');
       } else {
         setPreviewNote('Preview generation had trouble, here\'s what\'s inside.');

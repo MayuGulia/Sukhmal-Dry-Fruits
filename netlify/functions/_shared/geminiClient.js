@@ -3,7 +3,7 @@
  * Interactions API is for multi-turn server-side sessions — not needed here.
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
-import { envGet, GEMINI_AUTH_HELP } from './geminiEnv.js';
+import { envGet, GEMINI_AUTH_HELP, isGeminiAuthFailure } from './geminiEnv.js';
 import { generateVertexContent, generateVertexImage, vertexImageEnabled } from './vertexImage.js';
 
 const FALLBACK_MODEL = 'gemini-flash-latest';
@@ -190,7 +190,8 @@ export async function generateGeminiContent({ key, label, body }) {
     const msg = json?.error?.message || `Gemini request failed (${res.status})`;
     console.warn(`[Sukhmal Gemini] ${label} failed model=${model} status=${res.status} message=${msg}`);
     lastErr = new Error(msg);
-    lastErr.code = 'gemini_error';
+    lastErr.status = res.status;
+    lastErr.code = isGeminiAuthFailure(res.status, msg) ? 'gemini_auth' : 'gemini_error';
     if (!shouldTryNextModel(res.status, msg)) throw lastErr;
   }
 
@@ -253,7 +254,8 @@ async function generateImageWithKey({ key, prompt, label = 'image' }) {
     const msg = json?.error?.message || `Gemini image request failed (${res.status})`;
     console.warn(`[Sukhmal Gemini] ${label} failed model=${model} status=${res.status} message=${msg}`);
     lastErr = new Error(msg);
-    lastErr.code = 'gemini_error';
+    lastErr.status = res.status;
+    lastErr.code = isGeminiAuthFailure(res.status, msg) ? 'gemini_auth' : 'gemini_error';
     if (!shouldTryNextModel(res.status, msg)) throw lastErr;
   }
 

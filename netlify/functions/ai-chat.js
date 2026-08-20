@@ -1,13 +1,9 @@
 import { json } from './_shared/http.js';
 import { adviseGifts } from './_shared/geminiGiftAdvisor.js';
-import { CUSTOMER_AI_FALLBACK, geminiApiKey } from './_shared/geminiEnv.js';
+import { CUSTOMER_AI_FALLBACK } from './_shared/geminiEnv.js';
 
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'method', message: 'POST required' }, 405);
-  if (!geminiApiKey()) {
-    console.warn('[Sukhmal Gemini] ai-chat missing server API key');
-    return json({ error: 'not_configured', message: CUSTOMER_AI_FALLBACK }, 503);
-  }
 
   let body = {};
   try {

@@ -1,4 +1,5 @@
 import { env } from './http.js';
+import { sendResend, ownerNotifyTo, ownerOrderHtml } from './notify.js';
 
 let cached = null;
 
@@ -6,21 +7,24 @@ export async function adminDb() {
   if (cached) return cached;
   const pk = env('FIREBASE_ADMIN_PRIVATE_KEY');
   const email = env('FIREBASE_ADMIN_CLIENT_EMAIL');
-  const projectId = env('FIREBASE_PROJECT_ID') || env('REACT_APP_FIREBASE_PROJECT_ID');
-  if (!pk || !email || !projectId) return null;
+  const projectId = env('FIREBASE_PROJECT_ID') || env('REACT_APP_FIREBASE_PROJECT_ID') || 'sukhmal';
   try {
     const { initializeApp, getApps, cert } = await import('firebase-admin/app');
     const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
     if (!getApps().length) {
-      initializeApp({
-        credential: cert({
-          projectId,
-          clientEmail: email,
-          privateKey: pk.replace(/\\n/g, '\n'),
-        }),
-      });
+      if (pk && email) {
+        initializeApp({
+          credential: cert({
+            projectId,
+            clientEmail: email,
+            privateKey: pk.replace(/\\n/g, '\n'),
+          }),
+        });
+      } else {
+        initializeApp({ projectId: 'sukhmal' });
+      }
     }
-    cached = { db: getFirestore(), FieldValue };
+    cached = { db: getFirestore('default'), FieldValue };
     return cached;
   } catch (err) {
     console.error('firebase-admin unavailable', err?.message);
@@ -95,7 +99,20 @@ export async function confirmOrderPayment(orderId, extra = {}) {
       }
     }
     result.updated = true;
+    result.order = { ...data, orderId: data.orderId || orderId };
   });
+
+  if (result.updated === true && result.order) {
+    const order = result.order;
+    const sent = await sendResend({
+      to: ownerNotifyTo(),
+      subject: `New order ${order.orderId}`,
+      html: ownerOrderHtml(order),
+    });
+    if (!sent?.ok) {
+      console.error('owner order email failed', order.orderId, sent);
+    }
+  }
 
   return result;
 }
