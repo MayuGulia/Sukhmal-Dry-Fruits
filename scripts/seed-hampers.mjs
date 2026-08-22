@@ -3,13 +3,31 @@
  *
  *   node scripts/seed-hampers.mjs
  *
- * Uses Application Default Credentials:
- *   gcloud auth application-default login
+ * Uses firebase/serviceAccountKey.json (GOOGLE_APPLICATION_CREDENTIALS).
  */
-import { initializeApp } from 'firebase-admin/app';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { cert, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-initializeApp({ projectId: 'sukhmal' });
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const canonicalSa = resolve(repoRoot, 'firebase/serviceAccountKey.json');
+const fromEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS
+  ? resolve(process.cwd(), process.env.GOOGLE_APPLICATION_CREDENTIALS)
+  : '';
+const saPath = [fromEnv, canonicalSa].find((file) => file && existsSync(file)) || canonicalSa;
+const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID || 'sukhmal-website';
+
+if (!existsSync(saPath)) {
+  console.error('Missing Admin SDK JSON. Drop it at firebase/serviceAccountKey.json');
+  process.exit(1);
+}
+
+initializeApp({
+  credential: cert(JSON.parse(readFileSync(saPath, 'utf8'))),
+  projectId,
+});
 const db = getFirestore('default');
 
 const BASE_URL = (process.env.SITE_ORIGIN || 'https://sukhmaldryfruits.com').replace(/\/$/, '');

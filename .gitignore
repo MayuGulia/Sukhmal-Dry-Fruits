@@ -17,6 +17,8 @@ dist/
 !**/.env.example
 credentials.json
 service-account.json
+serviceAccountKey.json
+serviceAccountKey.old.json
 *-firebase-adminsdk-*.json
 *.pem
 *.key

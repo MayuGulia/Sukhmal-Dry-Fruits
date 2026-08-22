@@ -4,7 +4,8 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { GoogleAuth } from 'google-auth-library';
 
 function loadDotEnv(file) {
@@ -24,7 +25,11 @@ function loadDotEnv(file) {
 loadDotEnv(resolve(process.cwd(), '../frontend/.env'));
 loadDotEnv(resolve(process.cwd(), '../frontend/.env.example'));
 
-const PROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'sukhmal';
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const saPath = resolve(repoRoot, 'firebase/serviceAccountKey.json');
+if (existsSync(saPath)) process.env.GOOGLE_APPLICATION_CREDENTIALS = saPath;
+
+const PROJECT = process.env.GOOGLE_CLOUD_PROJECT || 'sukhmal-website';
 const studioKey = process.env.GEMINI_IMAGE_API_KEY || process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY || '';
 const gcloud = process.env.CLOUDSDK_GCLOUD_PATH
   || `${process.env.LOCALAPPDATA}\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd`;

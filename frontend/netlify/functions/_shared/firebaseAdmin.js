@@ -1,17 +1,31 @@
 import { env } from './http.js';
 import { notifyCustomerOfOrder, notifyOwnerOfOrder } from './notify.js';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 
 let cached = null;
+
+function serviceAccountPath() {
+  const fromEnv = env('GOOGLE_APPLICATION_CREDENTIALS');
+  const candidates = [
+    fromEnv,
+    fromEnv ? path.resolve(process.cwd(), fromEnv) : '',
+    path.resolve(process.cwd(), '../firebase/serviceAccountKey.json'),
+    path.resolve(process.cwd(), 'firebase/serviceAccountKey.json'),
+  ].filter(Boolean);
+  return candidates.find((file) => existsSync(file)) || '';
+}
 
 export async function adminDb() {
   if (cached) return cached;
   const pk = env('FIREBASE_ADMIN_PRIVATE_KEY');
   const email = env('FIREBASE_ADMIN_CLIENT_EMAIL');
-  const projectId = env('FIREBASE_PROJECT_ID') || env('REACT_APP_FIREBASE_PROJECT_ID') || 'sukhmal';
+  const projectId = env('FIREBASE_PROJECT_ID') || env('REACT_APP_FIREBASE_PROJECT_ID') || 'sukhmal-website';
   try {
     const { initializeApp, getApps, cert } = await import('firebase-admin/app');
     const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
     if (!getApps().length) {
+      const saPath = serviceAccountPath();
       if (pk && email) {
         initializeApp({
           credential: cert({
@@ -19,6 +33,11 @@ export async function adminDb() {
             clientEmail: email,
             privateKey: pk.replace(/\\n/g, '\n'),
           }),
+        });
+      } else if (saPath) {
+        initializeApp({
+          credential: cert(JSON.parse(readFileSync(saPath, 'utf8'))),
+          projectId,
         });
       } else {
         initializeApp({ projectId });

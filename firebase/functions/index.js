@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 const { getFirestore } = require('firebase-admin/firestore');
 
-if (!admin.apps.length) admin.initializeApp({ projectId: 'sukhmal' });
+if (!admin.apps.length) admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || 'sukhmal-website' });
 const db = getFirestore('default');
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'mayu.gulia156@gmail.com';

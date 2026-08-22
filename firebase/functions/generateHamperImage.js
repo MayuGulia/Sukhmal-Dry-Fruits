@@ -4,18 +4,18 @@ const { VertexAI } = require('@google-cloud/vertexai');
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 
-if (!admin.apps.length) admin.initializeApp({ projectId: 'sukhmal' });
+const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || 'sukhmal-website';
+if (!admin.apps.length) admin.initializeApp({ projectId: PROJECT_ID });
 const db = getFirestore('default');
 
 const FUNCTION_REGION = 'asia-south1';
 const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
 const SITE_ORIGIN = (process.env.SITE_ORIGIN || 'https://sukhmaldryfruits.com').replace(/\/$/, '');
-const IMAGE_SA = process.env.VERTEX_IMAGE_SA
-  || 'sukhmal-image-gen-backend@sukhmal.iam.gserviceaccount.com';
+const IMAGE_SA = String(process.env.VERTEX_IMAGE_SA || '').trim();
 
 const vertexAI = new VertexAI({
-  project: 'sukhmal',
-  location: 'global',
+  project: PROJECT_ID,
+  location: process.env.GOOGLE_CLOUD_LOCATION || 'global',
 });
 const imageModel = vertexAI.getGenerativeModel({
   model: IMAGE_MODEL,
@@ -181,15 +181,17 @@ async function generateImage(parts) {
   return image;
 }
 
+const callOpts = {
+  region: FUNCTION_REGION,
+  timeoutSeconds: 180,
+  memory: '1GiB',
+  enforceAppCheck: false,
+  cors: true,
+};
+if (IMAGE_SA) callOpts.serviceAccount = IMAGE_SA;
+
 exports.generateHamperImage = onCall(
-  {
-    region: FUNCTION_REGION,
-    timeoutSeconds: 180,
-    memory: '1GiB',
-    serviceAccount: IMAGE_SA,
-    enforceAppCheck: false,
-    cors: true,
-  },
+  callOpts,
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Login required');

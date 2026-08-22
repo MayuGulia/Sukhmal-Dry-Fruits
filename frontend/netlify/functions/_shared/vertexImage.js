@@ -18,7 +18,7 @@ export function vertexImageEnabled() {
 }
 
 export function vertexProject() {
-  return envGet('GOOGLE_CLOUD_PROJECT') || envGet('REACT_APP_FIREBASE_PROJECT_ID') || 'sukhmal';
+  return envGet('GOOGLE_CLOUD_PROJECT') || envGet('REACT_APP_FIREBASE_PROJECT_ID') || 'sukhmal-website';
 }
 
 export function vertexLocation() {
@@ -128,7 +128,7 @@ async function vertexAccessToken() {
 
   const missing = new Error(
     lastErr?.message
-      || 'Vertex auth is missing. For local preview run: gcloud auth login --project=sukhmal',
+      || 'Vertex auth is missing. For local preview set GOOGLE_APPLICATION_CREDENTIALS to firebase/serviceAccountKey.json',
   );
   missing.code = 'gemini_auth';
   throw missing;

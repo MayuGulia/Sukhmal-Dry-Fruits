@@ -13,8 +13,7 @@ function truthy(value) {
 }
 
 export function vertexImageEnabled() {
-  return truthy(envGet('GOOGLE_GENAI_USE_ENTERPRISE') || envGet('GOOGLE_GENAI_USE_VERTEXAI'))
-    || Boolean(envGet('GOOGLE_CLOUD_PROJECT') || envGet('GOOGLE_APPLICATION_CREDENTIALS_JSON'));
+  return truthy(envGet('GOOGLE_GENAI_USE_ENTERPRISE') || envGet('GOOGLE_GENAI_USE_VERTEXAI'));
 }
 
 export function vertexProject() {
@@ -66,12 +65,16 @@ function gcloudBin() {
   const fromEnv = envGet('CLOUDSDK_GCLOUD_PATH');
   if (fromEnv) return fromEnv;
   const home = homedir();
+  const localApp = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
   const candidates = [
     path.join(home, 'google-cloud-sdk/bin/gcloud'),
     '/opt/homebrew/bin/gcloud',
     '/usr/local/bin/gcloud',
+    path.join(localApp, 'Google', 'Cloud SDK', 'google-cloud-sdk', 'bin', 'gcloud.cmd'),
+    'C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd',
+    'C:\\Program Files\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd',
   ];
-  return candidates.find((file) => existsSync(file)) || 'gcloud';
+  return candidates.find((file) => existsSync(file)) || (process.platform === 'win32' ? 'gcloud.cmd' : 'gcloud');
 }
 
 function gcloudEnv() {

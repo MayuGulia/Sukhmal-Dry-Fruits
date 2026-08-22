@@ -52,7 +52,7 @@ If that variable is empty, the website uses the built-in catalog and still runs.
 
 ## Admin dashboard
 
-1. Sign in with `mayu.gulia156@gmail.com` (Firebase owner) or `sukhmaldryfruitskorner2@gmail.com` (store admin).
+1. Firebase project is `sukhmal-website` only. Sign in with an admin email (`sukhmaldryfruitskorner2@gmail.com`, or another email listed in `REACT_APP_ADMIN_EMAILS`).
 2. Log in at `/login`. That email opens `/admin`.
 2. Open **Owner Access** in the footer (the link is not rendered for non-admins).
 3. Visiting `/admin` without the admin custom claim silently returns home.
