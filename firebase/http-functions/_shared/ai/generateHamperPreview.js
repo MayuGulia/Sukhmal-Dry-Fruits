@@ -1,13 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generateGeminiDescribe, generateGeminiImage, generateGeminiImageFromText } from './geminiClient.js';
+import { generateGeminiImage } from './geminiClient.js';
 import { CUSTOMER_AI_FALLBACK, envGet, geminiImageApiKey, keyFingerprint } from './geminiEnv.js';
+import { vertexImageEnabled } from './vertexImage.js';
 import { buildHamperImageDemo, hamperImageDemoEnabled } from './hamperImageDemo.js';
 import {
-  buildComposeImagePrompt,
   buildFreeformHamperPrompt,
-  buildProductDescribePrompt,
+  buildPackHamperEditPrompt,
   layoutFromHamper,
   normalizeGiftCard,
   normalizeHamperProductItems,
@@ -191,8 +191,8 @@ export async function generateHamperPreview(body) {
   }
 
   const key = geminiImageApiKey();
-  if (!key) {
-    console.warn('[Sukhmal Gemini] hamper-image missing GEMINI_IMAGE_API_KEY / GEMINI_API_KEY');
+  if (!key && !vertexImageEnabled()) {
+    console.warn('[Sukhmal Gemini] hamper-image missing GEMINI_IMAGE_API_KEY / Vertex billing');
     const err = new Error(CUSTOMER_AI_FALLBACK);
     err.code = 'not_configured';
     throw err;
@@ -209,7 +209,6 @@ export async function generateHamperPreview(body) {
 
   const hamperName = String(body.hamperName || body.hamperId || '').trim();
   const boxType = String(body.boxType || body.packaging || hamperName || 'luxury gift box').trim();
-  const packaging = String(body.packaging || body.boxType || boxType).trim();
   const layoutType = layoutFromHamper(body);
   const giftCard = normalizeGiftCard(body.giftCard);
   const refs = productItems.length ? await collectReferenceImages(body, productItems) : { hamperRef: null, productRefs: [] };
@@ -242,47 +241,38 @@ export async function generateHamperPreview(body) {
   }
 
   console.log(
-    '[Sukhmal Gemini] hamper-image two-step',
+    '[Sukhmal Gemini] hamper-image img2img',
     JSON.stringify({
       hamperName,
       hamperUrl: refs.hamperUrl,
+      layoutType,
       products,
       refs: {
         hamper: Boolean(refs.hamperRef),
         products: refs.productRefs.map((img) => ({ name: img.name, file: img.source })),
       },
+      giftCard: {
+        included: giftCard.included,
+        hasMessage: Boolean(giftCard.message),
+      },
       imageKey: keyFingerprint(key),
       api: 'generativelanguage',
-      steps: 'gemini-2.0-flash describe → gemini-2.0-flash-preview-image-generation',
+      steps: 'edit-filled-hamper-with-catalog-product-photos',
     }),
   );
 
-  const described = await generateGeminiDescribe({
+  const image = await generateGeminiImage({
     key,
-    prompt: buildProductDescribePrompt({
-      products: productItems,
-      hamperName,
-      packaging,
-      hasHamperPhoto: Boolean(refs.hamperRef),
-    }),
-    images: [refs.hamperRef, ...refs.productRefs].filter(Boolean),
-    label: 'hamper-describe',
-  });
-  console.log(
-    '[Sukhmal Gemini] hamper-describe ok',
-    JSON.stringify({ model: described.model, chars: String(described.text || '').length }),
-  );
-
-  const image = await generateGeminiImageFromText({
-    key,
-    prompt: buildComposeImagePrompt({
+    prompt: buildPackHamperEditPrompt({
       products: productItems,
       giftCard,
-      hamperName,
-      packaging,
-      productDescription: described.text,
+      layoutType,
     }),
     label: 'hamper-compose',
+    referenceImage: refs.hamperRef,
+    referenceImages: refs.productRefs.map((img) => ({ mimeType: img.mimeType, data: img.data })),
+    imageLabels: refs.productRefs.map((img) => img.name),
+    editFirstImage: true,
   });
   const packed = view('front', 'Front', image);
   return {

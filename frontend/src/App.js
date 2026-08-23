@@ -26,12 +26,25 @@ import About from '@/pages/About';
 import Contact from '@/pages/Contact';
 import { StoreLocator, PolicyPage, FAQs, NotFound } from '@/pages/ContentPages';
 import { AccountLayout, Dashboard as AccountDashboard, MyOrders, OrderDetail, ReturnOrder, Addresses, PaymentMethods, Loyalty, ProfileSettings } from '@/pages/account/Account';
-import { AdminLayout, AdminDashboard } from '@/pages/admin/Admin';
-import { AdminProducts, AdminOrders, AdminInventory, AdminPayments, AdminSettings } from '@/pages/admin/AdminPages';
 import { RequireAuth, RequireAdmin, PublicOnly } from '@/components/auth/AuthGate';
-
 import { Toaster } from 'sonner';
 import './App.css';
+
+const AdminLayout = React.lazy(() => import('@/pages/admin/Admin').then((m) => ({ default: m.AdminLayout })));
+const AdminDashboard = React.lazy(() => import('@/pages/admin/Admin').then((m) => ({ default: m.AdminDashboard })));
+const AdminProducts = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminProducts })));
+const AdminOrders = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminOrders })));
+const AdminInventory = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminInventory })));
+const AdminPayments = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminPayments })));
+const AdminSettings = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminSettings })));
+
+function AdminFallback() {
+  return (
+    <div className="min-h-screen grid place-items-center bg-[#FAF7F2] text-brand-900">
+      <p className="text-sm text-ink-500">Loading admin…</p>
+    </div>
+  );
+}
 
 // Scroll-to-top on route change
 function ScrollToTop() {
@@ -57,7 +70,7 @@ export default function App() {
                 <Route path="/signup" element={<PublicOnly><AuthPage mode="signup" /></PublicOnly>} />
                 <Route path="/forgot-password" element={<PublicOnly><AuthPage mode="forgot" /></PublicOnly>} />
 
-                <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+                <Route path="/admin" element={<RequireAdmin><React.Suspense fallback={<AdminFallback />}><AdminLayout /></React.Suspense></RequireAdmin>}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="products" element={<AdminProducts />} />
                   <Route path="orders" element={<AdminOrders />} />

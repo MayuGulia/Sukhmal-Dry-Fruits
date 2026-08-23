@@ -8,7 +8,7 @@ const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJEC
 if (!admin.apps.length) admin.initializeApp({ projectId: PROJECT_ID });
 const db = getFirestore('default');
 
-const FUNCTION_REGION = 'asia-south1';
+const FUNCTION_REGION = 'us-central1';
 const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
 const SITE_ORIGIN = (process.env.SITE_ORIGIN || 'https://sukhmaldryfruits.com').replace(/\/$/, '');
 const IMAGE_SA = String(process.env.VERTEX_IMAGE_SA || '').trim();

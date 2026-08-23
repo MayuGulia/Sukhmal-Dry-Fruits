@@ -40,7 +40,7 @@
       "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "Sukhmal Dry Fruits Korner",
-        "supportEmail": "mayu.gulia156@gmail.com",
+        "supportEmail": "sukhmaldryfruitskorner2@gmail.com",
         "authorizedRedirectUris": [
           "http://localhost",
           "http://127.0.0.1",

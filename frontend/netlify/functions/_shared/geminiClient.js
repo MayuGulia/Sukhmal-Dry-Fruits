@@ -4,7 +4,7 @@
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
 import { envGet, GEMINI_AUTH_HELP, isGeminiAuthFailure, isZeroImageQuota } from './geminiEnv.js';
-import { generateVertexContent, vertexImageEnabled } from './vertexImage.js';
+import { generateVertexContent, generateVertexImage, vertexImageEnabled } from './vertexImage.js';
 
 const FALLBACK_MODEL = 'gemini-flash-latest';
 const SKIP = /lite|tts|image|video|audio|1\.5|gemini-pro$|gemini-1\.0|computer-use|robotics|lyria|deep-research|antigravity|gemma-|omni-|eap|customtools/i;
@@ -506,7 +506,9 @@ function generateContentParts(prompt, referenceImages, imageLabels, editFirstIma
   if (editFirstImage && refs[0]) {
     const parts = [{ inlineData: { mimeType: refs[0].mimeType, data: refs[0].data } }];
     parts.push({ text: prompt });
-    refs.slice(1).forEach((img) => {
+    refs.slice(1).forEach((img, i) => {
+      const name = imageLabels?.[i];
+      if (name) parts.push({ text: `Selected product pack: ${name}` });
       parts.push({ inlineData: { mimeType: img.mimeType, data: img.data } });
     });
     return parts;
@@ -687,6 +689,14 @@ export async function generateGeminiDescribe({ key, prompt, images, label = 'des
 }
 
 export async function generateGeminiImageFromText({ key, prompt, label = 'image' }) {
+  if (vertexImageEnabled()) {
+    try {
+      return await generateVertexImage({ prompt, label });
+    } catch (err) {
+      console.warn(`[Sukhmal Gemini] ${label} vertex image failed: ${String(err.message || '').slice(0, 300)}`);
+      if (!key) throw err;
+    }
+  }
   if (!key) {
     const err = new Error(GEMINI_AUTH_HELP);
     err.code = 'not_configured';
@@ -712,6 +722,20 @@ export async function generateGeminiImage({
   editFirstImage = true,
 }) {
   const refs = normalizeImageRefs(referenceImage, referenceImages);
+  // Vertex img2img only forwards a single photo. When product packs are
+  // attached, skip Vertex so Google AI Studio generateContent gets every image.
+  if (vertexImageEnabled() && refs.length <= 1) {
+    try {
+      return await generateVertexImage({
+        prompt,
+        label,
+        referenceImage: refs[0] || null,
+      });
+    } catch (err) {
+      console.warn(`[Sukhmal Gemini] ${label} vertex image failed: ${String(err.message || '').slice(0, 300)}`);
+      if (!key) throw err;
+    }
+  }
   if (key) {
     return generateImageWithKey({
       key, prompt, label, referenceImages: refs, imageLabels, editFirstImage: Boolean(editFirstImage && refs.length),

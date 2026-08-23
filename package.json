@@ -4,10 +4,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:hamper": "node scripts/test-hamper-generation.mjs"
   },
   "dependencies": {
-    "@google-cloud/vertexai": "^1.12.0",
+    "@google/genai": "^2.18.0",
     "firebase-admin": "^14.3.0",
     "next": "^16.3.2",
     "react": "^19.2.8",

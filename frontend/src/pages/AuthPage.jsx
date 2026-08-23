@@ -753,6 +753,7 @@ export default function AuthPage({ mode = 'login' }) {
                         try {
                           const session = await signInWithGoogle();
                           if (session) finishAuth(session);
+                          else setLoading(false);
                         } catch (err) {
                           setMsg({ text: firebaseError(err, MSG.credentials), tone: 'error' });
                           setLoading(false);

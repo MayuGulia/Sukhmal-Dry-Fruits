@@ -79,6 +79,7 @@ export function buildPackHamperEditPrompt({
   products,
   giftCard,
   brand = 'Sukhmal',
+  layoutType = 'open_arrangement',
 } = {}) {
   const items = Array.isArray(products) && products[0] && typeof products[0] === 'object'
     ? products
@@ -96,9 +97,21 @@ export function buildPackHamperEditPrompt({
   });
   const count = lines.length;
   const card = normalizeGiftCard(giftCard);
-  const giftSection = card.message
-    ? `A small gift card is visible in the scene. Keep its position and design exactly as shown in the original image, only update its printed/handwritten message text to: "${card.message}". If the original photo has no gift card, do not add one.`
-    : `If a gift card is visible in the original image, leave the card as it appears in the original reference — do not add placeholder text. If the original photo has no gift card, do not add one.`;
+  const giftSection = (card.included || card.message)
+    ? `ADD a small physical gift card into this same photograph (folded or propped near the front of the hamper, not covering product labels). The card title is "${card.name}".${card.recipient ? ` Address it to "${card.recipient}".` : ''} Print this message legibly on the card: "${card.message}". The gift card is an extra object in the scene — do not replace the hamper or the selected products with it.`
+    : `Do not add a gift card. If a gift card is already visible in the original reference, leave it as it appears.`;
+  const layoutInstruction = layoutType === 'compartment'
+    ? `This hamper has visible internal compartments. Fill each compartment
+with one of the replacement products below, matching each product's real
+size to a compartment of an appropriate scale. Do not merge products into
+one compartment unless the original reference shows multiple items sharing
+a compartment. If there are more compartments than products, leave the
+extra compartments empty rather than duplicating an item.`
+    : `This hamper is an open tray/basket arrangement, not a compartmented
+box. Arrange the replacement products the way a curated dry-fruit spread is
+naturally styled — some items in small piles, jars/pouches placed upright,
+matching the general density and spread of the original reference photo.
+Do not force items into a grid.`;
 
   return `Edit the provided hamper image. Do not create a new scene, do not change the box, background, lighting, angle, ribbon, fabric, decorations, or camera framing in any way — keep every element of the original image exactly as it is.
 
@@ -108,9 +121,11 @@ ${lines.join('\n')}
 
 Arrange these ${count} items inside the box the same way products are already arranged in the original reference (same general layout style, same scale relative to the box). Do not add any product not in this list. Do not remove or leave the box looking emptier or fuller than ${count} items would naturally fill.
 
+${layoutInstruction}
+
 ${giftSection}
 
-The photos after this instruction are the selected product packs. Copy each pack's jar/box, lid, and label from those photos.
+The photos after this instruction are the selected product packs. Copy each pack's jar/box, lid, and label from those photos. Place those packs at full product scale inside the actual basket/box interior — do not paste a tiny cluster, thumbnail, or sticker overlay in one corner.
 
 Output a single photorealistic image, same resolution and aspect ratio as the input image. This is a product-accuracy preview for e-commerce — the box, its exterior, and its styling must remain visually identical to the original reference; only the interior contents (and gift card text, if applicable) may change.`;
 }
@@ -170,8 +185,9 @@ export function buildComposeImagePrompt({
   packaging,
   productDescription,
   brand = 'Sukhmal',
+  layoutType = 'open_arrangement',
 } = {}) {
-  const edit = buildPackHamperEditPrompt({ products, giftCard, brand });
+  const edit = buildPackHamperEditPrompt({ products, giftCard, brand, layoutType });
   const hamper = String(hamperName || 'selected gift hamper').trim();
   const pack = String(packaging || '').trim();
   return `${edit}

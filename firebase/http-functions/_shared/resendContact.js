@@ -1,7 +1,7 @@
 const { envGet } = require('./env');
 
 function ownerNotifyTo() {
-  return envGet('ADMIN_NOTIFY_EMAIL') || envGet('REACT_APP_ADMIN_EMAIL') || 'mayu.gulia156@gmail.com';
+  return envGet('ADMIN_NOTIFY_EMAIL') || envGet('REACT_APP_ADMIN_EMAIL') || 'sukhmaldryfruitskorner2@gmail.com';
 }
 
 /** Same behavior as Netlify addResendContact. */

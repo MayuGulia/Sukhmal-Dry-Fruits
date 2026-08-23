@@ -7,7 +7,7 @@ const { getFirestore } = require('firebase-admin/firestore');
 if (!admin.apps.length) admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || 'sukhmal-website' });
 const db = getFirestore('default');
 
-const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'mayu.gulia156@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'sukhmaldryfruitskorner2@gmail.com';
 const FROM_EMAIL = process.env.RESEND_FROM || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
 const ADMIN_PHONE = process.env.ADMIN_NOTIFY_PHONE || '918595321912';
 

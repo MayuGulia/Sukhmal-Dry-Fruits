@@ -1,7 +1,7 @@
 import { env } from './http.js';
 
 export function ownerNotifyTo() {
-  return env('ADMIN_NOTIFY_EMAIL') || env('REACT_APP_ADMIN_EMAIL') || 'mayu.gulia156@gmail.com';
+  return env('ADMIN_NOTIFY_EMAIL') || env('REACT_APP_ADMIN_EMAIL') || 'sukhmaldryfruitskorner2@gmail.com';
 }
 
 export function ownerOrderHtml(order = {}) {

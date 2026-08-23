@@ -136,32 +136,36 @@ export const AuthProvider = ({ children }) => {
     }
 
     let cancelled = false;
-    let unsub = () => {};
+    const failSafe = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 4000);
 
-    (async () => {
-      try {
-        const result = await getRedirectResult(auth);
+    getRedirectResult(auth)
+      .then(async (result) => {
         if (result?.user) await upsertUserDoc(result.user);
-      } catch (err) {
+      })
+      .catch((err) => {
         storeGoogleAuthError(err);
-      }
-      if (cancelled) return;
-      unsub = onAuthStateChanged(auth, async (fbUser) => {
-        if (!fbUser) {
-          try { localStorage.removeItem(LS); } catch {}
-          setAuthToken(null);
-          setUser(null);
-          setLoading(false);
-          return;
-        }
-        const session = await sessionFromFirebaseUser(fbUser);
-        setUser(session);
-        setLoading(false);
       });
-    })();
+
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (cancelled) return;
+      if (!fbUser) {
+        try { localStorage.removeItem(LS); } catch {}
+        setAuthToken(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      const session = await sessionFromFirebaseUser(fbUser);
+      if (cancelled) return;
+      setUser(session);
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;
+      clearTimeout(failSafe);
       unsub();
     };
   }, []);

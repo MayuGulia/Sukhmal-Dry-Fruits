@@ -10,9 +10,9 @@ import {
 } from '@/lib/commerceStore';
 import { PRODUCTS as MOCK_PRODUCTS } from '@/data/mockCatalog';
 import { auth, db, storage } from '@/lib/firebase';
-import { hydrateStorefrontProduct } from '@/lib/liveCatalog';
 import { appendOrderStatus, mapAdminOrder, newOrderId } from '@/lib/orders';
 import { applyProductPackPatch, productFromImportRow } from '@/lib/adminProductPatch';
+import { adminApi } from '@/lib/adminApiBinding';
 import {
   collection,
   doc,
@@ -29,8 +29,32 @@ import {
 } from 'firebase/firestore';
 import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 
-/** Initialized immediately so circular / HMR importers never hit a TDZ on `adminApi`. */
-export const adminApi = {};
+export { adminApi };
+
+function hydrateProductDoc(id, data) {
+  const raw = data || {};
+  const weightVariants = (raw.weightVariants || raw.variants || []).map((v) => ({
+    weight: v.weight || v.w,
+    price: Number(v.price) || 0,
+    stock: typeof v.stock === 'number' ? v.stock : 20,
+    sku: v.sku,
+  }));
+  const listed = Array.isArray(raw.images) ? raw.images.filter(Boolean) : (raw.img ? [raw.img] : []);
+  return {
+    ...raw,
+    id: raw.id || id,
+    slug: raw.slug || id,
+    name: raw.name,
+    price: Number(raw.price) || weightVariants[0]?.price || 0,
+    images: listed,
+    weightVariants,
+    variants: weightVariants.map((v) => ({ w: v.weight, price: v.price, stock: v.stock })),
+    isActive: raw.isActive !== false,
+    isDeleted: Boolean(raw.isDeleted),
+    bestseller: Boolean(raw.bestseller || raw.isBestseller),
+    isBestseller: Boolean(raw.bestseller || raw.isBestseller),
+  };
+}
 
 function friendlyFsError(err, fallback) {
   const code = err?.code || '';
@@ -42,7 +66,7 @@ function friendlyFsError(err, fallback) {
 
 function catalogFallback({ activeOnly = false, limit: cap } = {}) {
   let rows = getLiveProducts({ activeOnly: false });
-  if (!rows.length) rows = MOCK_PRODUCTS.map((p) => hydrateStorefrontProduct(p.id, p));
+  if (!rows.length) rows = MOCK_PRODUCTS.map((p) => hydrateProductDoc(p.id, p));
   rows = rows.filter((p) => !p.isDeleted && (!activeOnly || p.isActive !== false));
   if (cap) rows = rows.slice(0, cap);
   return rows;
@@ -129,7 +153,7 @@ async function listFirestoreProducts({ activeOnly = false, limit: cap } = {}) {
   try {
     const snap = await getDocs(collection(db, 'products'));
     let rows = snap.docs
-      .map((d) => hydrateStorefrontProduct(d.id, d.data()))
+      .map((d) => hydrateProductDoc(d.id, d.data()))
       .filter((p) => !p.isDeleted && (!activeOnly || p.isActive !== false));
     if (cap) rows = rows.slice(0, cap);
     return rows;
@@ -213,7 +237,7 @@ async function patchProduct(id, patch) {
   try {
     const snap = await getDoc(doc(db, 'products', id));
     if (!snap.exists()) throw new Error('Product not found in Firestore. Publish the catalog first.');
-    const current = hydrateStorefrontProduct(snap.id, snap.data());
+    const current = hydrateProductDoc(snap.id, snap.data());
     const patched = applyProductPackPatch(current, patch);
     const payload = firestoreUpdateFromProduct(patched);
     delete payload.images;
@@ -257,7 +281,7 @@ async function commitProductImport(changes) {
   const existingById = new Map();
   try {
     const snap = await getDocs(collection(db, 'products'));
-    snap.docs.forEach((d) => existingById.set(d.id, hydrateStorefrontProduct(d.id, d.data())));
+    snap.docs.forEach((d) => existingById.set(d.id, hydrateProductDoc(d.id, d.data())));
   } catch (err) {
     throw new Error(friendlyFsError(err, 'Could not read products for import.'));
   }
@@ -416,7 +440,7 @@ Object.assign(adminApi, {
       collection(db, 'products'),
       (snap) => {
         let rows = snap.docs
-          .map((d) => hydrateStorefrontProduct(d.id, d.data()))
+          .map((d) => hydrateProductDoc(d.id, d.data()))
           .filter((p) => !p.isDeleted);
         if (params?.activeOnly) rows = rows.filter((p) => p.isActive !== false);
         if (params?.limit) rows = rows.slice(0, params.limit);
@@ -451,7 +475,7 @@ Object.assign(adminApi, {
       emit();
     }, (err) => { orders = []; emit(); onError?.(err); });
     const u2 = onSnapshot(collection(db, 'products'), (snap) => {
-      products = snap.docs.map((d) => hydrateStorefrontProduct(d.id, d.data())).filter((p) => !p.isDeleted);
+      products = snap.docs.map((d) => hydrateProductDoc(d.id, d.data())).filter((p) => !p.isDeleted);
       if (!products.length) products = catalogFallback({ limit: 6 });
       emit();
     }, (err) => { products = catalogFallback({ limit: 6 }); emit(); onError?.(new Error(friendlyFsError(err, 'Could not load live admin data.'))); });

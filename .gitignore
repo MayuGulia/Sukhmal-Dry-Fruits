@@ -47,6 +47,10 @@ data/Product_Listings_Master.xlsx
 **/~$*.xlsx
 **/~$*.xls
 
+# Local hamper-generation probe photos (drop files here; do not commit)
+/test-images/*
+!/test-images/.gitkeep
+
 # Local / OS
 .DS_Store
 .idea/

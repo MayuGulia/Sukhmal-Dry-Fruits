@@ -1,6 +1,6 @@
 const { onRequest } = require('firebase-functions/v2/https');
 
-const REGION = 'asia-south1';
+const REGION = 'us-central1';
 
 const CORS_ORIGINS = [
   'http://localhost:3000',

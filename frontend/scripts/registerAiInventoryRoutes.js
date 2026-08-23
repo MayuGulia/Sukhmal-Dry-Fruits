@@ -36,7 +36,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'hamper-image-two-step-v8';
+const GEMINI_MODULE_BUST = 'hamper-image-img2img-v10';
 const helperUrl = `${pathToFileURL(
   path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
 ).href}?v=${GEMINI_MODULE_BUST}`;

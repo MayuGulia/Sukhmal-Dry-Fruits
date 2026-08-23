@@ -41,7 +41,7 @@ function createAuth(firebaseApp) {
 export const auth = app ? createAuth(app) : null;
 export const db = app ? getFirestore(app, 'default') : null;
 export const storage = app ? getStorage(app) : null;
-export const functions = app ? getFunctions(app, 'asia-south1') : null;
+export const functions = app ? getFunctions(app, 'us-central1') : null;
 export const googleProvider = app ? new GoogleAuthProvider() : null;
 if (googleProvider) {
   googleProvider.addScope('email');

@@ -40,8 +40,7 @@ export function RequireAdmin({ children }) {
 }
 
 export function PublicOnly({ children }) {
-  const { isAuthed, isAdmin, loading } = useAuth();
-  if (loading) return <Splash />;
+  const { isAuthed, isAdmin } = useAuth();
   if (isAuthed) {
     return <Navigate to={isAdmin ? '/admin' : consumeReturnTo()} replace />;
   }

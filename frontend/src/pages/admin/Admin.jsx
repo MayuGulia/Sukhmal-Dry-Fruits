@@ -244,6 +244,10 @@ export function AdminDashboard() {
 
   useEffect(() => {
     setLiveErr('');
+    if (typeof adminApi.subscribeDashboard !== 'function') {
+      setLiveErr('Admin API failed to load. Hard-refresh the page (Ctrl+Shift+R).');
+      return undefined;
+    }
     const { from, to } = rangeDates(range);
     return adminApi.subscribeDashboard(
       { from, to, status: statusFilter },
