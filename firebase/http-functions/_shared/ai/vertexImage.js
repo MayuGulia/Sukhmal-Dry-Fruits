@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import https from 'node:https';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -82,17 +83,30 @@ function gcloudEnv() {
   const py = env.CLOUDSDK_PYTHON
     || path.join(homedir(), '.local/share/uv/python/cpython-3.12-macos-aarch64-none/bin/python3.12');
   if (existsSync(py)) env.CLOUDSDK_PYTHON = py;
-  const sdkBin = path.join(homedir(), 'google-cloud-sdk/bin');
-  if (existsSync(sdkBin)) env.PATH = `${sdkBin}:${env.PATH || ''}`;
+  const sdkBins = [
+    path.join(homedir(), 'google-cloud-sdk/bin'),
+    path.join(process.env.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local'), 'Google', 'Cloud SDK', 'google-cloud-sdk', 'bin'),
+    'C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin',
+    'C:\\Program Files\\Google\\Cloud SDK\\google-cloud-sdk\\bin',
+  ].filter((dir) => existsSync(dir));
+  if (sdkBins.length) {
+    const sep = process.platform === 'win32' ? ';' : ':';
+    const pathKey = process.platform === 'win32' && env.Path ? 'Path' : 'PATH';
+    env[pathKey] = `${sdkBins.join(sep)}${sep}${env[pathKey] || env.PATH || ''}`;
+    env.PATH = env[pathKey];
+  }
   return env;
 }
 
 async function tokenFromGoogleAuth() {
   const { GoogleAuth } = await import('google-auth-library');
   const json = envGet('GOOGLE_APPLICATION_CREDENTIALS_JSON');
+  const keyFile = envGet('GOOGLE_APPLICATION_CREDENTIALS');
   const opts = { scopes: [CLOUD_SCOPE] };
   if (json) {
     opts.credentials = JSON.parse(json);
+  } else if (keyFile) {
+    opts.keyFilename = path.resolve(keyFile);
   }
   const auth = new GoogleAuth(opts);
   const client = await auth.getClient();
@@ -101,11 +115,15 @@ async function tokenFromGoogleAuth() {
 }
 
 async function tokenFromGcloud() {
-  const { stdout } = await execFileAsync(gcloudBin(), ['auth', 'print-access-token'], {
-    env: gcloudEnv(),
-    timeout: 20000,
-  });
-  return String(stdout || '').trim();
+  const env = gcloudEnv();
+  const opts = { env, timeout: 20000, windowsHide: true };
+  if (process.platform === 'win32') {
+    opts.shell = true;
+    const { stdout } = await execFileAsync('gcloud.cmd', ['auth', 'print-access-token'], opts);
+    return String(stdout || '').trim().split(/\r?\n/).filter(Boolean).pop() || '';
+  }
+  const { stdout } = await execFileAsync(gcloudBin(), ['auth', 'print-access-token'], opts);
+  return String(stdout || '').trim().split(/\r?\n/).filter(Boolean).pop() || '';
 }
 
 async function vertexAccessToken() {
@@ -122,6 +140,9 @@ async function vertexAccessToken() {
       }
     } catch (err) {
       lastErr = err;
+      console.warn(
+        `[Sukhmal Gemini] vertex auth ${attempt.name} failed: ${String(err.message || err).slice(0, 220)}`,
+      );
     }
   }
 
@@ -142,6 +163,47 @@ function apiError(status, message) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** HTTP/1.1 POST — Node fetch/HTTP2 resets on ~4MB Vertex image payloads. */
+function postVertexJson(url, token, body, timeoutMs = 120000) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const payload = Buffer.from(body);
+    const req = https.request({
+      hostname: target.hostname,
+      path: `${target.pathname}${target.search}`,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Content-Length': payload.length,
+      },
+      timeout: timeoutMs,
+    }, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        let json = {};
+        try { json = JSON.parse(text || '{}'); } catch { json = {}; }
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          json,
+        });
+      });
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      const err = new Error('Vertex image request timed out');
+      err.code = 'gemini_error';
+      reject(err);
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
 }
 
 function isRateLimit(status, message) {
@@ -195,29 +257,93 @@ export async function generateVertexContent({ contents, generationConfig, label 
   return { text, model, apiVersion: 'vertex' };
 }
 
-export async function generateVertexImage({ prompt, label = 'vertex-image', referenceImage }) {
+/** Same parts layout as Studio generateContentParts() in geminiClient.js. */
+function vertexImageParts(prompt, referenceImages, imageLabels, editFirstImage) {
+  const refs = (referenceImages || []).filter((img) => img?.data);
+  if (editFirstImage && refs[0]) {
+    const parts = [{
+      inlineData: {
+        mimeType: refs[0].mimeType || 'image/png',
+        data: toBase64(refs[0].data),
+      },
+    }];
+    parts.push({ text: prompt });
+    refs.slice(1).forEach((img, i) => {
+      const name = imageLabels?.[i];
+      if (name) parts.push({ text: `Selected product pack: ${name}` });
+      parts.push({
+        inlineData: {
+          mimeType: img.mimeType || 'image/png',
+          data: toBase64(img.data),
+        },
+      });
+    });
+    return parts;
+  }
+  const labelFor = (i) => imageLabels?.[i] || `Reference photo ${i + 1}:`;
+  return [
+    { text: prompt },
+    ...refs.flatMap((img, i) => [
+      { text: labelFor(i) },
+      {
+        inlineData: {
+          mimeType: img.mimeType || 'image/png',
+          data: toBase64(img.data),
+        },
+      },
+    ]),
+  ];
+}
+
+function collectImageRefs(referenceImage, referenceImages) {
+  const list = [];
+  const push = (img) => {
+    if (!img?.data) return;
+    list.push({
+      mimeType: img.mimeType || 'image/png',
+      data: img.data,
+    });
+  };
+  push(referenceImage);
+  (Array.isArray(referenceImages) ? referenceImages : []).forEach(push);
+  return list;
+}
+
+export async function generateVertexImage({
+  prompt,
+  label = 'vertex-image',
+  referenceImage,
+  referenceImages,
+  imageLabels,
+  editFirstImage = true,
+}) {
   const project = vertexProject();
   const location = vertexLocation();
   const model = vertexImageModel();
   const token = await vertexAccessToken();
   const url = vertexGenerateUrl(project, location, model);
-  const parts = [{ text: prompt }];
-  if (referenceImage?.data) {
-    parts.push({
-      inlineData: {
-        mimeType: referenceImage.mimeType || 'image/png',
-        data: toBase64(referenceImage.data),
-      },
-    });
-  }
+  const refs = collectImageRefs(referenceImage, referenceImages);
+  const parts = vertexImageParts(prompt, refs, imageLabels, Boolean(editFirstImage && refs.length));
+  const partsOrder = parts.map((part, i) => (
+    part.inlineData
+      ? `${i}:image:${part.inlineData.mimeType || 'unknown'}`
+      : `${i}:text`
+  ));
+  console.log(
+    `[Sukhmal Gemini] ${label} vertex parts_order first_is_hamper_image=${partsOrder[0]?.startsWith('0:image:')} order=${partsOrder.join(' | ')}`,
+  );
 
-  console.log(`[Sukhmal Gemini] ${label} vertex=oauth project=${project} location=${location} model=${model} ref=${Boolean(referenceImage?.data)}`);
+  console.log(
+    `[Sukhmal Gemini] ${label} vertex=oauth project=${project} location=${location} model=${model} refs=${refs.length} url=${url}`,
+  );
 
   const payload = {
     contents: [{ role: 'user', parts }],
     generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
   };
-  const waits = [0, 4000];
+  const body = JSON.stringify(payload);
+  console.log(`[Sukhmal Gemini] ${label} vertex payload_bytes=${Buffer.byteLength(body)} parts=${parts.length}`);
+  const waits = [0, 4000, 10000, 20000];
   let lastErr = null;
 
   for (let attempt = 0; attempt < waits.length; attempt += 1) {
@@ -225,16 +351,18 @@ export async function generateVertexImage({ prompt, label = 'vertex-image', refe
       console.warn(`[Sukhmal Gemini] ${label} waiting ${waits[attempt]}ms then retry ${attempt + 1}/${waits.length}`);
       await sleep(waits[attempt]);
     }
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(120000),
-    });
-    const json = await res.json().catch(() => ({}));
+    let res;
+    try {
+      res = await postVertexJson(url, token, body, 120000);
+    } catch (err) {
+      const detail = [err.message, err.cause?.code, err.cause?.message].filter(Boolean).join(' | ');
+      console.warn(`[Sukhmal Gemini] ${label} vertex fetch threw: ${detail.slice(0, 400)}`);
+      lastErr = new Error(`Vertex fetch failed: ${detail}`);
+      lastErr.code = 'gemini_error';
+      if (attempt + 1 >= waits.length) throw lastErr;
+      continue;
+    }
+    const json = res.json || {};
     if (res.ok) {
       const image = imageFromParts(json?.candidates?.[0]?.content?.parts);
       if (!image?.data) {

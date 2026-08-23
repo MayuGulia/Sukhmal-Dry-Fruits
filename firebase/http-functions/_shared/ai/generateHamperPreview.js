@@ -15,6 +15,16 @@ import {
 } from './hamperImagePrompt.js';
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const LARGE_PNG_BYTES = 900 * 1024;
+
+async function loadSharp() {
+  // Resolve from this package only. Do not fall back to the repo-root
+  // sharp (different version / possibly wrong ABI). Cloud Functions
+  // ignores uploaded node_modules and npm-installs linux-x64 glibc
+  // @img/sharp-linux-x64 on Node 22.
+  const { default: sharp } = await import('sharp');
+  return sharp;
+}
 
 function dataUrl(image) {
   return `data:${image.mimeType};base64,${image.data}`;
@@ -155,6 +165,92 @@ async function fetchFirstImage(urls) {
   return null;
 }
 
+async function compactLargeRef(img, label) {
+  if (!img?.data) return img;
+  const raw = Buffer.from(String(img.data).replace(/\s/g, ''), 'base64');
+  const isPng = (img.mimeType || '').includes('png') || raw.slice(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  if (!isPng || raw.length <= LARGE_PNG_BYTES) return img;
+  const sharp = await loadSharp();
+  const out = await sharp(raw).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+  console.log(
+    `[Sukhmal Gemini] hamper-image compact ${label} png_bytes=${raw.length} jpeg_bytes=${out.length}`,
+  );
+  return {
+    ...img,
+    mimeType: 'image/jpeg',
+    data: out.toString('base64'),
+  };
+}
+
+function escapeXml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function composeProductCollage(productRefs) {
+  const sharp = await loadSharp();
+  const cell = 520;
+  const labelH = 56;
+  const n = productRefs.length;
+  const cols = n <= 1 ? 1 : 2;
+  const rows = Math.ceil(n / cols);
+  const width = cols * cell;
+  const tiles = [];
+  for (let i = 0; i < productRefs.length; i += 1) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const photo = await sharp(Buffer.from(String(productRefs[i].data).replace(/\s/g, ''), 'base64'))
+      .resize(cell, cell, { fit: 'contain', background: { r: 255, g: 255, b: 255 } })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    const label = escapeXml(productRefs[i].name || `Product ${i + 1}`);
+    const svg = Buffer.from(
+      `<svg width="${cell}" height="${labelH}" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="#ffffff"/>
+        <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="22" font-family="Arial, sans-serif" fill="#111111">${i + 1}. ${label}</text>
+      </svg>`,
+    );
+    const labeled = await sharp({
+      create: {
+        width: cell,
+        height: cell + labelH,
+        channels: 3,
+        background: { r: 255, g: 255, b: 255 },
+      },
+    })
+      .composite([
+        { input: photo, top: 0, left: 0 },
+        { input: svg, top: cell, left: 0 },
+      ])
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    tiles.push({ input: labeled, top: row * (cell + labelH), left: col * cell });
+  }
+  const collage = await sharp({
+    create: {
+      width,
+      height: rows * (cell + labelH),
+      channels: 3,
+      background: { r: 255, g: 255, b: 255 },
+    },
+  })
+    .composite(tiles)
+    .jpeg({ quality: 85 })
+    .toBuffer();
+  console.log(
+    `[Sukhmal Gemini] hamper-image product-collage cells=${n} grid=${cols}x${rows} jpeg_bytes=${collage.length}`,
+  );
+  return {
+    mimeType: 'image/jpeg',
+    data: collage.toString('base64'),
+    name: productRefs.map((img) => img.name).filter(Boolean).join(', '),
+    source: 'product-collage',
+  };
+}
+
 async function collectReferenceImages(body, productItems) {
   const hamperUrl = String(
     body.hamperImage
@@ -164,7 +260,10 @@ async function collectReferenceImages(body, productItems) {
       || '',
   ).trim();
   const extraHamper = Array.isArray(body.hamperImages) ? body.hamperImages : [];
-  const hamperRef = await fetchFirstImage([hamperUrl, ...extraHamper].filter(Boolean));
+  const hamperRef = await compactLargeRef(
+    await fetchFirstImage([hamperUrl, ...extraHamper].filter(Boolean)),
+    'hamper',
+  );
   const productRefs = [];
   for (const item of productItems.slice(0, 6)) {
     const img = await fetchFirstImage(productFileCandidates(item));
@@ -240,6 +339,21 @@ export async function generateHamperPreview(body) {
     throw err;
   }
 
+  const productImages = refs.productRefs.map((img) => ({ mimeType: img.mimeType, data: img.data }));
+  let sendProducts = productImages;
+  let imageLabels = refs.productRefs.map((img) => img.name);
+  let productCollage = false;
+  if (refs.productRefs.length > 1) {
+    try {
+      const collage = await composeProductCollage(refs.productRefs);
+      sendProducts = [{ mimeType: collage.mimeType, data: collage.data }];
+      imageLabels = ['Selected product packs collage (names under each cell)'];
+      productCollage = true;
+    } catch (err) {
+      console.warn(`[Sukhmal Gemini] hamper-image collage failed, sending separate packs: ${String(err.message || err).slice(0, 200)}`);
+    }
+  }
+
   console.log(
     '[Sukhmal Gemini] hamper-image img2img',
     JSON.stringify({
@@ -249,14 +363,18 @@ export async function generateHamperPreview(body) {
       products,
       refs: {
         hamper: Boolean(refs.hamperRef),
-        products: refs.productRefs.map((img) => ({ name: img.name, file: img.source })),
+        hamperFirst: true,
+        productCollage,
+        products: productCollage
+          ? [{ name: 'collage', file: 'product-collage', cells: refs.productRefs.map((img) => img.name) }]
+          : refs.productRefs.map((img) => ({ name: img.name, file: img.source })),
       },
       giftCard: {
         included: giftCard.included,
         hasMessage: Boolean(giftCard.message),
       },
       imageKey: keyFingerprint(key),
-      api: 'generativelanguage',
+      api: vertexImageEnabled() ? 'vertex' : 'generativelanguage',
       steps: 'edit-filled-hamper-with-catalog-product-photos',
     }),
   );
@@ -267,11 +385,12 @@ export async function generateHamperPreview(body) {
       products: productItems,
       giftCard,
       layoutType,
+      productCollage,
     }),
     label: 'hamper-compose',
     referenceImage: refs.hamperRef,
-    referenceImages: refs.productRefs.map((img) => ({ mimeType: img.mimeType, data: img.data })),
-    imageLabels: refs.productRefs.map((img) => img.name),
+    referenceImages: sendProducts,
+    imageLabels,
     editFirstImage: true,
   });
   const packed = view('front', 'Front', image);

@@ -722,18 +722,25 @@ export async function generateGeminiImage({
   editFirstImage = true,
 }) {
   const refs = normalizeImageRefs(referenceImage, referenceImages);
-  // Vertex img2img only forwards a single photo. When product packs are
-  // attached, skip Vertex so Google AI Studio generateContent gets every image.
-  if (vertexImageEnabled() && refs.length <= 1) {
+  if (vertexImageEnabled()) {
+    console.log(
+      `[Sukhmal Gemini] ${label} routing=vertex refs=${refs.length} img2img=${Boolean(editFirstImage && refs.length)}`,
+    );
     try {
       return await generateVertexImage({
         prompt,
         label,
-        referenceImage: refs[0] || null,
+        referenceImages: refs,
+        imageLabels,
+        editFirstImage: Boolean(editFirstImage && refs.length),
       });
     } catch (err) {
-      console.warn(`[Sukhmal Gemini] ${label} vertex image failed: ${String(err.message || '').slice(0, 300)}`);
-      if (!key) throw err;
+      const wrapped = new Error(
+        `Vertex image generation failed (AI Studio fallback disabled): ${err.message || err}`,
+      );
+      wrapped.code = err.code || 'gemini_error';
+      wrapped.status = err.status;
+      throw wrapped;
     }
   }
   if (key) {

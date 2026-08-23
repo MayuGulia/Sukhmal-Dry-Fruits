@@ -80,6 +80,7 @@ export function buildPackHamperEditPrompt({
   giftCard,
   brand = 'Sukhmal',
   layoutType = 'open_arrangement',
+  productCollage = false,
 } = {}) {
   const items = Array.isArray(products) && products[0] && typeof products[0] === 'object'
     ? products
@@ -108,24 +109,35 @@ one compartment unless the original reference shows multiple items sharing
 a compartment. If there are more compartments than products, leave the
 extra compartments empty rather than duplicating an item.`
     : `This hamper is an open tray/basket arrangement, not a compartmented
-box. Arrange the replacement products the way a curated dry-fruit spread is
-naturally styled — some items in small piles, jars/pouches placed upright,
-matching the general density and spread of the original reference photo.
-Do not force items into a grid.`;
+box. Arrange the ${count} replacement products the way a curated dry-fruit
+spread is naturally styled — some items in small piles, jars/pouches placed
+upright. Do not force items into a grid. Do not add extra packs, nuts, or
+jars to match how full the original photo looks.`;
 
-  return `Edit the provided hamper image. Do not create a new scene, do not change the box, background, lighting, angle, ribbon, fabric, decorations, or camera framing in any way — keep every element of the original image exactly as it is.
+  const names = lines.map((line) => line.replace(/^\d+\.\s*/, '').split(' — ')[0].trim()).join(', ');
+  const countConstraint = `There are EXACTLY ${count} replacement products listed below (${names}). The final image must show EXACTLY ${count} items inside the container — no more, no fewer. Do not add extra items, duplicate any item, or invent items to match how full the original reference photo looked. If the original reference shows more items than ${count}, you must show FEWER items than the original and leave the remaining space visually empty/uncluttered rather than filling it. A less-full basket with exactly ${count} products is correct, not an incomplete photo.`;
+
+  const packPhotoLine = productCollage
+    ? `The second image is a single labeled collage of the selected product packs (grid, product name under each cell, left-to-right then top-to-bottom). Copy each pack's jar/box, lid, and label from that collage. Place those packs at full product scale inside the actual basket/box interior — do not paste a tiny cluster, thumbnail, or sticker overlay in one corner.`
+    : `The photos after this instruction are the selected product packs. Copy each pack's jar/box, lid, and label from those photos. Place those packs at full product scale inside the actual basket/box interior — do not paste a tiny cluster, thumbnail, or sticker overlay in one corner.`;
+
+  return `The first image is the EXACT container you must keep pixel-identical: same material, same texture, same color, same lid position, same compartment/well shapes, same background, same lighting, same camera angle. You are ONLY permitted to change what is INSIDE the container — the products. Do not redesign, restyle, or reinterpret the container in any way, even if it seems like an improvement.
+
+${countConstraint}
+
+Edit that first photograph in place. Do not create a new scene. Do not change the box, background, lighting, angle, ribbon, fabric, decorations, or camera framing — keep every element of the original image exactly as it is.
 
 The ONLY thing to change is the contents visible inside the box: replace whatever product jars/packs are currently shown with exactly the following ${count} products, and show all ${count} of them, no more, no fewer:
 
 ${lines.join('\n')}
 
-Arrange these ${count} items inside the box the same way products are already arranged in the original reference (same general layout style, same scale relative to the box). Do not add any product not in this list. Do not remove or leave the box looking emptier or fuller than ${count} items would naturally fill.
+Arrange these ${count} items inside the box the same way products are already arranged in the original reference (same general layout style, same scale relative to the box). Do not add any product not in this list.
 
 ${layoutInstruction}
 
 ${giftSection}
 
-The photos after this instruction are the selected product packs. Copy each pack's jar/box, lid, and label from those photos. Place those packs at full product scale inside the actual basket/box interior — do not paste a tiny cluster, thumbnail, or sticker overlay in one corner.
+${packPhotoLine}
 
 Output a single photorealistic image, same resolution and aspect ratio as the input image. This is a product-accuracy preview for e-commerce — the box, its exterior, and its styling must remain visually identical to the original reference; only the interior contents (and gift card text, if applicable) may change.`;
 }
@@ -186,8 +198,9 @@ export function buildComposeImagePrompt({
   productDescription,
   brand = 'Sukhmal',
   layoutType = 'open_arrangement',
+  productCollage = false,
 } = {}) {
-  const edit = buildPackHamperEditPrompt({ products, giftCard, brand, layoutType });
+  const edit = buildPackHamperEditPrompt({ products, giftCard, brand, layoutType, productCollage });
   const hamper = String(hamperName || 'selected gift hamper').trim();
   const pack = String(packaging || '').trim();
   return `${edit}

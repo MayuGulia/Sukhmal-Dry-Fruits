@@ -36,25 +36,21 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'hamper-image-img2img-v10';
-const helperUrl = `${pathToFileURL(
-  path.join(__dirname, '../netlify/functions/_shared/geminiInventory.js'),
-).href}?v=${GEMINI_MODULE_BUST}`;
-const giftHelperUrl = `${pathToFileURL(
-  path.join(__dirname, '../netlify/functions/_shared/geminiGiftAdvisor.js'),
-).href}?v=${GEMINI_MODULE_BUST}`;
-const hamperHelperUrl = `${pathToFileURL(
-  path.join(__dirname, '../netlify/functions/_shared/generateHamperPreview.js'),
-).href}?v=${GEMINI_MODULE_BUST}`;
+const GEMINI_MODULE_BUST = 'firebase-http-ai-v1';
+const firebaseAiDir = path.join(__dirname, '../../firebase/http-functions/_shared/ai');
+const helperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiInventory.js')).href}?v=${GEMINI_MODULE_BUST}`;
+const giftHelperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiGiftAdvisor.js')).href}?v=${GEMINI_MODULE_BUST}`;
+const hamperHelperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'generateHamperPreview.js')).href}?v=${GEMINI_MODULE_BUST}`;
+const hamperEnvUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiEnv.js')).href}?v=${GEMINI_MODULE_BUST}`;
 const sitemapHelperUrl = `${pathToFileURL(
-  path.join(__dirname, '../netlify/functions/_shared/sitemapUrls.js'),
+  path.join(__dirname, '../../firebase/http-functions/_shared/sitemapUrls.mjs'),
 ).href}?v=${GEMINI_MODULE_BUST}`;
 
 function registerAiInventoryRoutes(app) {
   if (!app || app.__skAiInventoryRegistered) return app;
   app.__skAiInventoryRegistered = true;
   console.log(
-    `[Sukhmal Gemini] local routes registered; GEMINI_MODEL=${process.env.GEMINI_MODEL || '(unset → gemini-2.5-flash)'} imageKey=${Boolean(process.env.GEMINI_IMAGE_API_KEY || process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY)} helper=${helperUrl}`,
+    `[Sukhmal] local /api AI+hamper uses firebase/http-functions (not Netlify); GEMINI_MODEL=${process.env.GEMINI_MODEL || '(unset)'} imageKey=${Boolean(process.env.GEMINI_IMAGE_API_KEY || process.env.GEMINI_ASSISTANT_API_KEY || process.env.GEMINI_API_KEY)} hamper=${hamperHelperUrl}`,
   );
 
   const preview = async (req, res) => {
@@ -113,9 +109,7 @@ function registerAiInventoryRoutes(app) {
     } catch (err) {
       console.error('[Sukhmal Gemini] generate-hamper-image failed', err.code || '', String(err.message || '').slice(0, 400));
       const code = err.code || 'gemini_error';
-      const { classifyGeminiFailure } = await import(
-        `${pathToFileURL(path.join(__dirname, '../netlify/functions/_shared/geminiEnv.js')).href}?v=${GEMINI_MODULE_BUST}`
-      );
+      const { classifyGeminiFailure } = await import(hamperEnvUrl);
       const { quota, busy } = classifyGeminiFailure(err);
       const status = code === 'not_configured' || code === 'gemini_auth'
         ? 503
