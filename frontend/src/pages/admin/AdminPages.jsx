@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Search } from 'lucide-react';
 import { inr } from '@/lib/utils';
 import { adminApi } from '@/lib/adminApi';
-import { productInStock } from '@/lib/commerceStore';
 import { AiInventoryBar } from './AiInventoryBar';
+
+const AdminProductTable = React.lazy(() => import('./AdminProductTable').then((m) => ({ default: m.AdminProductTable })));
 
 const STATUS_OPTS = ['placed', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled', 'pending_cod'];
 const statusLabel = (s) => String(s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -94,87 +94,10 @@ export function AdminOrders() {
 }
 
 export function AdminProducts() {
-  const [q, setQ] = useState('');
-  const [list, setList] = useState([]);
-  const [err, setErr] = useState('');
-  const [source, setSource] = useState('firestore');
-  const [seeding, setSeeding] = useState(false);
-
-  useEffect(() => adminApi.subscribeProducts(
-    { activeOnly: false },
-    (rows, meta) => {
-      setList(rows);
-      setSource(meta?.source || 'firestore');
-    },
-    (e) => setErr(e?.message || 'Could not load products.'),
-  ), []);
-
-  const publishCatalog = async () => {
-    setSeeding(true);
-    setErr('');
-    try {
-      const result = await adminApi.seedCatalog();
-      if (result.existing) {
-        setErr(`Firestore already has ${result.existing} products.`);
-      }
-    } catch (error) {
-      setErr(error?.message || 'Could not publish the catalog.');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
-  const filtered = list.filter((p) => (p.name || '').toLowerCase().includes(q.toLowerCase()));
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold">Products</h1>
-          <p className="text-sm text-ink-500 mt-1">
-            {source === 'firestore'
-              ? `${list.length} products in Firestore`
-              : `${list.length} products from the site catalog — publish them to Firestore to edit live stock.`}
-          </p>
-        </div>
-        {source !== 'firestore' ? (
-          <button type="button" className="sk-btn-primary text-sm" onClick={publishCatalog} disabled={seeding}>
-            <Plus size={14} /> {seeding ? 'Publishing…' : 'Publish catalog to Firestore'}
-          </button>
-        ) : (
-          <button type="button" className="sk-btn-primary text-sm" onClick={publishCatalog} disabled={seeding}>
-            <Plus size={14} /> {seeding ? 'Publishing…' : 'Sync catalog'}
-          </button>
-        )}
-      </div>
-      {err && <p className="mb-3 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{err}</p>}
-      <div className="relative max-w-sm mb-4">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products..." className="sk-input has-leading-icon !py-2" />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filtered.map((p) => {
-          const ok = productInStock(p);
-          const pack = p.weightVariants?.[0];
-          return (
-            <div key={p.id} className="rounded-xl border border-line bg-white overflow-hidden">
-              <div className="aspect-square bg-cream-200 overflow-hidden">
-                <img src={p.images?.[0] || p.img} alt={p.name} className="w-full h-full object-cover" />
-              </div>
-              <div className="p-3">
-                <div className="font-display font-bold leading-tight">{p.name}{pack?.weight ? ` (${pack.weight})` : ''}</div>
-                <div className="text-sm mt-1">{inr(pack?.price ?? p.price)}</div>
-                <span className={`mt-2 inline-flex text-[10px] font-bold px-2 py-0.5 rounded ${ok ? 'bg-[#D9F0D2] text-[#2E7D32]' : 'bg-red-100 text-red-600'}`}>{ok ? 'IN STOCK' : 'OUT OF STOCK'}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {!filtered.length && (
-        <div className="rounded-xl border border-line bg-white px-4 py-8 text-center text-ink-500 text-sm">
-          No products to show. Publish the catalog to Firestore, then refresh.
-        </div>
-      )}
-    </div>
+    <React.Suspense fallback={<p className="text-sm text-ink-500">Loading products…</p>}>
+      <AdminProductTable />
+    </React.Suspense>
   );
 }
 

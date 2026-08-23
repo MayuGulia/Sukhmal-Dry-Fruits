@@ -181,13 +181,16 @@ function gallerySlotSrc(slug, n) {
   return `/products/${slug}-${n}.jpg?v=3`;
 }
 
-/** Always the five catalog gallery shots (`{slug}-1.jpg` … `{slug}-5.jpg`), matching the PDP thumbs. */
+/** Catalog gallery: local `{slug}-N` shots, with a remote (Storage) first image taking slot 1 when present. */
 export function productGalleryImages(p) {
   const slug = String(p?.slug || '').trim();
-  if (slug && !/^p_/i.test(slug)) {
-    return [1, 2, 3, 4, 5].map((n) => gallerySlotSrc(slug, n));
-  }
   const listed = (Array.isArray(p?.images) ? p.images : []).filter(Boolean);
+  const remoteFirst = listed.find((src) => /^https?:\/\//i.test(String(src)));
+  if (slug && !/^p_/i.test(slug)) {
+    const local = [1, 2, 3, 4, 5].map((n) => gallerySlotSrc(slug, n));
+    if (remoteFirst) return [remoteFirst, ...local.slice(1)];
+    return local;
+  }
   if (listed.length) return listed.slice(0, 5);
   if (p?.img) return [p.img];
   if (p?.image) return [p.image];

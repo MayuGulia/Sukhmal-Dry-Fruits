@@ -9,9 +9,10 @@ import {
   getLiveProducts,
 } from '@/lib/commerceStore';
 import { PRODUCTS as MOCK_PRODUCTS } from '@/data/mockCatalog';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { hydrateStorefrontProduct } from '@/lib/liveCatalog';
 import { appendOrderStatus, mapAdminOrder, newOrderId } from '@/lib/orders';
+import { applyProductPackPatch, productFromImportRow } from '@/lib/adminProductPatch';
 import {
   collection,
   doc,
@@ -22,14 +23,19 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
+
+/** Initialized immediately so circular / HMR importers never hit a TDZ on `adminApi`. */
+export const adminApi = {};
 
 function friendlyFsError(err, fallback) {
   const code = err?.code || '';
-  if (code === 'permission-denied') {
-    return 'Firestore blocked this request. Deploy firebase/firestore.rules to project sukhmal-website and stay signed in as an admin email.';
+  if (code === 'permission-denied' || code === 'storage/unauthorized') {
+    return 'This write was blocked. Stay signed in as an admin email and confirm firestore/storage rules are deployed to sukhmal-website.';
   }
   return err?.message || fallback;
 }
@@ -202,6 +208,81 @@ function firestoreUpdateFromProduct(product) {
   };
 }
 
+async function patchProduct(id, patch) {
+  requireDb();
+  try {
+    const snap = await getDoc(doc(db, 'products', id));
+    if (!snap.exists()) throw new Error('Product not found in Firestore. Publish the catalog first.');
+    const current = hydrateStorefrontProduct(snap.id, snap.data());
+    const patched = applyProductPackPatch(current, patch);
+    const payload = firestoreUpdateFromProduct(patched);
+    delete payload.images;
+    await updateDoc(doc(db, 'products', id), JSON.parse(JSON.stringify(payload)));
+    return patched;
+  } catch (err) {
+    throw new Error(friendlyFsError(err, 'Could not save product.'));
+  }
+}
+
+async function uploadProductImage(id, file) {
+  if (!storage) throw new Error('Firebase Storage is not connected.');
+  requireDb();
+  if (!file || !/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+    throw new Error('Use a JPEG, PNG, or WebP image under 5 MB.');
+  }
+  if (file.size >= 5 * 1024 * 1024) throw new Error('Image must be under 5 MB.');
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const path = `products/${id}/hero-${Date.now()}.${ext}`;
+  try {
+    const uploaded = await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
+    const url = await getDownloadURL(uploaded.ref);
+    const snap = await getDoc(doc(db, 'products', id));
+    if (!snap.exists()) throw new Error('Product not found in Firestore. Publish the catalog first.');
+    const listed = Array.isArray(snap.data()?.images) ? snap.data().images : [];
+    const rest = listed.filter((src) => src && src !== url).slice(0, 4);
+    await updateDoc(doc(db, 'products', id), {
+      images: [url, ...rest],
+      updatedAt: new Date().toISOString(),
+    });
+    return url;
+  } catch (err) {
+    throw new Error(friendlyFsError(err, 'Could not upload the image.'));
+  }
+}
+
+async function commitProductImport(changes) {
+  requireDb();
+  const runnable = (changes || []).filter((c) => c && c.id && (c.action === 'create' || c.action === 'update'));
+  if (!runnable.length) throw new Error('No import changes to write.');
+  const existingById = new Map();
+  try {
+    const snap = await getDocs(collection(db, 'products'));
+    snap.docs.forEach((d) => existingById.set(d.id, hydrateStorefrontProduct(d.id, d.data())));
+  } catch (err) {
+    throw new Error(friendlyFsError(err, 'Could not read products for import.'));
+  }
+
+  const CHUNK = 400;
+  let wrote = 0;
+  try {
+    for (let i = 0; i < runnable.length; i += CHUNK) {
+      const batch = writeBatch(db);
+      runnable.slice(i, i + CHUNK).forEach((change) => {
+        const existing = existingById.get(change.id);
+        const patched = productFromImportRow(change.row, existing);
+        const payload = productDocForFirestore(patched);
+        if (existing) delete payload.images;
+        batch.set(doc(db, 'products', change.id), payload, { merge: true });
+        wrote += 1;
+      });
+      await batch.commit();
+    }
+  } catch (err) {
+    throw new Error(friendlyFsError(err, 'Could not import products.'));
+  }
+  return { wrote };
+}
+
 async function commitInventoryBatch(changes) {
   const runnable = (changes || []).filter((c) => !c.noop);
   if (!runnable.length) return { wrote: 0 };
@@ -243,7 +324,7 @@ function requireDb() {
   if (!db) throw new Error('Firestore is not connected. Live orders cannot be loaded or updated.');
 }
 
-export const adminApi = {
+Object.assign(adminApi, {
   stats: async (from, to) => {
     requireDb();
     const [orders, products] = await Promise.all([listFirestoreOrders(), listFirestoreProducts()]);
@@ -443,4 +524,7 @@ export const adminApi = {
       return { applied: runnable, wrote: wrote.wrote };
     }
   },
-};
+  patchProduct,
+  uploadProductImage,
+  commitProductImport,
+});
