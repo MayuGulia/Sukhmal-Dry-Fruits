@@ -36,20 +36,71 @@ function findMockProduct(slug) {
   return MOCK_PRODUCTS.find((p) => p.slug === resolved || p.slug === slug || p.id === slug) || null;
 }
 
+const MOCK_BY_ID = new Map(MOCK_PRODUCTS.map((p) => [p.id, p]));
+const MOCK_BY_SLUG = new Map(MOCK_PRODUCTS.map((p) => [p.slug, p]));
+
+function searchTokens(q) {
+  return String(q || '')
+    .toLowerCase()
+    .trim()
+    .split(/[^a-z0-9]+/i)
+    .filter((t) => t.length >= 2);
+}
+
+function haystackIncludesTokens(haystack, q) {
+  const text = String(haystack || '').toLowerCase();
+  const tokens = searchTokens(q);
+  if (!tokens.length) {
+    const compact = String(q || '').toLowerCase().trim();
+    return !compact || text.includes(compact);
+  }
+  return tokens.every((t) => text.includes(t));
+}
+
+function productSearchText(p) {
+  const mock = MOCK_BY_ID.get(p?.id) || MOCK_BY_SLUG.get(p?.slug) || {};
+  const src = { ...mock, ...p };
+  return [
+    src.name,
+    src.slug,
+    src.tagline,
+    src.category,
+    src.subcategory,
+    src.description,
+    src.seoKeywords,
+    src.seoTitle,
+    src.bestFor,
+    ...(Array.isArray(src.highlights) ? src.highlights : []),
+  ].filter(Boolean).join(' ');
+}
+
+export function productMatchesQuery(p, q) {
+  if (!q) return true;
+  return haystackIncludesTokens(productSearchText(p), q);
+}
+
+export function hamperMatchesQuery(h, q) {
+  if (!q) return true;
+  return haystackIncludesTokens([
+    h?.name,
+    h?.slug,
+    h?.tier,
+    h?.packaging,
+    h?.packagingKind,
+    h?.description,
+    'hamper',
+    'gift hamper',
+    ...(Array.isArray(h?.tags) ? h.tags : []),
+    ...(Array.isArray(h?.contents) ? h.contents : []),
+  ].filter(Boolean).join(' '), q);
+}
+
 function filterProducts({ category, q, bestseller, sort, limit = 200 } = {}) {
   let list = getLiveProducts({ activeOnly: true });
   if (!list.length) list = [...MOCK_PRODUCTS];
   if (category) list = list.filter((p) => p.category === category);
   if (bestseller) list = list.filter((p) => p.bestseller);
-  if (q) {
-    const needle = q.toLowerCase();
-    list = list.filter(
-      (p) =>
-        p.name.toLowerCase().includes(needle) ||
-        (p.tagline || '').toLowerCase().includes(needle) ||
-        (p.category || '').toLowerCase().includes(needle)
-    );
-  }
+  if (q) list = list.filter((p) => productMatchesQuery(p, q));
   if (sort === 'price_asc') list.sort((a, b) => a.price - b.price);
   if (sort === 'price_desc') list.sort((a, b) => b.price - a.price);
   if (sort === 'rating') list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
@@ -125,15 +176,7 @@ export function useProducts({ category, q, bestseller, sort, limit = 200 } = {})
     let list = source.filter((p) => p.isActive !== false && !p.isDeleted);
     if (category) list = list.filter((p) => p.category === category);
     if (bestseller) list = list.filter((p) => p.bestseller || p.isBestseller);
-    if (q) {
-      const needle = q.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(needle) ||
-          (p.tagline || '').toLowerCase().includes(needle) ||
-          (p.category || '').toLowerCase().includes(needle),
-      );
-    }
+    if (q) list = list.filter((p) => productMatchesQuery(p, q));
     if (sort === 'price_asc') list.sort((a, b) => a.price - b.price);
     if (sort === 'price_desc') list.sort((a, b) => b.price - a.price);
     if (sort === 'rating') list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
@@ -169,7 +212,12 @@ export function useProducts({ category, q, bestseller, sort, limit = 200 } = {})
   useEffect(() => {
     if (db) {
       applyLocal(getLiveProducts({ activeOnly: true }));
-      return subscribeLiveProducts((rows) => applyLocal(rows), { activeOnly: true });
+      const stopLive = subscribeLiveProducts((rows) => applyLocal(rows), { activeOnly: true });
+      const stopStore = subscribeCatalog(() => applyLocal(getLiveProducts({ activeOnly: true })));
+      return () => {
+        stopLive();
+        stopStore();
+      };
     }
     fetchIt();
     if (HAS_BACKEND) return undefined;

@@ -10,10 +10,12 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   updateProfile,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider, FIREBASE_ENABLED } from '@/lib/firebase';
-import { isStrongPassword, passwordPolicyMessage, stripHtml } from '@/lib/security';
+import { isStrongPassword, passwordPolicyMessage, stripHtml, toE164IndianPhone } from '@/lib/security';
 import { ADMIN_EMAIL, isAdminEmail } from '@/lib/adminEmails';
 import { setAuthToken } from '@/lib/api';
 import {
@@ -25,6 +27,26 @@ import {
 const Ctx = createContext(null);
 const LS = 'sk_auth_v1';
 export { ADMIN_EMAIL, isAdminEmail };
+
+const RECAPTCHA_ID = 'sk-recaptcha';
+let recaptchaVerifier = null;
+let phoneConfirmation = null;
+
+function resetPhoneRecaptcha() {
+  try { recaptchaVerifier?.clear(); } catch {}
+  recaptchaVerifier = null;
+}
+
+function ensurePhoneRecaptcha() {
+  if (!auth) throw new Error('Firebase is not configured');
+  if (typeof document === 'undefined' || !document.getElementById(RECAPTCHA_ID)) {
+    throw new Error('Phone verification is still loading. Try again in a moment.');
+  }
+  if (!recaptchaVerifier) {
+    recaptchaVerifier = new RecaptchaVerifier(auth, RECAPTCHA_ID, { size: 'invisible' });
+  }
+  return recaptchaVerifier;
+}
 
 export const DEMO_ADMIN = {
   email: ADMIN_EMAIL,
@@ -53,7 +75,7 @@ function mapSession(fbUser, claims = {}) {
   const admin = Boolean(claims.admin) || collectEmails(fbUser).some(isAdminEmail);
   return {
     uid: fbUser.uid,
-    email: fbUser.email || null,
+    email: fbUser.email || collectEmails(fbUser)[0] || null,
     phone: fbUser.phoneNumber || null,
     displayName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Guest'),
     photoURL: fbUser.photoURL || null,
@@ -87,7 +109,7 @@ async function upsertUserDoc(fbUser, extras = {}) {
   const ref = doc(db, 'users', fbUser.uid);
   const profile = {
     name: stripHtml(extras.name || fbUser.displayName || '', 80),
-    email: fbUser.email || null,
+    email: fbUser.email || collectEmails(fbUser)[0] || extras.email || null,
     phone: extras.phone || fbUser.phoneNumber || null,
     photoURL: fbUser.photoURL || null,
     updatedAt: serverTimestamp(),
@@ -241,6 +263,35 @@ export const AuthProvider = ({ children }) => {
     await sendPasswordResetEmail(auth, email.trim());
   };
 
+  const startPhoneSignIn = async (phone) => {
+    if (!auth) throw new Error('Firebase is not configured');
+    const e164 = toE164IndianPhone(phone);
+    if (!e164) throw new Error('Please enter a valid 10-digit Indian mobile number.');
+    const verifier = ensurePhoneRecaptcha();
+    try {
+      phoneConfirmation = await signInWithPhoneNumber(auth, e164, verifier);
+      return e164;
+    } catch (err) {
+      resetPhoneRecaptcha();
+      throw err;
+    }
+  };
+
+  const confirmPhoneOtp = async (code, extras = {}) => {
+    if (!auth) throw new Error('Firebase is not configured');
+    if (!phoneConfirmation) throw new Error('Request a new code first.');
+    const cred = await phoneConfirmation.confirm(String(code || '').trim());
+    phoneConfirmation = null;
+    if (extras.name) {
+      try { await updateProfile(cred.user, { displayName: stripHtml(extras.name, 80) }); } catch {}
+    }
+    await upsertUserDoc(cred.user, { name: extras.name, phone: cred.user.phoneNumber });
+    const session = await sessionFromFirebaseUser(cred.user);
+    if (extras.name) session.displayName = stripHtml(extras.name, 80);
+    setUser(session);
+    return session;
+  };
+
   const refreshSession = async () => {
     if (!auth?.currentUser) return user;
     try { await auth.currentUser.reload(); } catch {}
@@ -253,6 +304,8 @@ export const AuthProvider = ({ children }) => {
     try { if (auth) await signOut(auth); } catch {}
     try { localStorage.removeItem(LS); } catch {}
     try { sessionStorage.removeItem('sk_login_lock'); } catch {}
+    phoneConfirmation = null;
+    resetPhoneRecaptcha();
     setAuthToken(null);
     setUser(null);
   };
@@ -272,6 +325,8 @@ export const AuthProvider = ({ children }) => {
         signInWithEmail,
         signUpWithEmail,
         signInWithGoogle,
+        startPhoneSignIn,
+        confirmPhoneOtp,
         sendReset,
         refreshSession,
         firebaseEnabled: FIREBASE_ENABLED,

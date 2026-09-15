@@ -75,6 +75,8 @@ function mergeCatalogAssets(products) {
   const byId = new Map(MOCK_PRODUCTS.map((p) => [p.id, p]));
   const bySlug = new Map(MOCK_PRODUCTS.map((p) => [p.slug, p]));
   return (products || []).map((p) => {
+    const hasRemote = (p.images || []).some((src) => /^https?:\/\//i.test(String(src)));
+    if (hasRemote) return p;
     const src = byId.get(p.id) || bySlug.get(p.slug);
     if (!src?.images?.length) return p;
     const have = new Set(p.images || []);
@@ -444,6 +446,16 @@ export function replaceProductsFromRemote(rows) {
     const prev = prevById.get(row.id) || prevBySlug.get(row.slug) || {};
     return hydrateProduct({ ...prev, ...row });
   });
+  save(state);
+}
+
+export function upsertLiveProduct(row) {
+  if (!row?.id) return;
+  const state = load();
+  const next = hydrateProduct(row);
+  const idx = state.products.findIndex((p) => p.id === row.id || (row.slug && p.slug === row.slug));
+  if (idx >= 0) state.products[idx] = hydrateProduct({ ...state.products[idx], ...next });
+  else state.products = [next, ...state.products.filter((p) => !p.isDeleted)];
   save(state);
 }
 

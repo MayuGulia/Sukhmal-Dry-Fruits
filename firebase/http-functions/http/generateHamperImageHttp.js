@@ -1,4 +1,4 @@
-const { json, readJsonBody, httpsFn } = require('../_shared/httpFn');
+const { json, readJsonBody, httpsFn, GEMINI_SECRETS, VERTEX_RUNTIME_SA } = require('../_shared/httpFn');
 
 const generateHamperImageHttp = httpsFn(async (req, res) => {
   if (req.method !== 'POST') return json(res, { error: 'method', message: 'POST required' }, 405);
@@ -31,6 +31,8 @@ const generateHamperImageHttp = httpsFn(async (req, res) => {
 }, {
   timeoutSeconds: 180,
   memory: '1GiB',
+  secrets: GEMINI_SECRETS,
+  serviceAccount: VERTEX_RUNTIME_SA,
 });
 
 module.exports = { generateHamperImageHttp };

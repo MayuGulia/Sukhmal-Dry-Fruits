@@ -12,44 +12,34 @@ import { clip, cleanPath, DEFAULT_OG_IMAGE } from './site';
 
 const CTA = ' Order now. Free delivery above ₹799.';
 
-export const HAMPER_INTRO =
-  'Sukhmal premium dry fruit gift hampers are built for high-intent gifting in Delhi and across India — Diwali gift hampers online, wedding return gift dry fruits, Rakhi dry fruit gift boxes, and New Year corporate hampers. Every tray and rigid box is packed in Surajmal Vihar, East Delhi with graded cashews, almonds, pistachios and raisins in airtight pouches, then finished with ribbon-ready presentation. Choose by occasion, budget or weight; add a gift card in Build Your Own Hamper if you need a custom mix. Corporate teams get GST invoicing and bulk dispatch from 25 units. Families order pantry-plus-gift boxes with free delivery above ₹799. Browse the collection below, then order a ready hamper or build one around California almonds, 320-grade kaju, and festive namkeen.';
-
 export const CATEGORY_COPY = {
   'dry-fruits': {
     title: 'Buy Dry Fruits Online Delhi | Sukhmal',
     description: 'Premium dry fruits online from East Delhi. Hygienically packed raisins, figs & more. Order now — free delivery above ₹799.',
-    intro: 'Shop premium dry fruits online from Sukhmal Dry Fruits Korner in East Delhi. Our sun-dried raisins, figs, apricots and mixed dry fruit packs are handpicked, hygienically packed, and delivered pan-India. Whether you are stocking the pantry or assembling a Diwali gift hamper, every pack is graded for freshness and flavour. Buy dry fruits online Delhi families have trusted since our Surajmal Vihar store opened — no preservatives, vacuum-sealed pouches, and free delivery on orders above ₹799.',
   },
   nuts: {
     title: 'Premium Nuts Online | Cashews Almonds | Sukhmal',
     description: 'California almonds, 320-grade kaju, pistachios & walnuts. Buy premium nuts online. Order now, free delivery above ₹799.',
-    intro: 'Sukhmal nuts are sourced for size, crunch and natural sweetness — from 320-grade whole cashews to California almonds, Iranian pistachios and Kashmiri walnuts. Packs are sorted, sealed and ready for daily snacking, sweets, or corporate gifting in Delhi NCR. Choose 250g, 500g or 1kg pouches. Every listing shows grade, allergen notes and best-for use so you can buy nuts online with confidence. Free delivery above ₹799 across India.',
   },
   seeds: {
     title: 'Seeds & Makhana Online | Sukhmal Dry Fruits',
     description: 'Roasted makhana, mixed seeds and pantry staples. 100% natural packs. Order now with free delivery above ₹799.',
-    intro: 'From fox nuts (makhana) to mixed seed blends, Sukhmal seeds are roasted or packed natural — no artificial flavouring. They work as light snacks, festival namkeen bases, and healthy gifting add-ons. We pack in resealable pouches from our East Delhi facility so crunch lasts. Shop seeds online with the same hygiene standards as our nuts and dry fruits, with pan-India dispatch and free shipping above ₹799.',
   },
   dates: {
     title: 'Ajwa & Medjool Dates Online India | Sukhmal',
     description: 'Buy Ajwa and Medjool dates online in India. Premium, plump dates packed fresh. Order now — free delivery above ₹799.',
-    intro: 'Dates are a Sukhmal staple for Ramadan, winter wellness, and luxury hampers. We list plump Medjool-style and Ajwa dates with clear pack sizes so you can compare Ajwa dates online India against everyday cooking dates. Each box is packed to protect moisture and flavour. Pair dates with nuts for wedding return gifts or corporate winter hampers. Order from Surajmal Vihar with pan-India delivery and free shipping above ₹799.',
   },
   berries: {
     title: 'Dried Berries Online | Cranberries | Sukhmal',
     description: 'Antioxidant-rich cranberries and dried berries for snacking and gifting. Order now. Free delivery above ₹799.',
-    intro: 'Sukhmal dried berries — cranberries and related sweet-tart packs — add colour to trail mixes, baking, and festive platters. We keep listings short and honest: origin-style notes, pack weight, and allergen-safe packing. Use berries in Diwali hampers or everyday snacking. All pouches ship from East Delhi with the same vacuum-seal standard as our nuts. Free delivery above ₹799.',
   },
   'gift-hampers': {
     title: 'Premium Dry Fruit Gift Hampers | Sukhmal',
     description: 'Diwali, wedding and corporate dry fruit gift hampers. Order now. Free delivery above ₹799.',
-    intro: 'Sukhmal gift hampers combine graded nuts, dry fruits and festive packaging for Diwali, weddings, Rakhi and corporate gifting in Delhi. Each hamper is assembled in East Delhi with airtight inner packs so gifts arrive fresh. Browse ready boxes or build your own hamper online. Free delivery above ₹799 across India.',
   },
   all: {
     title: 'Shop All Dry Fruits & Nuts | Sukhmal Dry Fruits',
     description: 'Browse the full Sukhmal catalog — nuts, dry fruits, dates, seeds and berries. Order now. Free delivery above ₹799.',
-    intro: 'Explore the complete Sukhmal Dry Fruits Korner catalog: premium cashews, almonds, pistachios, walnuts, raisins, dates, seeds and berries. Every product is photographed in pack, priced in INR, and ready to add to a gift hamper or pantry order. Filter by category, weight and price. We dispatch from East Delhi across India, with free delivery on orders above ₹799.',
   },
 };
 

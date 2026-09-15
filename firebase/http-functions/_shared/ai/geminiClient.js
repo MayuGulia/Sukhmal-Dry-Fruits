@@ -3,7 +3,7 @@
  * ListModels/generateContent often return 401 ACCESS_TOKEN_TYPE_UNSUPPORTED for those keys.
  * GEMINI_MODEL is the config switch when Google retires a model.
  */
-import { envGet, GEMINI_AUTH_HELP, isGeminiAuthFailure, isZeroImageQuota } from './geminiEnv.js';
+import { classifyGeminiFailure, envGet, GEMINI_AUTH_HELP, GEMINI_QUOTA_HELP, isGeminiAuthFailure, isZeroImageQuota } from './geminiEnv.js';
 import { generateVertexContent, generateVertexImage, vertexImageEnabled } from './vertexImage.js';
 
 const FALLBACK_MODEL = 'gemini-flash-latest';
@@ -383,6 +383,12 @@ export async function generateGeminiContent({ key, label, body }) {
           `[Sukhmal Gemini] ${label} failed model=${model} api=${api.name} auth=${auth.name} status=${status} message=${msg}`,
         );
         lastErr = err;
+        if (classifyGeminiFailure(err).quota) {
+          const qerr = new Error(GEMINI_QUOTA_HELP);
+          qerr.code = 'quota';
+          qerr.status = 429;
+          throw qerr;
+        }
         if (isGeminiAuthFailure(status, msg)) throw authError(msg);
         if (shouldTryNextModel(status, msg) || /empty response/i.test(msg)) continue;
         throw err;

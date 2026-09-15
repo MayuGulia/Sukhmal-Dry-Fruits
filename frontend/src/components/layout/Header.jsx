@@ -1,22 +1,50 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Heart, ShoppingBag, Menu, X, User, LogOut } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { BrandLockup, GiftBasketIcon } from '@/components/brand/BrandSeal';
 
 export default function Header({ onOpenDrawer }) {
-  const { count } = useCart();
+  const { count, hydrated } = useCart();
+  const prevCount = useRef(count);
+  const [cartPop, setCartPop] = useState(false);
   const { user, isAuthed, logout } = useAuth();
-  const [q, setQ] = useState('');
+  const [sp] = useSearchParams();
+  const urlQ = sp.get('q') || '';
+  const [q, setQ] = useState(urlQ);
   const [overlayQ, setOverlayQ] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const overlayInputRef = useRef(null);
   const nav = useNavigate();
 
+  useEffect(() => {
+    setQ(urlQ);
+  }, [urlQ]);
+
+  useEffect(() => {
+    if (!hydrated) {
+      prevCount.current = count;
+      return undefined;
+    }
+    if (count > prevCount.current) {
+      setCartPop(true);
+      const t = setTimeout(() => setCartPop(false), 420);
+      prevCount.current = count;
+      return () => clearTimeout(t);
+    }
+    prevCount.current = count;
+    return undefined;
+  }, [count, hydrated]);
+
+  const goSearch = (raw) => {
+    const term = String(raw || '').trim();
+    nav(term ? `/search?q=${encodeURIComponent(term)}` : '/search');
+  };
+
   const submitDesktop = (e) => {
     e.preventDefault();
-    if (q.trim()) nav(`/search?q=${encodeURIComponent(q.trim())}`);
+    goSearch(q);
   };
 
   const submitOverlay = (e) => {
@@ -25,7 +53,7 @@ export default function Header({ onOpenDrawer }) {
     if (!term) return;
     setSearchOpen(false);
     setOverlayQ('');
-    nav(`/search?q=${encodeURIComponent(term)}`);
+    goSearch(term);
   };
 
   const openSearch = () => {
@@ -91,7 +119,7 @@ export default function Header({ onOpenDrawer }) {
             <ShoppingBag size={22} strokeWidth={1.75} />
             <span
               data-testid="mob-cart-badge"
-              className="absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[var(--sk-badge-red)] text-white text-[10px] font-bold grid place-items-center leading-none"
+              className={`absolute top-0.5 right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-[var(--sk-badge-red)] text-white text-[10px] font-bold grid place-items-center leading-none ${cartPop ? 'sk-cart-pop' : ''}`}
             >
               {count > 99 ? '99+' : count}
             </span>
@@ -100,13 +128,15 @@ export default function Header({ onOpenDrawer }) {
       </div>
 
       {/* Desktop (≥ lg / 1024) */}
-      <div className="hidden lg:block relative">
-        <div className="sk-container flex items-center h-[5.35rem] gap-4">
-          <BrandLockup sealSize={64} />
+      <div className="hidden lg:block">
+        <div className="sk-container flex items-center h-[5.35rem] gap-3 xl:gap-4">
+          <div className="shrink-0">
+            <BrandLockup sealSize={64} />
+          </div>
 
           <form
             onSubmit={submitDesktop}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(440px,34vw)] xl:w-[min(620px,44vw)]"
+            className="relative z-20 flex-1 min-w-0 max-w-[560px]"
           >
             <div className="relative">
               <input
@@ -118,15 +148,16 @@ export default function Header({ onOpenDrawer }) {
               />
               <button
                 type="submit"
+                data-testid="hdr-search-submit"
                 aria-label="Search"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-[var(--sk-espresso)] text-gold-300 grid place-items-center hover:bg-brand-800 transition-colors"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-[var(--sk-espresso)] text-gold-300 grid place-items-center hover:bg-brand-800 transition-colors"
               >
                 <Search size={17} strokeWidth={2.25} />
               </button>
             </div>
           </form>
 
-          <div className="ml-auto flex items-center gap-3.5">
+          <div className="ml-auto shrink-0 flex items-center gap-3.5">
             {isAuthed ? (
               <>
                 <Link
@@ -173,7 +204,7 @@ export default function Header({ onOpenDrawer }) {
               <ShoppingBag size={24} strokeWidth={1.75} />
               <span
                 data-testid="cart-badge"
-                className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--sk-badge-red)] text-white text-[10px] font-bold grid place-items-center leading-none"
+                className={`absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--sk-badge-red)] text-white text-[10px] font-bold grid place-items-center leading-none ${cartPop ? 'sk-cart-pop' : ''}`}
               >
                 {count}
               </span>

@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/shared/Breadcrumb';
 import { TrustStrip } from '@/components/shared/ProductCard';
 import { useCart } from '@/contexts/CartContext';
 import { inr } from '@/lib/utils';
+import { orderItemImage } from '@/lib/orderImages';
 import {
   Trash2, ChevronLeft, Lock, Truck, Clock, Info, Minus, Plus,
   ShoppingBag, ShieldCheck,
@@ -69,8 +70,8 @@ export default function Cart() {
                     className="grid md:grid-cols-[1fr_100px_130px_90px] gap-3 items-center py-5 border-b border-line last:border-b-0"
                   >
                     <div className="flex items-start gap-3.5">
-                      <div className="w-[84px] h-[84px] rounded-xl overflow-hidden bg-cream-200 shrink-0 border border-line">
-                        <img src={it.image} alt={it.name} className="w-full h-full object-cover" />
+                      <div className="w-[84px] h-[84px] rounded-xl overflow-hidden bg-white shrink-0 border border-line grid place-items-center">
+                        <img src={orderItemImage(it) || it.image} alt={it.name} className="w-full h-full object-contain p-1.5" />
                       </div>
                       <div className="min-w-0">
                         <div className="font-display font-semibold text-brand-900 leading-snug text-[15px] md:text-base">
@@ -224,7 +225,10 @@ export default function Cart() {
                 >
                   <Lock size={15} /> Proceed to Checkout
                 </Link>
-                <div className="text-center text-[10px] text-ink-500 mt-2">Secure &amp; Fast Checkout</div>
+                <p className="mt-3 text-center text-[11px] text-brand-900 leading-snug">
+                  Razorpay UPI coming soon. Cash on Delivery works now.
+                </p>
+                <div className="text-center text-[10px] text-ink-500 mt-1">Secure &amp; Fast Checkout</div>
               </div>
             </aside>
           </div>

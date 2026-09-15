@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  Star, Heart, ShoppingBag, ShieldCheck, Truck, Package, Leaf,
-  MinusIcon, PlusIcon, Loader, Maximize2, X, ChevronLeft, ChevronRight,
+  Star, Heart, ShieldCheck, Truck, Package, Leaf,
+  Loader, Maximize2, X, ChevronLeft, ChevronRight,
   Gift, ChevronDown, CheckCircle2, Brain, HeartPulse, Scale, Sparkles, Droplets,
   Clock, Hand,
 } from 'lucide-react';
 import { inr } from '@/lib/utils';
-import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProduct, useProducts } from '@/lib/catalog';
 import { packVariants } from '@/lib/commerceStore';
 import Breadcrumb from '@/components/shared/Breadcrumb';
 import ProductCard from '@/components/shared/ProductCard';
+import AddToCartButton from '@/components/shared/AddToCartButton';
 import { api } from '@/lib/api';
 import { CATEGORIES } from '@/data/mockCatalog';
 import { STORE_WHATSAPP } from '@/data/storeInfo';
@@ -460,7 +460,6 @@ export default function PDP() {
   const { data: p, loading } = useProduct(slug);
   const packs = packVariants(p || {});
   const [variantW, setVariantW] = useState(null);
-  const [qty, setQty] = useState(1);
   const [pincode, setPincode] = useState('');
   const [pincodeResult, setPincodeResult] = useState(null);
   const [checkingPin, setCheckingPin] = useState(false);
@@ -468,13 +467,11 @@ export default function PDP() {
   const [showMsg, setShowMsg] = useState(false);
   const [msg, setMsg] = useState('');
   const reviewsRef = useRef(null);
-  const { add } = useCart();
   const { has, toggle } = useWishlist();
   const { data: related = [] } = useProducts({ category: p?.category, limit: 10 });
 
   useEffect(() => {
     setVariantW(null);
-    setQty(1);
     setTab('description');
     setShowMsg(false);
     setMsg('');
@@ -660,42 +657,17 @@ export default function PDP() {
             </div>
           </div>
 
-          {/* Quantity */}
-          <div className="mt-6">
-            <div className="text-[13px] font-semibold text-brand-900 mb-2.5">Quantity</div>
-            <div className="inline-flex items-center rounded-lg border border-line-strong overflow-hidden bg-white">
-              <button
-                type="button"
-                aria-label="Decrease quantity"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                className="px-3.5 py-2.5 hover:bg-cream-200 text-brand-900"
-              >
-                <MinusIcon size={15} />
-              </button>
-              <span className="px-4 py-2.5 font-semibold text-brand-900 min-w-[2.5rem] text-center tabular-nums">{qty}</span>
-              <button
-                type="button"
-                aria-label="Increase quantity"
-                onClick={() => setQty((q) => q + 1)}
-                className="px-3.5 py-2.5 hover:bg-cream-200 text-brand-900"
-              >
-                <PlusIcon size={15} />
-              </button>
-            </div>
-          </div>
-
-          {/* ATC + Wishlist */}
+          {/* ATC + Wishlist — quantity lives on the add button after first tap */}
           <div className="mt-6 flex items-stretch gap-3">
-            <button
-              type="button"
-              onClick={() => add(p, { qty, variant: activeVariant, giftMessage: msg || undefined })}
+            <AddToCartButton
+              product={{ ...p, meta: msg ? { giftMessage: msg } : p.meta }}
+              variant={activeVariant}
+              max={typeof activeVariant.stock === 'number' ? activeVariant.stock : undefined}
               disabled={variantOos}
-              data-testid="pdp-add-cart"
-              className="sk-btn-primary flex-1 !rounded-[10px] !py-3.5 !text-[15px] gap-2 disabled:opacity-50"
-            >
-              <ShoppingBag size={17} />
-              {variantOos ? 'Notify Me' : 'Add to Cart'}
-            </button>
+              layout="bar"
+              testId="pdp-add-cart"
+              meta={msg ? { giftMessage: msg } : undefined}
+            />
             <button
               type="button"
               aria-label={saved ? 'Remove from wishlist' : 'Add to wishlist'}

@@ -1,7 +1,12 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { cartItemImage } from '@/lib/orderImages';
 
 const CartCtx = createContext(null);
 const LS_KEY = 'sk_cart_v1';
+
+export function cartLineKey(p, { variant, source = 'product' } = {}) {
+  return String(p?.id ?? '') + (variant?.w || '') + (source || '');
+}
 
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState([]);
@@ -25,9 +30,9 @@ export const CartProvider = ({ children }) => {
     try { localStorage.setItem(LS_KEY, JSON.stringify({ items, coupon })); } catch {}
   }, [items, coupon, hydrated]);
 
-  const add = (p, { qty = 1, variant, source = 'product' } = {}) => {
+  const add = (p, { qty = 1, variant, source = 'product', meta } = {}) => {
     setItems((cur) => {
-      const key = p.id + (variant?.w || '') + (source || '');
+      const key = cartLineKey(p, { variant, source });
       const exist = cur.find((x) => x.key === key);
       if (exist) return cur.map((x) => (x.key === key ? { ...x, qty: x.qty + qty } : x));
       return [
@@ -36,13 +41,13 @@ export const CartProvider = ({ children }) => {
           key,
           id: p.id,
           name: p.name,
-          image: (p.images && p.images[0]) || p.image,
+          image: cartItemImage(p, { source, meta: meta || p.meta }),
           price: (variant && variant.price) || p.price,
           variant: variant?.w || null,
           qty,
           source,
           slug: p.slug,
-          meta: p.meta || null,
+          meta: meta || p.meta || null,
         },
       ];
     });

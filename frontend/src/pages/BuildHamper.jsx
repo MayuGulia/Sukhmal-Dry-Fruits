@@ -744,12 +744,18 @@ export default function BuildHamper() {
         {
           id: `custom_${Date.now()}`,
           name: `Custom Hamper (${styleObj.name})`,
-          images: [styleObj.img],
-          slug: 'custom-hamper',
+          image: generatedPreview || styleObj.img || styleObj.images?.[0] || '',
+          images: [generatedPreview || styleObj.img || styleObj.images?.[0] || ''].filter(Boolean),
+          slug: styleObj.key || 'custom-hamper',
           meta,
           price: cartTotal,
         },
-        { qty: 1, variant: { w: 'Custom', price: cartTotal }, source: 'custom-hamper' },
+        {
+          qty: 1,
+          variant: { w: 'Custom', price: cartTotal },
+          source: 'custom-hamper',
+          meta: { ...meta, previewImageUrl: generatedPreview || '' },
+        },
       );
       localStorage.removeItem(LS);
       setLoading(false);

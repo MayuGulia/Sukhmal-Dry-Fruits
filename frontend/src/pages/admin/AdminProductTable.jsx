@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import debounce from 'lodash/debounce';
-import { Download, FileSpreadsheet, Plus, Search, Upload } from 'lucide-react';
+import { Download, FileSpreadsheet, ImagePlus, Plus, Search, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { CATEGORIES } from '@/data/mockCatalog';
 import { adminApi } from '@/lib/adminApi';
@@ -13,8 +13,43 @@ import {
 } from '@/lib/adminProductExcel';
 import { inr } from '@/lib/utils';
 
-const CAT_OPTS = CATEGORIES.filter((c) => PRODUCT_CATEGORIES.includes(c.slug));
+const CAT_OPTS = CATEGORIES.filter((c) => PRODUCT_CATEGORIES.includes(c.slug) || c.slug === 'gift-hampers');
+const WEIGHT_OPTS = ['100g', '250g', '500g', '1kg'];
 const SAVE_WAIT_MS = 400;
+
+const EMPTY_NEW = {
+  name: '',
+  description: '',
+  category: 'dry-fruits',
+  weight: '250g',
+  price: '',
+  stock: '20',
+  inStock: true,
+  sku: '',
+  files: [],
+};
+
+function FileThumb({ file, onRemove }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  return (
+    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-line bg-cream-200 shrink-0">
+      {src ? <img src={src} alt="" className="w-full h-full object-cover" /> : null}
+      <button
+        type="button"
+        className="absolute top-1 right-1 bg-white/95 rounded-full p-0.5 shadow-sk-sm"
+        onClick={onRemove}
+        aria-label="Remove image"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
+}
 
 function mergeRow(product, draft) {
   return draft ? applyProductPackPatch(product, draft) : product;
@@ -31,6 +66,9 @@ export function AdminProductTable() {
   const [uploadingId, setUploadingId] = useState('');
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [showAdd, setShowAdd] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [newProduct, setNewProduct] = useState(EMPTY_NEW);
 
   const pendingRef = useRef(new Map());
   const flushersRef = useRef(new Map());
@@ -127,21 +165,54 @@ export function AdminProductTable() {
   };
 
   const onImagePicked = async (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
     const id = imageTargetRef.current;
-    if (!file || !id) return;
+    if (!files.length || !id) return;
     setUploadingId(id);
     setErr('');
     try {
-      const url = await adminApi.uploadProductImage(id, file);
-      setList((prev) => prev.map((p) => (p.id === id ? { ...p, images: [url, ...(p.images || []).slice(1)] } : p)));
-      toast.success('Image uploaded.');
+      const images = await adminApi.uploadProductImages(id, files);
+      setList((prev) => prev.map((p) => (p.id === id ? { ...p, images } : p)));
+      toast.success(files.length === 1 ? 'Image uploaded.' : `${files.length} images uploaded.`);
     } catch (error) {
       toast.error(error?.message || 'Could not upload the image.');
       setErr(error?.message || 'Could not upload the image.');
     } finally {
       setUploadingId('');
+    }
+  };
+
+  const addNewFiles = (files) => {
+    const next = Array.from(files || []).filter((f) => /^image\/(jpeg|png|webp)$/i.test(f.type));
+    if (!next.length) {
+      toast.error('Use JPEG, PNG, or WebP images under 5 MB.');
+      return;
+    }
+    setNewProduct((p) => ({ ...p, files: [...p.files, ...next].slice(0, 5) }));
+  };
+
+  const submitNewProduct = async (e) => {
+    e.preventDefault();
+    if (!live) {
+      toast.error('Publish the catalog to Firestore before adding products.');
+      return;
+    }
+    setAdding(true);
+    setErr('');
+    try {
+      const created = await adminApi.createProduct({
+        ...newProduct,
+        price: Number(newProduct.price),
+        stock: Number(newProduct.stock),
+      });
+      toast.success(`Saved. It now shows on the shop in ${created.category || 'the catalog'}.`);
+      setNewProduct(EMPTY_NEW);
+    } catch (error) {
+      toast.error(error?.message || 'Could not add product.');
+      setErr(error?.message || 'Could not add product.');
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -206,30 +277,178 @@ export function AdminProductTable() {
   const cellClass = 'sk-input !py-1.5 !px-2 !text-sm !rounded-lg min-w-0';
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div>
-          <h1 className="font-display text-3xl font-bold">Products</h1>
+    <div className="min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4 min-w-0">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold">Products</h1>
           <p className="text-sm text-ink-500 mt-1">
             {live
-              ? `${list.length} products in Firestore — edits save after ${SAVE_WAIT_MS}ms`
+              ? `${list.length} products in Firestore — edits save after ${SAVE_WAIT_MS}ms and update the shop`
               : `${list.length} products from the site catalog — publish them to Firestore to edit live stock.`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button type="button" className="sk-btn-outline !py-2 !px-3 text-sm" onClick={() => setShowAdd((v) => !v)}>
+            <Plus size={14} /> {showAdd ? 'Hide form' : 'Add product'}
+          </button>
           <button type="button" className="sk-btn-outline !py-2 !px-3 text-sm" onClick={() => downloadProductsExcel(list)} disabled={!list.length}>
             <Download size={14} /> Export
           </button>
           <button type="button" className="sk-btn-outline !py-2 !px-3 text-sm" onClick={() => importInputRef.current?.click()} disabled={!live}>
-            <Upload size={14} /> Import Excel
+            <Upload size={14} /> Import
           </button>
-          <button type="button" className="sk-btn-primary text-sm" onClick={publishCatalog} disabled={seeding}>
-            <Plus size={14} /> {seeding ? 'Publishing…' : live ? 'Sync catalog' : 'Publish catalog to Firestore'}
+          <button type="button" className="sk-btn-primary !py-2 !px-3 text-sm" onClick={publishCatalog} disabled={seeding}>
+            {seeding ? 'Publishing…' : live ? 'Sync catalog' : 'Publish catalog'}
           </button>
         </div>
       </div>
 
-      {err && <p className="mb-3 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{err}</p>}
+      {err && <p className="mb-3 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3 break-words">{err}</p>}
+
+      {showAdd && (
+        <form onSubmit={submitNewProduct} className="mb-5 rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-sk-sm min-w-0 overflow-hidden">
+          <h2 className="font-display text-xl sm:text-2xl font-bold">Add product</h2>
+          <p className="text-sm text-ink-500 mt-1 mb-4">
+            Saves to Firestore and shows immediately on category pages, search, and the product page.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 min-w-0">
+            <label className="block min-w-0">
+              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">Name</span>
+              <input
+                className="sk-input mt-1.5 max-w-full"
+                required
+                value={newProduct.name}
+                onChange={(e) => setNewProduct((p) => ({ ...p, name: e.target.value }))}
+                placeholder="e.g. Kaju 320 N"
+              />
+            </label>
+            <label className="block min-w-0">
+              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">SKU</span>
+              <input
+                className="sk-input mt-1.5 max-w-full"
+                value={newProduct.sku}
+                onChange={(e) => setNewProduct((p) => ({ ...p, sku: e.target.value }))}
+                placeholder="Optional — generated from name"
+              />
+            </label>
+            <label className="block min-w-0">
+              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">Category</span>
+              <select
+                className="sk-input mt-1.5 max-w-full"
+                value={newProduct.category}
+                onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
+              >
+                {CAT_OPTS.map((c) => (
+                  <option key={c.slug} value={c.slug}>{c.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block min-w-0">
+              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">Weight</span>
+              <select
+                className="sk-input mt-1.5 max-w-full"
+                value={WEIGHT_OPTS.includes(newProduct.weight) ? newProduct.weight : '__custom'}
+                onChange={(e) => setNewProduct((p) => ({ ...p, weight: e.target.value === '__custom' ? '' : e.target.value }))}
+              >
+                {WEIGHT_OPTS.map((w) => <option key={w} value={w}>{w}</option>)}
+                <option value="__custom">Custom</option>
+              </select>
+              {!WEIGHT_OPTS.includes(newProduct.weight) && (
+                <input
+                  className="sk-input mt-2 max-w-full"
+                  placeholder="e.g. 750g"
+                  value={newProduct.weight}
+                  onChange={(e) => setNewProduct((p) => ({ ...p, weight: e.target.value }))}
+                />
+              )}
+            </label>
+            <label className="block min-w-0">
+              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">Price (₹)</span>
+              <input
+                className="sk-input mt-1.5 max-w-full"
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={newProduct.price}
+                onChange={(e) => setNewProduct((p) => ({ ...p, price: e.target.value }))}
+              />
+            </label>
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 min-w-0">
+              <label className="block min-w-0">
+                <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">Stock qty</span>
+                <input
+                  className="sk-input mt-1.5 max-w-full"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={newProduct.stock}
+                  disabled={!newProduct.inStock}
+                  onChange={(e) => setNewProduct((p) => ({ ...p, stock: e.target.value }))}
+                />
+              </label>
+              <label className="block min-w-0">
+                <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">Availability</span>
+                <select
+                  className="sk-input mt-1.5 max-w-full"
+                  value={newProduct.inStock ? 'in' : 'out'}
+                  onChange={(e) => {
+                    const inStock = e.target.value === 'in';
+                    setNewProduct((p) => ({ ...p, inStock, stock: inStock ? (p.stock === '0' ? '20' : p.stock) : '0' }));
+                  }}
+                >
+                  <option value="in">In stock</option>
+                  <option value="out">Out of stock</option>
+                </select>
+              </label>
+            </div>
+            <label className="block min-w-0 sm:col-span-2">
+              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">Description</span>
+              <textarea
+                className="sk-input mt-1.5 min-h-[96px] max-w-full"
+                rows={3}
+                value={newProduct.description}
+                onChange={(e) => setNewProduct((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Short product description shown on the product page"
+              />
+            </label>
+            <div className="sm:col-span-2 min-w-0">
+              <span className="text-[11px] font-semibold text-ink-500 uppercase tracking-wide">Images</span>
+              <div className="mt-1.5 flex flex-wrap gap-2 items-center">
+                {newProduct.files.map((file, i) => (
+                  <FileThumb
+                    key={`${file.name}-${file.lastModified}-${i}`}
+                    file={file}
+                    onRemove={() => setNewProduct((p) => ({ ...p, files: p.files.filter((_, idx) => idx !== i) }))}
+                  />
+                ))}
+              </div>
+              {newProduct.files.length < 5 && (
+                <label className="mt-2 flex w-full min-h-[88px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong bg-cream-100 px-3 py-4 text-sm text-ink-600 hover:bg-cream-200">
+                  <ImagePlus size={18} />
+                  <span>Add images (up to 5)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      addNewFiles(e.target.files);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+              <p className="text-[11px] text-ink-500 mt-1.5">JPEG, PNG, or WebP · under 5 MB each</p>
+            </div>
+          </div>
+          <div className="mt-5 pt-4 border-t border-line flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <button type="submit" className="sk-btn-primary w-full sm:w-auto text-sm !px-6" disabled={adding || !live}>
+              {adding ? 'Adding…' : 'Add to catalog'}
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className="relative max-w-sm mb-3">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
@@ -242,16 +461,16 @@ export function AdminProductTable() {
       </p>
 
       <div className="rounded-xl border border-line bg-white overflow-auto max-h-[70vh]">
-        <table className="w-full text-sm min-w-[1080px] border-collapse">
+        <table className="w-full text-sm min-w-[1240px] border-collapse">
           <thead className="sticky top-0 bg-cream-200 z-10">
             <tr className="text-left text-[11px] uppercase tracking-wide text-ink-500">
-              <th className="px-3 py-2 font-semibold w-[72px]">Image</th>
+              <th className="px-3 py-2 font-semibold w-[140px]">Images</th>
               <th className="px-3 py-2 font-semibold min-w-[180px]">Name</th>
               <th className="px-3 py-2 font-semibold w-[140px]">Category</th>
               <th className="px-3 py-2 font-semibold w-[90px]">Weight</th>
               <th className="px-3 py-2 font-semibold w-[110px]">Price</th>
               <th className="px-3 py-2 font-semibold w-[90px]">Stock</th>
-              <th className="px-3 py-2 font-semibold w-[110px]">In stock</th>
+              <th className="px-3 py-2 font-semibold w-[140px]">Availability</th>
               <th className="px-3 py-2 font-semibold min-w-[220px]">Description</th>
             </tr>
           </thead>
@@ -263,18 +482,32 @@ export function AdminProductTable() {
               return (
                 <tr key={p.id} className="border-t border-line align-top">
                   <td className="px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => openImagePicker(p.id)}
-                      disabled={!live || uploadingId === p.id}
-                      className="relative w-12 h-12 rounded-lg overflow-hidden border border-line bg-cream-200 block"
-                      title="Replace image"
-                    >
-                      <img src={p.images?.[0] || p.img} alt="" className="w-full h-full object-cover" />
-                      {uploadingId === p.id && (
-                        <span className="absolute inset-0 bg-black/40 text-white text-[10px] grid place-items-center">…</span>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {(p.images?.length ? p.images : [p.img]).filter(Boolean).slice(0, 3).map((src) => (
+                        <button
+                          key={src}
+                          type="button"
+                          onClick={() => openImagePicker(p.id)}
+                          disabled={!live || uploadingId === p.id}
+                          className="relative w-11 h-11 rounded-lg overflow-hidden border border-line bg-cream-200 shrink-0"
+                          title="Add or replace images"
+                        >
+                          <img src={src} alt="" className="w-full h-full object-cover" />
+                          {uploadingId === p.id && (
+                            <span className="absolute inset-0 bg-black/40 text-white text-[10px] grid place-items-center">…</span>
+                          )}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => openImagePicker(p.id)}
+                        disabled={!live || uploadingId === p.id}
+                        className="w-11 h-11 rounded-lg border border-dashed border-line-strong text-ink-400 grid place-items-center shrink-0"
+                        title="Add images"
+                      >
+                        <ImagePlus size={14} />
+                      </button>
+                    </div>
                   </td>
                   <td className="px-3 py-2">
                     <input
@@ -291,7 +524,7 @@ export function AdminProductTable() {
                   <td className="px-3 py-2">
                     <select
                       className={cellClass}
-                      value={PRODUCT_CATEGORIES.includes(p.category) ? p.category : (p.category || 'dry-fruits')}
+                      value={CAT_OPTS.some((c) => c.slug === p.category) ? p.category : (p.category || 'dry-fruits')}
                       disabled={!live}
                       onChange={(e) => queuePatch(p, { category: e.target.value })}
                     >
@@ -347,17 +580,18 @@ export function AdminProductTable() {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <label className="inline-flex items-center gap-2 text-[12px]">
-                      <input
-                        type="checkbox"
-                        checked={(pack.stock ?? 0) > 0}
-                        disabled={!live}
-                        onChange={(e) => queuePatch(p, { inStock: e.target.checked })}
-                      />
-                      <span className={`inline-flex text-[10px] font-bold px-2 py-0.5 rounded ${ok ? 'bg-[#D9F0D2] text-[#2E7D32]' : 'bg-red-100 text-red-600'}`}>
-                        {ok ? 'IN STOCK' : 'OUT'}
-                      </span>
-                    </label>
+                    <select
+                      className={cellClass}
+                      value={ok ? 'in' : 'out'}
+                      disabled={!live}
+                      onChange={(e) => queuePatch(p, { inStock: e.target.value === 'in' })}
+                    >
+                      <option value="in">In stock</option>
+                      <option value="out">Out of stock</option>
+                    </select>
+                    <span className={`mt-1 inline-flex text-[10px] font-bold px-2 py-0.5 rounded ${ok ? 'bg-[#D9F0D2] text-[#2E7D32]' : 'bg-red-100 text-red-600'}`}>
+                      {ok ? 'IN STOCK' : 'OUT OF STOCK'}
+                    </span>
                   </td>
                   <td className="px-3 py-2">
                     <textarea
@@ -381,11 +615,10 @@ export function AdminProductTable() {
       </div>
 
       <p className="mt-3 text-[12px] text-ink-500">
-        This table edits the <strong>250g pack</strong> only (first variant matching 250g, otherwise the first pack).
-        500g / 1kg variant-level stock and price editing is Phase 2 — not in this build.
+        Table rows edit name, images, category, weight, price, stock, availability, and description. Weight/price/stock apply to the first pack (250g when present).
       </p>
 
-      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onImagePicked} />
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={onImagePicked} />
       <input ref={importInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onImportPicked} />
 
       {importPreview && (

@@ -1,4 +1,4 @@
-const { json, readJsonBody, httpsFn } = require('../_shared/httpFn');
+const { json, readJsonBody, httpsFn, RESEND_SECRETS } = require('../_shared/httpFn');
 const { addResendContact } = require('../_shared/resendContact');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,6 +21,6 @@ const subscribe = httpsFn(async (req, res) => {
     } catch {
       return json(res, { ok: true, message: 'You’re subscribed. Welcome to Sukhmal.' });
     }
-});
+}, { secrets: RESEND_SECRETS });
 
 module.exports = { subscribe };

@@ -7,11 +7,13 @@ import {
   patchProductWithChanges,
   normalizeProduct,
   getLiveProducts,
+  upsertLiveProduct,
 } from '@/lib/commerceStore';
 import { PRODUCTS as MOCK_PRODUCTS } from '@/data/mockCatalog';
 import { auth, db, storage } from '@/lib/firebase';
 import { appendOrderStatus, mapAdminOrder, newOrderId } from '@/lib/orders';
 import { applyProductPackPatch, productFromImportRow } from '@/lib/adminProductPatch';
+import { productDocIdFromSlug, slugifyProductName } from '@/lib/adminProductExcel';
 import { adminApi } from '@/lib/adminApiBinding';
 import {
   collection,
@@ -242,24 +244,33 @@ async function patchProduct(id, patch) {
     const payload = firestoreUpdateFromProduct(patched);
     delete payload.images;
     await updateDoc(doc(db, 'products', id), JSON.parse(JSON.stringify(payload)));
+    upsertLiveProduct({ ...patched, id });
     return patched;
   } catch (err) {
     throw new Error(friendlyFsError(err, 'Could not save product.'));
   }
 }
 
-async function uploadProductImage(id, file) {
-  if (!storage) throw new Error('Firebase Storage is not connected.');
-  requireDb();
+function assertImageFile(file) {
   if (!file || !/^image\/(jpeg|png|webp)$/i.test(file.type)) {
     throw new Error('Use a JPEG, PNG, or WebP image under 5 MB.');
   }
   if (file.size >= 5 * 1024 * 1024) throw new Error('Image must be under 5 MB.');
+}
+
+async function uploadOneProductImage(id, file) {
+  assertImageFile(file);
   const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-  const path = `products/${id}/hero-${Date.now()}.${ext}`;
+  const path = `products/${id}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+  const uploaded = await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
+  return getDownloadURL(uploaded.ref);
+}
+
+async function uploadProductImage(id, file) {
+  if (!storage) throw new Error('Firebase Storage is not connected.');
+  requireDb();
   try {
-    const uploaded = await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
-    const url = await getDownloadURL(uploaded.ref);
+    const url = await uploadOneProductImage(id, file);
     const snap = await getDoc(doc(db, 'products', id));
     if (!snap.exists()) throw new Error('Product not found in Firestore. Publish the catalog first.');
     const listed = Array.isArray(snap.data()?.images) ? snap.data().images : [];
@@ -268,9 +279,91 @@ async function uploadProductImage(id, file) {
       images: [url, ...rest],
       updatedAt: new Date().toISOString(),
     });
+    const after = await getDoc(doc(db, 'products', id));
+    if (after.exists()) upsertLiveProduct(hydrateProductDoc(after.id, after.data()));
     return url;
   } catch (err) {
     throw new Error(friendlyFsError(err, 'Could not upload the image.'));
+  }
+}
+
+async function uploadProductImages(id, files) {
+  if (!storage) throw new Error('Firebase Storage is not connected.');
+  requireDb();
+  const list = Array.from(files || []).filter(Boolean).slice(0, 5);
+  if (!list.length) return [];
+  try {
+    const urls = [];
+    for (const file of list) {
+      urls.push(await uploadOneProductImage(id, file));
+    }
+    const snap = await getDoc(doc(db, 'products', id));
+    if (!snap.exists()) throw new Error('Product not found in Firestore.');
+    const listed = Array.isArray(snap.data()?.images) ? snap.data().images.filter(Boolean) : [];
+    const merged = [...urls, ...listed.filter((src) => !urls.includes(src))].slice(0, 5);
+    await updateDoc(doc(db, 'products', id), {
+      images: merged,
+      updatedAt: new Date().toISOString(),
+    });
+    const after = await getDoc(doc(db, 'products', id));
+    if (after.exists()) upsertLiveProduct(hydrateProductDoc(after.id, after.data()));
+    return merged;
+  } catch (err) {
+    throw new Error(friendlyFsError(err, 'Could not upload images.'));
+  }
+}
+
+async function createProduct(input = {}) {
+  requireDb();
+  const name = String(input.name || '').trim();
+  if (!name) throw new Error('Enter a product name.');
+  const slug = slugifyProductName(name);
+  let id = productDocIdFromSlug(slug);
+  const existing = await getDoc(doc(db, 'products', id));
+  if (existing.exists()) id = `${id}_${Date.now().toString(36)}`.slice(0, 48);
+
+  const weight = String(input.weight || '250g').trim() || '250g';
+  const price = Number(input.price);
+  if (!Number.isFinite(price) || price < 0) throw new Error('Enter a valid price.');
+  let stock = Math.max(0, Math.round(Number(input.stock) || 0));
+  if (input.inStock === false) stock = 0;
+  if (input.inStock === true && stock <= 0) stock = 20;
+  const category = String(input.category || 'dry-fruits').trim() || 'dry-fruits';
+  const sku = String(input.sku || '').trim() || id;
+  const description = String(input.description || '').trim();
+  const files = Array.from(input.files || []).filter(Boolean).slice(0, 5);
+
+  const row = applyProductPackPatch({
+    id,
+    slug,
+    name,
+    category,
+    description,
+    sku,
+    price,
+    images: [],
+    weightVariants: [{ weight, price, stock, sku: `${sku}-${weight}` }],
+    isActive: true,
+    isDeleted: false,
+  }, { price, stock, weight, name, category, description });
+
+  try {
+    await setDoc(doc(db, 'products', id), {
+      ...productDocForFirestore(row),
+      isActive: true,
+      isDeleted: false,
+      createdAt: serverTimestamp(),
+    });
+    if (files.length) {
+      if (!storage) throw new Error('Firebase Storage is not connected.');
+      const images = await uploadProductImages(id, files);
+      row.images = images;
+    }
+    const created = { ...row, id, isActive: true, isDeleted: false };
+    upsertLiveProduct(created);
+    return created;
+  } catch (err) {
+    throw new Error(friendlyFsError(err, 'Could not add product.'));
   }
 }
 
@@ -550,5 +643,7 @@ Object.assign(adminApi, {
   },
   patchProduct,
   uploadProductImage,
+  uploadProductImages,
+  createProduct,
   commitProductImport,
 });

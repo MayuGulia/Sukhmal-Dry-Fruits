@@ -25,6 +25,13 @@ export function isValidIndianPhone(value) {
   return IN_PHONE_RE.test(normalizeIndianPhone(value));
 }
 
+/** Firebase Phone Auth requires E.164, e.g. +9198xxxxxxxx. */
+export function toE164IndianPhone(value) {
+  const local = normalizeIndianPhone(value);
+  if (!IN_PHONE_RE.test(local)) return '';
+  return `+91${local}`;
+}
+
 /** Min 8 chars, at least one number and one special character. */
 export function isStrongPassword(value) {
   const pw = String(value || '');

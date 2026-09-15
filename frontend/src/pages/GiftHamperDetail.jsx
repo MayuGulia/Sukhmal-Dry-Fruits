@@ -2,14 +2,14 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Award, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Gift, Heart, Leaf, Loader,
-  Minus, Package, Plus, ShieldCheck, ShoppingBag, Star, Truck,
+  Package, ShieldCheck, Star, Truck,
 } from 'lucide-react';
 import { useHamper, useHampers } from '@/lib/catalog';
 import Breadcrumb from '@/components/shared/Breadcrumb';
 import { inr, cn } from '@/lib/utils';
-import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { PremiumHamperCard } from '@/pages/GiftHampers';
+import AddToCartButton, { hamperAsProduct, hamperVariant } from '@/components/shared/AddToCartButton';
 
 const DETAIL_BULLETS = [
   'Perfect for weddings and engagements',
@@ -59,10 +59,8 @@ export default function GiftHamperDetail() {
   const { data: allHampers } = useHampers();
   const [msg, setMsg] = useState('');
   const [date, setDate] = useState('');
-  const [qty, setQty] = useState(1);
   const [imgIdx, setImgIdx] = useState(0);
   const [toast, setToast] = useState('');
-  const { add } = useCart();
   const { has, toggle } = useWishlist();
 
   const items = useMemo(() => parseContents(h?.contents || []), [h]);
@@ -93,21 +91,6 @@ export default function GiftHamperDetail() {
   const reviews = h.reviews ?? 78;
   const wished = has(h.id);
   const bars = ratingBars(reviews);
-
-  const addToCart = () => {
-    add(
-      {
-        id: h.id,
-        name: h.name,
-        image: h.image,
-        slug: h.slug,
-        meta: { message: msg, deliveryDate: date, type: 'hamper' },
-      },
-      { qty, variant: { w: h.weight, price }, source: 'hamper' },
-    );
-    setToast('Hamper added to cart');
-    setTimeout(() => setToast(''), 2800);
-  };
 
   return (
     <div>
@@ -208,35 +191,18 @@ export default function GiftHamperDetail() {
           </div>
 
           <div className="mt-6 flex items-center gap-3 flex-wrap">
-            <div className="inline-flex items-center rounded-lg border border-line-strong overflow-hidden bg-white">
-              <button
-                type="button"
-                aria-label="Decrease"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
-                className="px-3.5 py-2.5 hover:bg-cream-200 text-brand-900"
-              >
-                <Minus size={15} />
-              </button>
-              <span className="px-4 py-2.5 font-semibold text-brand-900 min-w-[2.5rem] text-center tabular-nums">
-                {qty}
-              </span>
-              <button
-                type="button"
-                aria-label="Increase"
-                onClick={() => setQty((q) => q + 1)}
-                className="px-3.5 py-2.5 hover:bg-cream-200 text-brand-900"
-              >
-                <Plus size={15} />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={addToCart}
-              data-testid="hamper-add-cart"
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-[10px] bg-[var(--sk-gold-400)] hover:bg-[var(--sk-gold-500)] text-white font-semibold text-[15px] py-3.5 px-6 shadow-sk-sm transition min-w-[10rem]"
-            >
-              <ShoppingBag size={17} /> Add to Cart
-            </button>
+            <AddToCartButton
+              product={hamperAsProduct(h, { message: msg, deliveryDate: date })}
+              variant={hamperVariant(h)}
+              source="hamper"
+              layout="bar"
+              testId="hamper-add-cart"
+              meta={{ message: msg, deliveryDate: date, type: 'hamper' }}
+              onAdded={() => {
+                setToast('Hamper added to cart');
+                setTimeout(() => setToast(''), 2800);
+              }}
+            />
             <button
               type="button"
               aria-label="Wishlist"

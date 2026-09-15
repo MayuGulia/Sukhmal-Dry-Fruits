@@ -150,6 +150,7 @@ export default function Footer() {
           { to: '/shipping-delivery', label: 'Shipping & Delivery' },
           { to: '/faqs', label: 'FAQs' },
           { to: '/contact-us', label: 'Contact Us' },
+          { to: '/#home-feedback', label: 'Feedback' },
         ])}
 
         <div>

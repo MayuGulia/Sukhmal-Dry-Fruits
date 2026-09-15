@@ -1,9 +1,13 @@
 const path = require('path');
 const { pathToFileURL } = require('url');
 
-try {
-  require('dotenv').config({ path: path.join(__dirname, '../.env') });
-} catch {}
+function loadFrontendEnv() {
+  try {
+    require('dotenv').config({ path: path.join(__dirname, '../.env'), override: true });
+  } catch {}
+}
+
+loadFrontendEnv();
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -36,7 +40,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'firebase-http-ai-v1';
+const GEMINI_MODULE_BUST = 'firebase-http-ai-v4';
 const firebaseAiDir = path.join(__dirname, '../../firebase/http-functions/_shared/ai');
 const helperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiInventory.js')).href}?v=${GEMINI_MODULE_BUST}`;
 const giftHelperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiGiftAdvisor.js')).href}?v=${GEMINI_MODULE_BUST}`;
@@ -55,16 +59,19 @@ function registerAiInventoryRoutes(app) {
 
   const preview = async (req, res) => {
     try {
+      loadFrontendEnv();
       const body = await readJson(req);
       const { previewInventoryCommand, buildPreviewPayload } = await import(helperUrl);
       const result = await previewInventoryCommand(body.command, body.catalog);
       send(res, 200, { ...buildPreviewPayload(result), previewId: null });
     } catch (err) {
       const code = err.code || 'gemini_error';
-      const status = code === 'not_configured' || code === 'gemini_auth' ? 501 : code === 'bad_request' || code === 'no_match' ? 422 : 502;
+      const status = code === 'not_configured' || code === 'gemini_auth' ? 501 : code === 'quota' ? 503 : code === 'bad_request' || code === 'no_match' ? 422 : 502;
       const message =
         code === 'bad_request' || code === 'no_match'
           ? (err.message || 'Could not understand that command')
+          : code === 'quota'
+            ? (err.message || 'Gemini prepaid credits are depleted. Add billing in Google AI Studio, then try again.')
           : code === 'gemini_auth' || code === 'not_configured'
             ? (err.message || 'Gemini rejected this API key. Add a new GEMINI_API_KEY in frontend/.env and restart.')
             : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
@@ -102,6 +109,7 @@ function registerAiInventoryRoutes(app) {
 
   app.post('/api/generate-hamper-image', async (req, res) => {
     try {
+      loadFrontendEnv();
       const body = await readJson(req);
       const { generateHamperPreview } = await import(hamperHelperUrl);
       const result = await generateHamperPreview(body);

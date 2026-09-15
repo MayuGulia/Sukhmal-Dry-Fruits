@@ -5,10 +5,9 @@ import {
 } from 'lucide-react';
 import { useHampers, HamperSkeleton } from '@/lib/catalog';
 import Breadcrumb from '@/components/shared/Breadcrumb';
-import { HAMPER_INTRO } from '@/seo/pageMeta';
 import { inr, cn } from '@/lib/utils';
-import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
+import AddToCartButton, { hamperAsProduct, hamperVariant } from '@/components/shared/AddToCartButton';
 
 const PRICE_FLOOR = 999;
 const PRICE_CEIL = 8000;
@@ -179,7 +178,6 @@ function DualBudgetSlider({ min, max, onChange }) {
 
 /** Card chrome from design 09 — square photo, heart, serif title, stars, Onwards, circular + */
 export function PremiumHamperCard({ h }) {
-  const { add } = useCart();
   const { has, toggle } = useWishlist();
   const active = has(h.id);
   const { rating, reviews } = hamperMeta(h);
@@ -189,26 +187,37 @@ export function PremiumHamperCard({ h }) {
       data-testid={`hamper-card-${h.slug}`}
       className="group bg-white border border-line rounded-xl overflow-hidden shadow-sk-sm hover:shadow-sk-md transition-shadow flex flex-col"
     >
-      <div className="relative aspect-square overflow-hidden bg-cream-200">
-        <Link to={`/gift-hampers/${h.slug}`} className="block h-full">
-          <img
-            src={h.image}
-            alt={h.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
+      <div className="relative">
+        <div className="relative aspect-square overflow-hidden bg-cream-200">
+          <Link to={`/gift-hampers/${h.slug}`} className="block h-full">
+            <img
+              src={h.image}
+              alt={h.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
+            />
+          </Link>
+          <button
+            type="button"
+            aria-label="Wishlist"
+            onClick={() => toggle(h.id)}
+            className={cn(
+              'absolute top-3 right-3 h-9 w-9 rounded-full bg-white/95 grid place-items-center shadow-sk-sm z-10',
+              active ? 'text-red-500' : 'text-brand-900',
+            )}
+          >
+            <Heart size={16} fill={active ? 'currentColor' : 'none'} />
+          </button>
+        </div>
+        <div className="absolute bottom-3 inset-x-3 z-10 flex">
+          <AddToCartButton
+            product={hamperAsProduct(h)}
+            variant={hamperVariant(h)}
+            source="hamper"
+            layout="card"
+            testId={`add-hamper-${h.slug}`}
           />
-        </Link>
-        <button
-          type="button"
-          aria-label="Wishlist"
-          onClick={() => toggle(h.id)}
-          className={cn(
-            'absolute top-3 right-3 h-9 w-9 rounded-full bg-white/95 grid place-items-center shadow-sk-sm',
-            active ? 'text-red-500' : 'text-brand-900',
-          )}
-        >
-          <Heart size={16} fill={active ? 'currentColor' : 'none'} />
-        </button>
+        </div>
       </div>
       <div className="p-3.5 md:p-4 flex flex-col flex-1">
         <Link
@@ -228,24 +237,10 @@ export function PremiumHamperCard({ h }) {
           </div>
           <span>({reviews})</span>
         </div>
-        <div className="mt-auto pt-3 flex items-end justify-between gap-2">
+        <div className="mt-auto pt-3">
           <div className="font-display font-bold text-brand-900 text-lg md:text-xl leading-none">
             {inr(h.price)}
           </div>
-          <button
-            type="button"
-            aria-label="Add to cart"
-            data-testid={`add-hamper-${h.slug}`}
-            onClick={() =>
-              add(
-                { id: h.id, name: h.name, image: h.image, slug: h.slug, meta: { type: 'hamper' } },
-                { qty: 1, variant: { w: h.weight, price: h.price }, source: 'hamper' },
-              )
-            }
-            className="h-9 w-9 rounded-full bg-brand-900 text-white grid place-items-center hover:bg-brand-700 shrink-0 shadow-sk-sm"
-          >
-            <Plus size={16} />
-          </button>
         </div>
       </div>
     </article>
@@ -491,9 +486,6 @@ export default function GiftHampers() {
           <h1 className="font-display font-bold text-brand-900 text-3xl md:text-5xl mt-3 leading-tight">
             Gift Hampers
           </h1>
-          <p className="text-ink-600 mt-2 max-w-3xl text-[12px] md:text-[13px] leading-relaxed">
-            {HAMPER_INTRO}
-          </p>
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {TRUST.map(({ Ic, label, sub }) => (
               <div

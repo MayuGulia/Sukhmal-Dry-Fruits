@@ -5,6 +5,9 @@ export const CUSTOMER_AI_FALLBACK =
 export const GEMINI_AUTH_HELP =
   'Gemini rejected this API key. Create a new key at https://aistudio.google.com/apikey, set GEMINI_API_KEY in frontend/.env, and restart the server. Do not paste the key into chat.';
 
+export const GEMINI_QUOTA_HELP =
+  'This Gemini key is valid, but prepaid credits are depleted. Add billing in Google AI Studio (https://aistudio.google.com), then try the inventory command again.';
+
 export function isGeminiAuthFailure(status, message) {
   return (
     status === 401 ||
@@ -53,7 +56,12 @@ export function geminiImageApiKey() {
 }
 
 export function vertexEnterpriseEnabled() {
-  return /^(1|true|yes)$/i.test(envGet('GOOGLE_GENAI_USE_ENTERPRISE') || envGet('GOOGLE_GENAI_USE_VERTEXAI'));
+  return /^(1|true|yes)$/i.test(
+    envGet('GOOGLE_GENAI_USE_ENTERPRISE')
+    || envGet('GOOGLE_GENAI_USE_ENTERPRISE')
+    || envGet('GOOGLE_GENAI_USE_VERTEXAI')
+    || envGet('GOOGLE_GENAI_USE_VERTEXAI'),
+  );
 }
 
 export function keyFingerprint(key) {

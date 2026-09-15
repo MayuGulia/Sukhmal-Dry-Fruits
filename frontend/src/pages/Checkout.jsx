@@ -5,6 +5,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { inr } from '@/lib/utils';
 import { attachRazorpayOrderId, createCustomerOrder, saveUserAddresses } from '@/lib/orders';
+import { orderItemImage, isHamperLine } from '@/lib/orderImages';
 import { useUserProfile } from '@/hooks/useAccountData';
 import { api } from '@/lib/api';
 import {
@@ -13,10 +14,10 @@ import {
 } from 'lucide-react';
 
 const PAY_METHODS = [
-  { key: 'upi', label: 'UPI', Ic: Wallet, desc: 'Pay with UPI Apps' },
-  { key: 'card', label: 'Credit / Debit Card', Ic: CreditCard, desc: 'Visa · MasterCard · RuPay' },
-  { key: 'nb', label: 'Net Banking', Ic: Landmark, desc: 'All Major Banks' },
-  { key: 'wallet', label: 'Wallets', Ic: Wallet, desc: 'Paytm · PhonePe · Amazon Pay' },
+  { key: 'upi', label: 'UPI', Ic: Wallet, desc: 'Pay with UPI Apps', comingSoon: true },
+  { key: 'card', label: 'Credit / Debit Card', Ic: CreditCard, desc: 'Visa · MasterCard · RuPay', comingSoon: true },
+  { key: 'nb', label: 'Net Banking', Ic: Landmark, desc: 'All Major Banks', comingSoon: true },
+  { key: 'wallet', label: 'Wallets', Ic: Wallet, desc: 'Paytm · PhonePe · Amazon Pay', comingSoon: true },
   { key: 'cod', label: 'Cash on Delivery', Ic: Banknote, desc: 'Pay when you receive' },
 ];
 
@@ -35,6 +36,18 @@ function formatDayLabel(offset) {
 
 function minDateStr() {
   return new Date().toISOString().split('T')[0];
+}
+
+function RazorpayCodBanner({ className = '' }) {
+  return (
+    <div
+      className={`rounded-xl border border-[var(--sk-gold-400)]/55 bg-[var(--sk-cream-300)]/90 px-4 py-3 text-sm text-brand-900 ${className}`}
+      data-testid="razorpay-cod-banner"
+    >
+      <span className="font-semibold">Razorpay UPI coming soon.</span>
+      {' '}For now Cash on Delivery works — pay when your order arrives.
+    </div>
+  );
 }
 
 function FlourishGold() {
@@ -56,7 +69,7 @@ function OrderSummaryBody({ items, totals, count }) {
             key={it.key}
             className={`flex items-start gap-2.5 py-3 ${idx > 0 ? 'border-t border-line' : ''}`}
           >
-            <img src={it.image} className="w-12 h-12 rounded-lg object-cover bg-cream-200 border border-line shrink-0" alt="" />
+            <img src={orderItemImage(it) || it.image} className={`w-12 h-12 rounded-lg object-contain p-1 bg-white border border-line shrink-0 ${isHamperLine(it) ? '!object-cover !p-0' : ''}`} alt="" />
             <div className="flex-1 min-w-0">
               <div className="line-clamp-1 font-display font-semibold text-brand-900 text-[13px]">{it.name}</div>
               {it.variant && <div className="text-[11px] text-ink-500 mt-0.5">{it.variant}</div>}
@@ -111,14 +124,14 @@ function OrderSummaryBody({ items, totals, count }) {
 export default function Checkout() {
   const { items, totals, clear, count, coupon } = useCart();
   const { isAuthed, loading: authLoading, user, refreshSession } = useAuth();
-  const { addresses } = useUserProfile();
+  const { addresses, email: profileEmail } = useUserProfile();
   const nav = useNavigate();
   const loc = useLocation();
   const [address, setAddress] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState('custom');
   const [customDate, setCustomDate] = useState('');
-  const [payment, setPayment] = useState('upi');
+  const [payment, setPayment] = useState('cod');
   const [placing, setPlacing] = useState(false);
   const [placeError, setPlaceError] = useState('');
   const [showAddAddr, setShowAddAddr] = useState(false);
@@ -180,10 +193,15 @@ export default function Checkout() {
       setShowAddAddr(true);
       return;
     }
-    if (user?.email) {
+    const customerEmail = String(user?.email || profileEmail || selectedAddr?.email || '').trim();
+    if (!customerEmail) {
+      setPlaceError('Add an email to your account so we can send the order confirmation.');
+      return;
+    }
+    if (user?.email || customerEmail) {
       let session = user;
       try { session = await refreshSession?.() || user; } catch {}
-      if (!session?.emailVerified) {
+      if (session?.email && !session?.emailVerified) {
         setPlaceError('Please verify your email before placing an order. Check your inbox for the verification link.');
         return;
       }
@@ -191,9 +209,10 @@ export default function Checkout() {
     setPlacing(true);
     setPlaceError('');
     try {
-      const method = payment === 'cod' ? 'cod' : 'razorpay';
+      const payOpt = PAY_METHODS.find((m) => m.key === payment);
+      const method = payment === 'cod' || payOpt?.comingSoon ? 'cod' : 'razorpay';
       const created = await createCustomerOrder({
-        user,
+        user: { ...user, email: customerEmail },
         items,
         address: selectedAddr,
         totals,
@@ -212,20 +231,21 @@ export default function Checkout() {
             paymentMethod: 'cod',
             order: {
               orderId,
-              customer: created.customer,
+              customer: { ...created.customer, email: customerEmail },
               shippingAddress: created.shippingAddress,
               items: created.items,
               totals: created.totals,
               total: created.total,
               paymentMethod: 'cod',
               eta: created.eta,
+              email: customerEmail,
             },
           });
-          if (!notify.data?.ownerNotified) {
-            console.error('COD owner notify did not confirm', notify.data);
+          if (!notify.data?.ownerNotified || !notify.data?.customerNotified) {
+            console.error('COD order email did not confirm', notify.data);
           }
         } catch (err) {
-          console.error('COD owner notify request failed', err);
+          console.error('COD order email request failed', err);
         }
       }
 
@@ -259,6 +279,7 @@ export default function Checkout() {
           }
         } catch (err) {
           if (err?.message === 'Payment cancelled') throw err;
+          throw err;
         }
       }
 
@@ -274,11 +295,14 @@ export default function Checkout() {
         items: items.map((it) => ({
           key: it.key,
           id: it.id,
+          slug: it.slug,
           name: it.name,
-          image: it.image,
+          image: orderItemImage(it) || it.image,
           price: it.price,
           qty: it.qty,
           variant: it.variant,
+          source: it.source || it.meta?.type || 'product',
+          meta: it.meta || null,
         })),
         totals: { ...totals },
         count,
@@ -337,6 +361,10 @@ export default function Checkout() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="sk-container pt-5">
+        <RazorpayCodBanner />
       </div>
 
       <div className="sk-container py-8 grid lg:grid-cols-[1fr_360px] gap-8 items-start">
@@ -521,24 +549,34 @@ export default function Checkout() {
               <CreditCard size={18} /> Payment Method
             </div>
             <p className="text-[12px] text-ink-500 mt-1 ml-9">Select a payment option.</p>
+            <RazorpayCodBanner className="mt-4" />
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5">
               {PAY_METHODS.map((m) => {
                 const selected = payment === m.key;
+                const soon = Boolean(m.comingSoon);
                 return (
                   <label
                     key={m.key}
-                    className={`relative flex flex-col gap-2 p-3.5 rounded-xl border cursor-pointer transition bg-white min-h-[110px] ${
+                    className={`relative flex flex-col gap-2 p-3.5 rounded-xl border transition bg-white min-h-[110px] ${
+                      soon ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                    } ${
                       selected
                         ? 'border-[var(--sk-gold-500)] ring-1 ring-[var(--sk-gold-500)]/50 bg-cream-200/40'
                         : 'border-line hover:border-line-strong'
                     }`}
                     data-testid={`pay-${m.key}`}
                   >
+                    {soon && (
+                      <span className="absolute top-2.5 right-2.5 rounded-full bg-[var(--sk-cream-300)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-brand-900">
+                        Soon
+                      </span>
+                    )}
                     <input
                       type="radio"
                       name="pay"
                       checked={selected}
-                      onChange={() => setPayment(m.key)}
+                      disabled={soon}
+                      onChange={() => { if (!soon) setPayment(m.key); }}
                       className="absolute top-3 left-3 accent-[var(--sk-brown-900)]"
                     />
                     <m.Ic size={22} className="text-brand-900 mt-5" />

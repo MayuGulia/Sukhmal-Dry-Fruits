@@ -24,9 +24,241 @@
       ]
     }
   ],
+  "hosting": {
+    "public": "frontend/build",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "**/assets/videos/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin-allow-popups"
+          },
+          {
+            "key": "Cross-Origin-Embedder-Policy",
+            "value": "unsafe-none"
+          },
+          {
+            "key": "Cross-Origin-Resource-Policy",
+            "value": "cross-origin"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://apis.google.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://*.firebaseapp.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebasestorage.app https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebase.googleapis.com https://apis.google.com https://accounts.google.com https://www.googleapis.com https://www.google.com https://checkout.razorpay.com https://api.razorpay.com wss://*.firebaseio.com https://*.cloudfunctions.net https://firestore.googleapis.com; frame-src 'self' https://accounts.google.com https://apis.google.com https://www.google.com https://*.google.com https://*.firebaseapp.com https://sukhmal.web.app https://checkout.razorpay.com https://api.razorpay.com; object-src 'none'; base-uri 'self'"
+          }
+        ]
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/dry-fruits",
+        "destination": "/category/dry-fruits",
+        "type": 301
+      },
+      {
+        "source": "/nuts",
+        "destination": "/category/nuts",
+        "type": 301
+      },
+      {
+        "source": "/dates",
+        "destination": "/category/dates",
+        "type": 301
+      },
+      {
+        "source": "/corporate-gifting",
+        "destination": "/corporate-gifts",
+        "type": 301
+      },
+      {
+        "source": "/hampers/:slug",
+        "destination": "/gift-hampers/:slug",
+        "type": 301
+      },
+      {
+        "source": "/hampers",
+        "destination": "/gift-hampers",
+        "type": 301
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/create-order",
+        "function": {
+          "functionId": "createOrder",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/verify-payment",
+        "function": {
+          "functionId": "verifyPayment",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/webhooks/razorpay",
+        "function": {
+          "functionId": "webhooksRazorpay",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/ai-chat",
+        "function": {
+          "functionId": "aiChat",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/admin/ai-inventory/preview",
+        "function": {
+          "functionId": "aiInventory",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/admin/ai-inventory/apply",
+        "function": {
+          "functionId": "aiInventory",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/generate-hamper-image",
+        "function": {
+          "functionId": "generateHamperImageHttp",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/enquiry/bulk",
+        "function": {
+          "functionId": "enquiryBulk",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/subscribe",
+        "function": {
+          "functionId": "subscribe",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/feedback",
+        "function": {
+          "functionId": "feedback",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/track-order",
+        "function": {
+          "functionId": "trackOrder",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/admin/dashboard-stats",
+        "function": {
+          "functionId": "admin",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/admin/search",
+        "function": {
+          "functionId": "admin",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/admin/orders/status",
+        "function": {
+          "functionId": "admin",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/admin/orders/create-manual",
+        "function": {
+          "functionId": "admin",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/admin/orders",
+        "function": {
+          "functionId": "admin",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/admin/products",
+        "function": {
+          "functionId": "admin",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/create-admin-session",
+        "function": {
+          "functionId": "createAdminSession",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/clear-admin-session",
+        "function": {
+          "functionId": "clearAdminSession",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/sitemap.xml",
+        "function": {
+          "functionId": "sitemap",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
   "emulators": {
     "functions": {
       "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "firestore": {
+      "port": 8080
     },
     "ui": {
       "enabled": true,

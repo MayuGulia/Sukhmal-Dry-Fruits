@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import https from 'node:https';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { envGet, geminiImageApiKey } from './geminiEnv.js';
 
@@ -14,19 +15,49 @@ function truthy(value) {
 }
 
 export function vertexImageEnabled() {
-  return truthy(envGet('GOOGLE_GENAI_USE_ENTERPRISE') || envGet('GOOGLE_GENAI_USE_VERTEXAI'));
+  return truthy(
+    envGet('GOOGLE_GENAI_USE_ENTERPRISE')
+    || envGet('GOOGLE_GENAI_USE_ENTERPRISE')
+    || envGet('GOOGLE_GENAI_USE_VERTEXAI')
+    || envGet('GOOGLE_GENAI_USE_VERTEXAI'),
+  );
 }
 
 export function vertexProject() {
-  return envGet('GOOGLE_CLOUD_PROJECT') || envGet('REACT_APP_FIREBASE_PROJECT_ID') || 'sukhmal-website';
+  return envGet('GOOGLE_CLOUD_PROJECT')
+    || envGet('GOOGLE_CLOUD_PROJECT')
+    || envGet('REACT_APP_FIREBASE_PROJECT_ID')
+    || 'sukhmal-website';
 }
 
 export function vertexLocation() {
-  return envGet('GOOGLE_CLOUD_LOCATION') || 'global';
+  return envGet('GOOGLE_CLOUD_LOCATION') || envGet('GOOGLE_CLOUD_LOCATION') || 'global';
 }
 
 export function vertexImageModel() {
-  return envGet('GEMINI_IMAGE_MODEL') || 'gemini-2.5-flash-image';
+  return envGet('GEMINI_IMAGE_MODEL') || envGet('GEMINI_IMAGE_MODEL') || 'gemini-2.5-flash-image';
+}
+
+function resolveCredentialFile() {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const firebaseDir = path.resolve(here, '../../..');
+  const repoRoot = path.resolve(firebaseDir, '..');
+  const fromEnv = envGet('GOOGLE_APPLICATION_CREDENTIALS');
+  const candidates = [];
+  if (fromEnv) {
+    candidates.push(path.resolve(fromEnv));
+    candidates.push(path.resolve(process.cwd(), fromEnv));
+    candidates.push(path.resolve(repoRoot, fromEnv.replace(/^[.][/\\]/, '')));
+    candidates.push(path.resolve(repoRoot, fromEnv.replace(/^[.]{2}[/\\]/, '')));
+  }
+  candidates.push(
+    path.join(firebaseDir, 'serviceAccountKey.json'),
+    path.join(firebaseDir, 'serviceAccountKey.json'),
+    path.join(repoRoot, 'secrets', 'serviceAccountKey.json'),
+    path.join(repoRoot, 'secrets', 'sukhmal-website.json'),
+    path.join(repoRoot, 'secrets', 'sukhmal-website-7818c3bd4fdf.json'),
+  );
+  return candidates.find((file) => file && existsSync(file)) || '';
 }
 
 function toBase64(data) {
@@ -101,12 +132,22 @@ function gcloudEnv() {
 async function tokenFromGoogleAuth() {
   const { GoogleAuth } = await import('google-auth-library');
   const json = envGet('GOOGLE_APPLICATION_CREDENTIALS_JSON');
-  const keyFile = envGet('GOOGLE_APPLICATION_CREDENTIALS');
+  const keyFile = resolveCredentialFile();
   const opts = { scopes: [CLOUD_SCOPE] };
   if (json) {
     opts.credentials = JSON.parse(json);
   } else if (keyFile) {
-    opts.keyFilename = path.resolve(keyFile);
+    opts.keyFilename = keyFile;
+    console.log('[Sukhmal Gemini] vertex auth using service-account file');
+  } else {
+    const raw = envGet('GOOGLE_APPLICATION_CREDENTIALS');
+    if (raw) {
+      const abs = path.resolve(process.cwd(), raw);
+      if (!existsSync(abs) && !existsSync(path.resolve(raw))) {
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        console.warn('[Sukhmal Gemini] vertex auth GOOGLE_APPLICATION_CREDENTIALS path missing; trying ADC/gcloud');
+      }
+    }
   }
   const auth = new GoogleAuth(opts);
   const client = await auth.getClient();
@@ -116,13 +157,19 @@ async function tokenFromGoogleAuth() {
 
 async function tokenFromGcloud() {
   const env = gcloudEnv();
-  const opts = { env, timeout: 20000, windowsHide: true };
+  const bin = gcloudBin();
+  const opts = { env, timeout: 20000, windowsHide: true, maxBuffer: 1024 * 1024 };
   if (process.platform === 'win32') {
-    opts.shell = true;
-    const { stdout } = await execFileAsync('gcloud.cmd', ['auth', 'print-access-token'], opts);
+    const comspec = process.env.ComSpec || 'cmd.exe';
+    const quoted = existsSync(bin) ? `"${bin}"` : 'gcloud';
+    const { stdout } = await execFileAsync(
+      comspec,
+      ['/d', '/s', '/c', `${quoted} auth print-access-token`],
+      opts,
+    );
     return String(stdout || '').trim().split(/\r?\n/).filter(Boolean).pop() || '';
   }
-  const { stdout } = await execFileAsync(gcloudBin(), ['auth', 'print-access-token'], opts);
+  const { stdout } = await execFileAsync(bin, ['auth', 'print-access-token'], opts);
   return String(stdout || '').trim().split(/\r?\n/).filter(Boolean).pop() || '';
 }
 
@@ -152,6 +199,11 @@ async function vertexAccessToken() {
   );
   missing.code = 'gemini_auth';
   throw missing;
+}
+
+export async function vertexAuthPing() {
+  const token = await vertexAccessToken();
+  return { ok: Boolean(token), project: vertexProject(), location: vertexLocation(), model: vertexImageModel() };
 }
 
 function apiError(status, message) {

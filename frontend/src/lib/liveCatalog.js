@@ -50,14 +50,18 @@ function publishLiveProducts(rows) {
   });
 }
 
+function storefrontRowsFromSnapshot(snap) {
+  return snap.docs
+    .map((d) => hydrateStorefrontProduct(d.id, d.data()))
+    .filter((p) => !p.isDeleted && p.isActive !== false);
+}
+
 function ensureLiveProductListener() {
   if (liveProductUnsub || !db) return;
   liveProductUnsub = onSnapshot(
-    query(collection(db, 'products'), where('isActive', '==', true)),
+    collection(db, 'products'),
     (snap) => {
-      const rows = snap.docs
-        .map((d) => hydrateStorefrontProduct(d.id, d.data()))
-        .filter((p) => !p.isDeleted && p.isActive !== false);
+      const rows = storefrontRowsFromSnapshot(snap);
       if (rows.length) replaceProductsFromRemote(rows);
       publishLiveProducts(rows.length ? rows : getLiveProducts({ activeOnly: true }));
     },
@@ -181,15 +185,15 @@ function gallerySlotSrc(slug, n) {
   return `/products/${slug}-${n}.jpg?v=3`;
 }
 
-/** Catalog gallery: local `{slug}-N` shots, with a remote (Storage) first image taking slot 1 when present. */
+/** Prefer Storage/remote uploads so admin-added photos show on the shop. */
 export function productGalleryImages(p) {
-  const slug = String(p?.slug || '').trim();
   const listed = (Array.isArray(p?.images) ? p.images : []).filter(Boolean);
-  const remoteFirst = listed.find((src) => /^https?:\/\//i.test(String(src)));
-  if (slug && !/^p_/i.test(slug)) {
-    const local = [1, 2, 3, 4, 5].map((n) => gallerySlotSrc(slug, n));
-    if (remoteFirst) return [remoteFirst, ...local.slice(1)];
-    return local;
+  const remotes = listed.filter((src) => /^https?:\/\//i.test(String(src)));
+  if (remotes.length) return remotes.slice(0, 5);
+
+  const slug = String(p?.slug || '').trim();
+  if (slug && !/^p_/i.test(slug) && !listed.length) {
+    return [1, 2, 3, 4, 5].map((n) => gallerySlotSrc(slug, n));
   }
   if (listed.length) return listed.slice(0, 5);
   if (p?.img) return [p.img];
@@ -205,6 +209,9 @@ function withShotVersion(src) {
 
 function catalogSlotShot(p, slot) {
   if (!p) return '';
+  const remotes = (Array.isArray(p.images) ? p.images : [])
+    .filter((src) => /^https?:\/\//i.test(String(src)));
+  if (remotes.length) return remotes[Math.min((Number(slot) || 1) - 1, remotes.length - 1)];
   const n = Number(slot) || 1;
   const slug = String(p.slug || '').trim();
   if (slug && !/^p_/i.test(slug)) return gallerySlotSrc(slug, n);

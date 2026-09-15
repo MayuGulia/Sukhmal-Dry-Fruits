@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Plus, Star, Check, Leaf, Hand, Gift, Truck } from 'lucide-react';
+import { Heart, Star, Leaf, Hand, Gift, Truck } from 'lucide-react';
 import { inr } from '@/lib/utils';
-import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { packVariants } from '@/lib/commerceStore';
 import { boxCatalogShot } from '@/lib/liveCatalog';
+import AddToCartButton, { hamperAsProduct, hamperVariant } from '@/components/shared/AddToCartButton';
 
 /** Product catalog cards use the packaged jar/box (gallery image 2). Gift hampers stay on image 1. */
 export function listingImage(p) {
@@ -67,7 +67,6 @@ function StarRow({ rating = 0, reviews = 0 }) {
 }
 
 export default function ProductCard({ p, variant = 'default' }) {
-  const { add } = useCart();
   const { has, toggle } = useWishlist();
   const active = has(p.id);
   const labeled = variant === 'labeled';
@@ -85,63 +84,81 @@ export default function ProductCard({ p, variant = 'default' }) {
     const pack = variants.find((v) => /500/i.test(String(v.w))) || variants[0];
     return (
       <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full h-full bg-white">
+      <div className="relative">
         <Link to={`/product/${p.slug}`} className={listingWellClass(p)}>
           <img src={listingImage(p)} alt={p.name} className={listingImgClass(p)} loading="lazy" decoding="async" />
           {p.bestseller && <span className="sk-pill sk-pill-brown absolute top-2 left-2 !py-1 !px-2.5">Bestseller</span>}
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
-            aria-label="Wishlist"
-            className="absolute top-2 right-2 h-9 w-9 rounded-full bg-white/95 grid place-items-center shadow-sk-sm text-brand-900"
-          >
-            <Heart size={16} fill={active ? 'currentColor' : 'none'} className={active ? 'text-red-500' : ''} />
-          </button>
         </Link>
-        <div className="p-3.5 flex flex-col gap-1.5 flex-1">
-          <Link
-            to={`/product/${p.slug}`}
-            className="font-display font-bold text-[15px] md:text-base text-brand-900 leading-tight line-clamp-2"
-          >
-            {p.name}{pack?.w ? ` (${pack.w})` : ''}
-          </Link>
-          <div className="flex items-center gap-1 text-[12px] text-ink-600">
-            <Star size={13} className="sk-star fill-current" />
-            <span className="font-medium text-brand-900">{Number(p.rating).toFixed(1)}</span>
-            <span>({p.reviews})</span>
-          </div>
-          <div className="mt-auto pt-2.5 space-y-2.5">
-            <div className="font-display font-bold text-brand-900 text-[1.2rem] leading-none tracking-tight">{inr(pack?.price ?? p.price)}</div>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); add(p, { qty: 1, variant: pack }); }}
-              disabled={typeof pack?.stock === 'number' ? pack.stock <= 0 : false}
-              data-testid={`add-cart-${p.slug}`}
-              className="w-full !py-2.5 !rounded-[10px] text-[13px] tracking-wide font-semibold text-white bg-[var(--sk-espresso)] hover:bg-[#2a1e16] transition-colors disabled:opacity-40"
-            >
-              Add to Cart
-            </button>
-          </div>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
+          aria-label="Wishlist"
+          className="absolute top-2 right-2 z-10 h-9 w-9 rounded-full bg-white/95 grid place-items-center shadow-sk-sm text-brand-900"
+        >
+          <Heart size={16} fill={active ? 'currentColor' : 'none'} className={active ? 'text-red-500' : ''} />
+        </button>
+        <div className="absolute bottom-3 inset-x-3 z-10 flex">
+          <AddToCartButton
+            product={p}
+            variant={pack}
+            max={typeof pack?.stock === 'number' ? pack.stock : undefined}
+            disabled={typeof pack?.stock === 'number' ? pack.stock <= 0 : false}
+            layout="card"
+            testId={`add-cart-${p.slug}`}
+          />
         </div>
+      </div>
+      <div className="p-3.5 flex flex-col gap-1.5 flex-1">
+        <Link
+          to={`/product/${p.slug}`}
+          className="font-display font-bold text-[15px] md:text-base text-brand-900 leading-tight line-clamp-2"
+        >
+          {p.name}{pack?.w ? ` (${pack.w})` : ''}
+        </Link>
+        <div className="flex items-center gap-1 text-[12px] text-ink-600">
+          <Star size={13} className="sk-star fill-current" />
+          <span className="font-medium text-brand-900">{Number(p.rating).toFixed(1)}</span>
+          <span>({p.reviews})</span>
+        </div>
+        <div className="mt-auto pt-2.5">
+          <div className="font-display font-bold text-brand-900 text-[1.2rem] leading-none tracking-tight">{inr(pack?.price ?? p.price)}</div>
+        </div>
+      </div>
       </div>
     );
   }
 
   return (
     <div data-testid={`product-card-${p.slug}`} className="sk-card group flex flex-col w-full overflow-hidden">
-      <Link to={`/product/${p.slug}`} className={listingWellClass(p)}>
-        <img
-          src={listingImage(p)}
-          alt={p.name}
-          className={listingImgClass(p)}
-          loading="lazy"
-          decoding="async"
-        />
+      <div className="relative">
+        <Link to={`/product/${p.slug}`} className={listingWellClass(p)}>
+          <img
+            src={listingImage(p)}
+            alt={p.name}
+            className={listingImgClass(p)}
+            loading="lazy"
+            decoding="async"
+          />
+        </Link>
         <button
+          type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
           aria-label="Wishlist"
-          className={`absolute top-2.5 right-2.5 drop-shadow-md ${active ? 'text-red-500' : usesPackShot(p) ? 'text-brand-900/80' : 'text-white'}`}
+          className={`absolute top-2.5 right-2.5 z-10 drop-shadow-md ${active ? 'text-red-500' : usesPackShot(p) ? 'text-brand-900/80' : 'text-white'}`}
         >
           <Heart size={22} strokeWidth={1.6} fill={active ? 'currentColor' : 'none'} />
         </button>
-      </Link>
+        <div className="absolute bottom-3 inset-x-3 z-10 flex">
+          <AddToCartButton
+            product={p}
+            variant={selected}
+            max={typeof stock === 'number' ? stock : undefined}
+            disabled={oos}
+            layout="card"
+            testId={`add-cart-${p.slug}`}
+          />
+        </div>
+      </div>
 
       <div className="p-3.5 md:p-4 flex flex-col gap-1.5 flex-1">
         <Link
@@ -182,22 +199,13 @@ export default function ProductCard({ p, variant = 'default' }) {
 
         <StarRow rating={p.rating} reviews={p.reviews} />
 
-        <div className="mt-auto pt-2.5 flex items-end justify-between gap-2">
+        <div className="mt-auto pt-2.5">
           <div className="font-display font-bold text-brand-900 text-[1.15rem] md:text-xl leading-none tracking-tight">
             {inr(price).replace('₹', '₹ ')}
             <span className="text-[12px] md:text-[13px] font-sans font-medium text-ink-600 ml-1.5">
               Onwards
             </span>
           </div>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); add(p, { qty: 1, variant: selected }); }}
-            aria-label="Add to cart"
-            disabled={oos}
-            data-testid={`add-cart-${p.slug}`}
-            className="h-10 w-10 rounded-full bg-brand-900 text-white grid place-items-center shrink-0 hover:bg-brand-700 shadow-sk-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Plus size={18} strokeWidth={2.25} />
-          </button>
         </div>
       </div>
     </div>
@@ -206,23 +214,33 @@ export default function ProductCard({ p, variant = 'default' }) {
 
 export function HamperCard({ h }) {
   return (
-    <Link to={`/gift-hampers/${h.slug}`} data-testid={`hamper-card-${h.slug}`} className="sk-card block group">
-      <div className="relative aspect-[4/5] overflow-hidden bg-cream-200">
-        <img src={h.image} alt={h.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-        <span className="sk-pill sk-pill-gold absolute top-3 left-3">{h.tier}</span>
+    <article data-testid={`hamper-card-${h.slug}`} className="sk-card block group">
+      <div className="relative">
+        <Link to={`/gift-hampers/${h.slug}`} className="relative block aspect-[4/5] overflow-hidden bg-cream-200">
+          <img src={h.image} alt={h.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+          <span className="sk-pill sk-pill-gold absolute top-3 left-3">{h.tier}</span>
+        </Link>
+        <div className="absolute bottom-3 inset-x-3 z-10 flex">
+          <AddToCartButton
+            product={hamperAsProduct(h)}
+            variant={hamperVariant(h)}
+            source="hamper"
+            layout="card"
+            testId={`add-hamper-${h.slug}`}
+          />
+        </div>
       </div>
       <div className="p-4">
         <div className="text-[11px] uppercase tracking-wider text-ink-500">{h.weight}</div>
-        <div className="font-display font-bold text-brand-900 text-lg leading-tight mt-1">{h.name}</div>
-        <div className="mt-2 flex items-end justify-between">
-          <div>
-            <div className="font-display text-brand-900 text-xl font-bold">{inr(h.price)}</div>
-            {h.mrp > h.price && <div className="text-[11px] text-ink-500 line-through">{inr(h.mrp)}</div>}
-          </div>
-          <span className="sk-btn-primary !py-2 !px-3.5 text-[12px]">View <Check size={12} /></span>
+        <Link to={`/gift-hampers/${h.slug}`} className="font-display font-bold text-brand-900 text-lg leading-tight mt-1 block hover:text-brand-700">
+          {h.name}
+        </Link>
+        <div className="mt-2">
+          <div className="font-display text-brand-900 text-xl font-bold">{inr(h.price)}</div>
+          {h.mrp > h.price && <div className="text-[11px] text-ink-500 line-through">{inr(h.mrp)}</div>}
         </div>
       </div>
-    </Link>
+    </article>
   );
 }
 

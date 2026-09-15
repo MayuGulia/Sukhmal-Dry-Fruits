@@ -17,6 +17,26 @@ const GEMINI_SECRETS = [
   'GEMINI_IMAGE_API_KEY',
 ];
 
+const RAZORPAY_SECRETS = [
+  'RAZORPAY_KEY_ID',
+  'RAZORPAY_KEY_SECRET',
+];
+
+const RAZORPAY_WEBHOOK_SECRETS = [
+  'RAZORPAY_WEBHOOK_SECRET',
+];
+
+const RESEND_SECRETS = [
+  'RESEND_API_KEY',
+];
+
+const WHATSAPP_SECRETS = [
+  'WHATSAPP_OWNER_PHONE',
+  'CALLMEBOT_API_KEY',
+];
+
+const VERTEX_RUNTIME_SA = 'firebase-adminsdk-fbsvc@sukhmal-website.iam.gserviceaccount.com';
+
 function json(res, data, status = 200) {
   res.status(status).type('application/json').send(JSON.stringify(data));
 }
@@ -47,4 +67,16 @@ function httpsFn(handler, extras = {}) {
   );
 }
 
-module.exports = { REGION, CORS_ORIGINS, GEMINI_SECRETS, json, readJsonBody, httpsFn };
+module.exports = {
+  REGION,
+  CORS_ORIGINS,
+  GEMINI_SECRETS,
+  RAZORPAY_SECRETS,
+  RAZORPAY_WEBHOOK_SECRETS,
+  RESEND_SECRETS,
+  WHATSAPP_SECRETS,
+  VERTEX_RUNTIME_SA,
+  json,
+  readJsonBody,
+  httpsFn,
+};

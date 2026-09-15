@@ -25,10 +25,11 @@ const MSG = {
   otpSent: 'We’ve sent a 6-digit code. Enter it below to continue.',
   forgotDone: 'Check your email for a reset link. If you don’t see it, check spam or try again shortly.',
   signupTaken: 'Account exists — log in instead.',
-  needPhone: 'Please enter a valid phone number.',
+  needPhone: 'Please enter a valid 10-digit Indian mobile number.',
   needEmail: 'Please enter a valid email address.',
   needPassword: 'Please enter a password with at least 8 characters, a number, and a special character.',
   needName: 'Please enter your full name.',
+  phoneNotEnabled: 'Phone sign-in is not enabled yet. In Firebase Console → Authentication → Sign-in method, enable Phone.',
 };
 
 const AUTH_PATHS = new Set(['/login', '/signup', '/forgot-password', '/verify-otp']);
@@ -180,8 +181,20 @@ function mapFirebaseAuthError(err, fallback) {
   if (code === 'auth/popup-blocked') {
     return 'Your browser blocked the Google window. Allow popups for this site, or we will switch to a full-page Google sign-in.';
   }
+  if (code === 'auth/invalid-verification-code' || code === 'auth/code-expired' || code === 'auth/missing-verification-code') {
+    return MSG.otpInvalid;
+  }
+  if (code === 'auth/invalid-phone-number' || code === 'auth/missing-phone-number') {
+    return MSG.needPhone;
+  }
+  if (code === 'auth/captcha-check-failed' || code === 'auth/invalid-app-credential') {
+    return 'Phone verification could not start. Refresh the page and try again.';
+  }
+  if (code === 'auth/quota-exceeded') {
+    return 'SMS quota reached. Try email and password, or try again later.';
+  }
   if (code === 'auth/operation-not-allowed') {
-    return 'This sign-in method is not enabled yet in Firebase Authentication.';
+    return 'This sign-in method is not enabled yet. In Firebase Console → Authentication → Sign-in method, enable Email/Password and Phone.';
   }
   if (code === 'auth/account-exists-with-different-credential') {
     return 'An account already exists with this email. Log in with email and password, then you can link Google.';
@@ -205,7 +218,7 @@ function mapFirebaseAuthError(err, fallback) {
 }
 
 export default function AuthPage({ mode = 'login' }) {
-  const { login, signInWithEmail, signUpWithEmail, signInWithGoogle, sendReset, firebaseEnabled } = useAuth();
+  const { login, signInWithEmail, signUpWithEmail, signInWithGoogle, startPhoneSignIn, confirmPhoneOtp, sendReset, firebaseEnabled } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
   const [searchParams] = useSearchParams();
@@ -215,7 +228,8 @@ export default function AuthPage({ mode = 'login' }) {
   const cfg = modeConfig[mode];
   const phoneFromState = loc.state?.phone || '';
 
-  const [tab, setTab] = useState('email'); // login: email | otp
+  const [tab, setTab] = useState('email'); // login/signup: email | otp
+  const [phoneChallenge, setPhoneChallenge] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -236,12 +250,9 @@ export default function AuthPage({ mode = 'login' }) {
   }, [returnTo]);
 
   useEffect(() => {
-    if (firebaseEnabled) setTab('email');
-  }, [firebaseEnabled]);
-
-  useEffect(() => {
     setForgotSent(false);
     setLoading(false);
+    setPhoneChallenge(false);
     const stored = consumeGoogleAuthError();
     setMsg(stored
       ? { text: mapFirebaseAuthError(stored, MSG.credentials), tone: 'error' }
@@ -286,12 +297,59 @@ export default function AuthPage({ mode = 'login' }) {
 
   const handleResendOtp = async () => {
     if (resendIn > 0 || loading) return;
+    const phone = form.phone || phoneFromState || '';
     setLoading(true);
     setMsg({ text: '', tone: 'error' });
-    await delay(600);
-    setLoading(false);
+    try {
+      if (firebaseEnabled) {
+        await startPhoneSignIn(phone);
+      } else {
+        await delay(600);
+      }
+      startResendTimer();
+      setMsg({ text: MSG.otpSent, tone: 'info' });
+    } catch (err) {
+      setMsg({ text: firebaseError(err, MSG.needPhone), tone: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendPhoneCode = async (phone) => {
+    if (!isValidIndianPhone(phone)) {
+      setMsg({ text: MSG.needPhone, tone: 'error' });
+      return false;
+    }
+    if (firebaseEnabled) {
+      await startPhoneSignIn(phone);
+    } else {
+      await delay(700);
+    }
+    setPhoneChallenge(true);
     startResendTimer();
     setMsg({ text: MSG.otpSent, tone: 'info' });
+    return true;
+  };
+
+  const verifyPhoneCode = async () => {
+    if (form.otp.length !== 6) {
+      setMsg({ text: MSG.otpInvalid, tone: 'error' });
+      return;
+    }
+    if (firebaseEnabled) {
+      const session = await confirmPhoneOtp(form.otp, { name: form.name.trim() || undefined });
+      finishAuth(session);
+      return;
+    }
+    await delay(800);
+    if (form.otp !== MOCK_OTP) {
+      setMsg({ text: MSG.otpInvalid, tone: 'error' });
+      return;
+    }
+    finishAuth(login({
+      phone: form.phone || phoneFromState || '',
+      name: form.name.trim() || 'Guest',
+    }));
   };
 
   const submit = async (e) => {
@@ -318,28 +376,16 @@ export default function AuthPage({ mode = 'login' }) {
       return;
     }
 
-    // ——— OTP verify (demo only when Firebase is off) ———
-    if (mode === 'otp') {
-      if (firebaseEnabled) {
-        nav('/login', { replace: true, state: returnState });
-        return;
-      }
-      if (form.otp.length !== 6) {
-        setMsg({ text: MSG.otpInvalid, tone: 'error' });
-        return;
-      }
+    // ——— OTP verify ———
+    if (mode === 'otp' || ((mode === 'login' || mode === 'signup') && tab === 'otp' && phoneChallenge)) {
       setLoading(true);
-      await delay(800);
-      // Mock: only MOCK_OTP succeeds; failures stay generic
-      if (form.otp !== MOCK_OTP) {
+      try {
+        await verifyPhoneCode();
+      } catch (err) {
+        setMsg({ text: firebaseError(err, MSG.otpInvalid), tone: 'error' });
+      } finally {
         setLoading(false);
-        setMsg({ text: MSG.otpInvalid, tone: 'error' });
-        return;
       }
-      finishAuth(login({
-        phone: form.phone || phoneFromState || '',
-        name: 'Guest',
-      }));
       return;
     }
 

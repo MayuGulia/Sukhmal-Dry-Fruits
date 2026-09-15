@@ -11,17 +11,38 @@ const LEFT = [
   { Icon: Hand, label: 'Handpicked with Care' },
 ];
 
+function RazorpaySoonMark({ className = '' }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold tracking-[0.16em] uppercase text-gold-300 ${className}`}
+    >
+      <span className="h-1 w-1 rotate-45 bg-gold-400 shrink-0" aria-hidden />
+      Razorpay UPI coming soon · COD works
+    </span>
+  );
+}
+
 export default function TopUtilityBar() {
   const { count } = useCart();
   const { user, isAuthed, logout } = useAuth();
   const nav = useNavigate();
 
   return (
+    <>
+    <div className="lg:hidden bg-[var(--sk-espresso)] text-center">
+      <div className="h-8 flex items-center justify-center px-3">
+        <RazorpaySoonMark />
+      </div>
+    </div>
     <div className="hidden lg:block bg-[var(--sk-espresso)] text-white text-[12px] leading-none">
       <div className="sk-container flex items-center justify-between h-9">
         <div className="flex items-center gap-5 min-w-0">
-          {LEFT.map(({ Icon, label }) => (
-            <span key={label} className="inline-flex items-center gap-1.5 whitespace-nowrap text-white">
+          <RazorpaySoonMark className="mr-1" />
+          {LEFT.map(({ Icon, label }, i) => (
+            <span
+              key={label}
+              className={`${i >= 2 ? 'hidden xl:inline-flex' : 'inline-flex'} items-center gap-1.5 whitespace-nowrap text-white`}
+            >
               <Icon size={13} strokeWidth={1.75} className="text-white shrink-0" />
               {label}
             </span>
@@ -73,5 +94,6 @@ export default function TopUtilityBar() {
         </div>
       </div>
     </div>
+    </>
   );
 }

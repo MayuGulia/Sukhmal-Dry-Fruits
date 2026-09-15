@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { stripHtml } from '@/lib/security';
+import { firestoreSafeMediaUrl, persistOrderItemImage } from '@/lib/orderImages';
 
 export const ORDER_FLOW = ['confirmed', 'packed', 'shipped', 'delivered'];
 
@@ -104,7 +105,13 @@ export async function createCustomerOrder({
     productId: it.id,
     slug: it.slug || null,
     name: it.name,
-    image: it.image || null,
+    image: persistOrderItemImage(it),
+    source: it.source || it.meta?.type || 'product',
+    meta: it.meta ? {
+      type: it.meta.type || null,
+      style: it.meta.style || null,
+      previewImageUrl: firestoreSafeMediaUrl(it.meta.previewImageUrl),
+    } : null,
     price: Number(it.price) || 0,
     qty: Number(it.qty) || 1,
     variant: it.variant || it.weight || null,
@@ -114,7 +121,7 @@ export async function createCustomerOrder({
     userId: user?.uid || null,
     customer: {
       name: stripHtml(user?.displayName || address?.name || '', 80),
-      email: user?.email || null,
+      email: user?.email || address?.email || null,
       phone: user?.phone || address?.phone || null,
     },
     shippingAddress: address ? {
@@ -239,6 +246,10 @@ export function mapOrderDoc(id, data) {
       weight: it.variant || '',
       price: it.price,
       image: it.image,
+      id: it.productId || it.id,
+      slug: it.slug,
+      source: it.source || it.meta?.type || '',
+      meta: it.meta || null,
     })),
     timeline: uiTimeline,
     address: data.shippingAddress || {},

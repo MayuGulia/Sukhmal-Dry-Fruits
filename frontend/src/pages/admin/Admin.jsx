@@ -193,7 +193,7 @@ export function AdminLayout() {
           ))}
         </nav>
       </div>
-      <div className="sk-container grid grid-cols-1 lg:grid-cols-[210px_1fr] gap-0 min-h-[calc(100vh-8rem)]">
+      <div className="sk-container grid grid-cols-1 lg:grid-cols-[210px_minmax(0,1fr)] gap-0 min-h-[calc(100vh-8rem)] min-w-0">
         <aside className="py-6 pr-4 border-r border-line hidden lg:block">
           <nav className="space-y-1">
             {SIDE.map(({ to, label, Ic, end }) => (
@@ -219,7 +219,7 @@ export function AdminLayout() {
             </button>
           </nav>
         </aside>
-        <main className="py-6 lg:pl-8 pb-16">
+        <main className="py-6 lg:pl-8 pb-24 min-w-0 overflow-x-hidden">
           <Outlet />
         </main>
       </div>

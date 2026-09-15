@@ -1,5 +1,6 @@
 const { createHmac } = require('node:crypto');
 const path = require('node:path');
+const { notifyOwnerWhatsapp } = require('../../firebase/http-functions/_shared/notifyOwnerWhatsapp');
 
 try {
   require('dotenv').config({ path: path.join(__dirname, '../.env') });
@@ -66,6 +67,37 @@ function registerCommerceRoutes(app) {
     }
   });
 
+  app.post('/api/feedback', async (req, res) => {
+    const body = await readJson(req).catch(() => ({}));
+    if (String(body.company || '').trim()) return json(res, { ok: true });
+    const name = String(body.name || '').replace(/<[^>]*>/g, '').trim().slice(0, 80);
+    const email = String(body.email || '').trim().toLowerCase();
+    const text = String(body.message || body.text || '').replace(/<[^>]*>/g, '').trim().slice(0, 600);
+    const rating = Math.round(Number(body.rating));
+    if (name.length < 2) return json(res, { error: 'invalid_name', message: 'Please enter your name.' }, 400);
+    if (!rating || rating < 1 || rating > 5) return json(res, { error: 'invalid_rating', message: 'Please choose a star rating.' }, 400);
+    if (text.length < 8) return json(res, { error: 'invalid_text', message: 'Please write a few words about your experience.' }, 400);
+    if (email && !EMAIL_RE.test(email)) return json(res, { error: 'invalid_email', message: 'Please enter a valid email address.' }, 400);
+    const key = process.env.RESEND_API_KEY;
+    const to = process.env.ADMIN_NOTIFY_EMAIL || process.env.REACT_APP_ADMIN_EMAIL || 'sukhmaldryfruitskorner2@gmail.com';
+    const from = process.env.RESEND_FROM || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
+    if (key && to) {
+      const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          reply_to: email || to,
+          subject: `New homepage feedback (${rating}/5) from ${name}`,
+          html: `<p><strong>Rating:</strong> ${stars} (${rating}/5)</p><p><strong>Name:</strong> ${name}</p><p><strong>Email:</strong> ${email || '—'}</p><p>${text}</p>`,
+        }),
+      }).catch(() => {});
+    }
+    return json(res, { ok: true });
+  });
+
   app.post('/api/create-order', async (req, res) => {
     const body = await readJson(req).catch(() => ({}));
     const orderId = String(body.orderId || '').trim();
@@ -79,39 +111,45 @@ function registerCommerceRoutes(app) {
       const items = Array.isArray(order.items) ? order.items : [];
       const html = `
         <p><strong>Order ID:</strong> ${order.orderId || orderId}</p>
-        <p><strong>Customer:</strong> ${customer.name || addr.name || ''} · ${customer.phone || addr.phone || ''}</p>
+        <p><strong>Customer:</strong> ${customer.name || addr.name || ''} · ${customer.phone || addr.phone || ''}${customer.email || addr.email || order.email ? ` · ${customer.email || addr.email || order.email}` : ''}</p>
         <p><strong>Payment:</strong> ${order.paymentMethod || 'cod'}</p>
         <p><strong>Total:</strong> ₹${order.total ?? order.totals?.total ?? 0}</p>
         <ul>${items.map((it) => `<li>${it.qty || 1} × ${it.name || it.productId || ''} — ₹${it.price || 0}</li>`).join('')}</ul>
       `;
-      let owner = { skipped: true, reason: 'missing_key_or_to' };
-      if (key && to) {
+      const customerEmail = String(customer.email || addr.email || order.email || '').trim().toLowerCase();
+      const sendMail = async (dest, subject, bodyHtml) => {
+        if (!key || !dest) return { skipped: true, reason: !key ? 'missing_key' : 'missing_to' };
         const r = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from, to: [to], subject: `New order ${order.orderId || orderId}`, html }),
+          body: JSON.stringify({ from, to: [dest], reply_to: to, subject, html: bodyHtml }),
         });
         const data = await r.json().catch(() => ({}));
-        owner = { ok: r.ok, status: r.status, id: data.id || null, skipped: false, reason: data.message || null };
-        if (customer.email) {
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              from,
-              to: [customer.email],
-              subject: `Order ${order.orderId || orderId} received — Sukhmal Dry Fruits`,
-              html: `${html}<p>Track it with Order ID <strong>${order.orderId || orderId}</strong>.</p>`,
-            }),
-          }).catch(() => {});
-        }
+        if (!r.ok) console.error('resend failed', dest, r.status, data);
+        return { ok: r.ok, status: r.status, id: data.id || null, skipped: false, reason: data.message || null };
+      };
+      const owner = await sendMail(to, `New order ${order.orderId || orderId}`, html);
+      const customerNotify = await sendMail(
+        customerEmail,
+        `Order ${order.orderId || orderId} confirmed — Sukhmal Dry Fruits`,
+        `${html}<p>Track it with Order ID <strong>${order.orderId || orderId}</strong>.</p>`,
+      );
+      try {
+        await notifyOwnerWhatsapp({
+          ...order,
+          orderId: order.orderId || orderId,
+        });
+      } catch (err) {
+        console.error('owner whatsapp ignored', order.orderId || orderId, err?.message);
       }
       return json(res, {
         orderId,
         paymentMethod: 'cod',
         skipPayment: true,
         ownerNotified: Boolean(owner.ok),
+        customerNotified: Boolean(customerNotify.ok),
         ownerNotify: owner,
+        customerNotify,
       });
     }
     const keyId = process.env.RAZORPAY_KEY_ID;

@@ -1,4 +1,4 @@
-const { json, readJsonBody, httpsFn } = require('../_shared/httpFn');
+const { json, readJsonBody, httpsFn, GEMINI_SECRETS, VERTEX_RUNTIME_SA } = require('../_shared/httpFn');
 
 const CUSTOMER_AI_FALLBACK =
   "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
@@ -7,9 +7,9 @@ const aiChat = httpsFn(async (req, res) => {
   if (req.method !== 'POST') return json(res, { error: 'method', message: 'POST required' }, 405);
 
   const { adviseGifts } = await import('../_shared/ai/geminiGiftAdvisor.js');
-  const { CUSTOMER_AI_FALLBACK: fallback, geminiApiKey } = await import('../_shared/ai/geminiEnv.js');
+  const { CUSTOMER_AI_FALLBACK: fallback, geminiApiKey, vertexEnterpriseEnabled } = await import('../_shared/ai/geminiEnv.js');
 
-  if (!geminiApiKey()) {
+  if (!geminiApiKey() && !vertexEnterpriseEnabled()) {
     console.warn('[Sukhmal Gemini] ai-chat missing server API key');
     return json(res, { error: 'not_configured', message: fallback || CUSTOMER_AI_FALLBACK }, 503);
   }
@@ -25,6 +25,6 @@ const aiChat = httpsFn(async (req, res) => {
     const message = code === 'bad_request' ? (err.message || 'Type a message first') : (fallback || CUSTOMER_AI_FALLBACK);
     return json(res, { error: code, message }, status);
   }
-}, { timeoutSeconds: 60 });
+}, { timeoutSeconds: 60, secrets: GEMINI_SECRETS, serviceAccount: VERTEX_RUNTIME_SA });
 
 module.exports = { aiChat };

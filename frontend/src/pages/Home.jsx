@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import ProductCard, { TrustStrip } from '@/components/shared/ProductCard';
 import FlourishTitle from '@/components/home/FlourishTitle';
+import HomeFeedback from '@/components/home/HomeFeedback';
 import { useProducts, ProductSkeleton } from '@/lib/catalog';
 import { TESTIMONIALS } from '@/data/mockContent';
 import { aiApi } from '@/lib/api';
@@ -109,6 +110,10 @@ function HeroCopy() {
       </span>
       <p className="mt-5 text-ink-600 text-[14px] md:text-[16px] leading-[1.7] font-light max-w-md [text-shadow:0_1px_12px_rgba(255,250,242,0.95)]">
         Premium Dry Fruits & Handcrafted Gift Hampers for Every Celebration.
+      </p>
+      <p className="mt-4 inline-flex items-center gap-2 text-[10px] sm:text-[11px] font-semibold tracking-[0.2em] uppercase text-[var(--sk-gold-600)] drop-shadow-[0_1px_8px_rgba(255,252,247,0.85)]">
+        <span className="h-1 w-1 rotate-45 bg-[var(--sk-gold-600)]" aria-hidden />
+        Razorpay UPI coming soon · COD available now
       </p>
       <div className="mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <Link
@@ -420,7 +425,10 @@ export default function Home() {
       {/* ─── Testimonials ─── */}
       <section className="bg-white py-12 md:py-16 border-t border-[var(--sk-line)]" data-testid="home-testimonials">
         <div className="sk-container">
-          <FlourishTitle title="What Our Customers Say" />
+          <FlourishTitle
+            title="What Our Customers Say"
+            cta={<a href="#home-feedback" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--sk-gold-600)] hover:text-[var(--sk-brown-700)] transition-colors">Share Feedback <ChevronRight size={14} strokeWidth={2.25} /></a>}
+          />
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5" data-testid="testimonials">
             {reviews.map((t, i) => (
               <article key={i} className="bg-white rounded-2xl border border-[var(--sk-line)] p-5 md:p-6 flex flex-col shadow-sk-sm">
@@ -444,6 +452,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <HomeFeedback />
 
       {/* ─── Instagram ─── */}
       <section className="bg-white py-12 md:py-16" data-testid="home-instagram">
