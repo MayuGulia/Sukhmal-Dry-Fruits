@@ -7,6 +7,7 @@ import {
 import ProductCard, { TrustStrip } from '@/components/shared/ProductCard';
 import FlourishTitle from '@/components/home/FlourishTitle';
 import HomeFeedback from '@/components/home/HomeFeedback';
+import BrandVideo from '@/components/media/BrandVideo';
 import { useProducts, ProductSkeleton } from '@/lib/catalog';
 import { TESTIMONIALS } from '@/data/mockContent';
 import { aiApi } from '@/lib/api';
@@ -20,6 +21,8 @@ import {
   WEDDING_PROMO_IMG,
   CORP_PROMO_IMG,
   HERO_IMG,
+  HERO_VIDEO_SRC,
+  HERO_VIDEO_LAYOUT,
   HERO_VIDEO_POSITION,
 } from '@/data/homeBrand';
 import { GiftBasketIcon } from '@/components/brand/BrandSeal';
@@ -65,21 +68,6 @@ const WHY_ICONS = {
   love: HeartHandshake,
 };
 
-function HeroPhoto({ className, position = HERO_VIDEO_POSITION }) {
-  return (
-    <img
-      src={HERO_IMG}
-      alt="Sukhmal premium dry fruit gift hamper in a walnut wooden caddy with gold ribbon bow and gold-lidded jars of almonds, cashews, pistachios, walnuts, dates and raisins"
-      width={1535}
-      height={1024}
-      fetchPriority="high"
-      decoding="sync"
-      className={`sk-hero-photo ${className || ''}`}
-      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: position }}
-    />
-  );
-}
-
 function ViewAllLink({ to, children }) {
   return (
     <Link
@@ -110,10 +98,6 @@ function HeroCopy() {
       </span>
       <p className="mt-5 text-ink-600 text-[14px] md:text-[16px] leading-[1.7] font-light max-w-md [text-shadow:0_1px_12px_rgba(255,250,242,0.95)]">
         Premium Dry Fruits & Handcrafted Gift Hampers for Every Celebration.
-      </p>
-      <p className="mt-4 inline-flex items-center gap-2 text-[10px] sm:text-[11px] font-semibold tracking-[0.2em] uppercase text-[var(--sk-gold-600)] drop-shadow-[0_1px_8px_rgba(255,252,247,0.85)]">
-        <span className="h-1 w-1 rotate-45 bg-[var(--sk-gold-600)]" aria-hidden />
-        Razorpay UPI coming soon · COD available now
       </p>
       <div className="mt-8 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <Link
@@ -171,7 +155,16 @@ export default function Home() {
         data-hero-layout="cover"
       >
         <div className="absolute inset-0 overflow-hidden">
-          <HeroPhoto className="absolute inset-0 w-full h-full object-cover" />
+          <BrandVideo
+            src={HERO_VIDEO_SRC}
+            poster={HERO_IMG}
+            fallback={HERO_IMG}
+            fit={HERO_VIDEO_LAYOUT}
+            position={HERO_VIDEO_POSITION}
+            className="absolute inset-0 w-full h-full"
+            showToggle
+            toggleClassName="bottom-4 right-4 z-20"
+          />
           <div className="sk-hero-shade" aria-hidden />
         </div>
 

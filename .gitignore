@@ -53,6 +53,9 @@ data/Product_Listings_Master.xlsx
 /test-images/*
 !/test-images/.gitkeep
 
+tmp-ffmpeg/
+.firebase/
+
 # Local / OS
 .DS_Store
 .idea/
