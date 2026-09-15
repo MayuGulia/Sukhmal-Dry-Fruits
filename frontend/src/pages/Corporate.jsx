@@ -45,7 +45,9 @@ export default function Corporate() {
         occasion: 'Corporate',
       });
     } catch {
-      /* dummy OK */
+      setToast('Could not send enquiry. Please try again or WhatsApp us.');
+      setTimeout(() => setToast(''), 3500);
+      return;
     }
     setSent(true);
     setToast('Corporate enquiry received — proposal within 24 hours.');

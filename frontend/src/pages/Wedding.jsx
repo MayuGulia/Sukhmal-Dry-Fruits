@@ -86,7 +86,9 @@ export default function Wedding() {
         notes: stripHtml(form.notes, 500),
       });
     } catch {
-      /* dummy OK */
+      setToast('Could not send enquiry. Please try again or WhatsApp us.');
+      setTimeout(() => setToast(''), 3500);
+      return;
     }
     setSent(true);
     setToast('Bulk enquiry submitted — we’ll reach out shortly.');

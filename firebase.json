@@ -30,7 +30,8 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "**/assets/videos/**"
+      "**/assets/videos/**",
+      "**/hero-home.mp4"
     ],
     "headers": [
       {
@@ -155,6 +156,13 @@
       },
       {
         "source": "/api/enquiry/bulk",
+        "function": {
+          "functionId": "enquiryBulk",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/enquiry/contact",
         "function": {
           "functionId": "enquiryBulk",
           "region": "us-central1"

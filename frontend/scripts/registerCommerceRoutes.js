@@ -1,6 +1,7 @@
 const { createHmac } = require('node:crypto');
 const path = require('node:path');
 const { notifyOwnerWhatsapp } = require('../../firebase/http-functions/_shared/notifyOwnerWhatsapp');
+const { notifyOrderPlaced, notifyOwnerOfEnquiry } = require('../../firebase/http-functions/_shared/notify');
 
 try {
   require('dotenv').config({ path: path.join(__dirname, '../.env') });
@@ -67,6 +68,54 @@ function registerCommerceRoutes(app) {
     }
   });
 
+  const handleEnquiry = async (req, res, kind) => {
+    const body = await readJson(req).catch(() => ({}));
+    if (kind === 'contact' || body.type === 'contact') {
+      const first = String(body.first || '').replace(/<[^>]*>/g, '').trim().slice(0, 80);
+      const last = String(body.last || '').replace(/<[^>]*>/g, '').trim().slice(0, 80);
+      const name = [first, last].filter(Boolean).join(' ').trim();
+      const email = String(body.email || '').trim().toLowerCase();
+      const phone = String(body.phone || '').trim();
+      const subject = String(body.subject || '').replace(/<[^>]*>/g, '').trim().slice(0, 160);
+      const qtype = String(body.qtype || 'General').trim();
+      const orderId = String(body.orderId || '').trim();
+      const message = String(body.msg || body.message || '').replace(/<[^>]*>/g, '').trim().slice(0, 2000);
+      if (name.length < 2) return json(res, { error: 'invalid_name' }, 400);
+      if (!EMAIL_RE.test(email)) return json(res, { error: 'invalid_email' }, 400);
+      if (message.length < 4) return json(res, { error: 'invalid_message' }, 400);
+      const sent = await notifyOwnerOfEnquiry({
+        subject: `Contact form: ${subject || qtype} from ${name}`,
+        replyTo: email,
+        fields: {
+          Name: name, Email: email, Phone: phone, Subject: subject,
+          'Query type': qtype, 'Order ID': orderId, Message: message,
+        },
+      });
+      return json(res, { ok: true, ownerNotified: Boolean(sent?.ok) });
+    }
+    const digits = String(body.phone || '').replace(/\D/g, '');
+    const phone = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits.slice(-10);
+    if (!/^[6-9]\d{9}$/.test(phone)) return json(res, { error: 'invalid_phone' }, 400);
+    const email = String(body.email || '').trim().toLowerCase();
+    const name = String(body.name || '').replace(/<[^>]*>/g, '').trim().slice(0, 80);
+    const sent = await notifyOwnerOfEnquiry({
+      subject: `Bulk enquiry${body.occasion ? ` (${body.occasion})` : ''} from ${name || phone}`,
+      replyTo: email,
+      fields: {
+        Company: body.company || body.companyName || '',
+        Name: name,
+        Phone: phone,
+        Email: email,
+        Quantity: body.qty || body.quantity || '',
+        Occasion: body.occasion || '',
+        Notes: String(body.notes || '').replace(/<[^>]*>/g, '').trim().slice(0, 500),
+      },
+    });
+    return json(res, { ok: true, ownerNotified: Boolean(sent?.ok) });
+  };
+  app.post('/api/enquiry/bulk', (req, res) => handleEnquiry(req, res, 'bulk'));
+  app.post('/api/enquiry/contact', (req, res) => handleEnquiry(req, res, 'contact'));
+
   app.post('/api/feedback', async (req, res) => {
     const body = await readJson(req).catch(() => ({}));
     if (String(body.company || '').trim()) return json(res, { ok: true });
@@ -102,38 +151,11 @@ function registerCommerceRoutes(app) {
     const body = await readJson(req).catch(() => ({}));
     const orderId = String(body.orderId || '').trim();
     if (body.paymentMethod === 'cod') {
-      const key = process.env.RESEND_API_KEY;
-      const to = process.env.ADMIN_NOTIFY_EMAIL || process.env.REACT_APP_ADMIN_EMAIL || 'sukhmaldryfruitskorner2@gmail.com';
-      const from = process.env.RESEND_FROM || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
       const order = body.order && typeof body.order === 'object' ? body.order : { orderId };
-      const customer = order.customer || {};
-      const addr = order.shippingAddress || {};
-      const items = Array.isArray(order.items) ? order.items : [];
-      const html = `
-        <p><strong>Order ID:</strong> ${order.orderId || orderId}</p>
-        <p><strong>Customer:</strong> ${customer.name || addr.name || ''} · ${customer.phone || addr.phone || ''}${customer.email || addr.email || order.email ? ` · ${customer.email || addr.email || order.email}` : ''}</p>
-        <p><strong>Payment:</strong> ${order.paymentMethod || 'cod'}</p>
-        <p><strong>Total:</strong> ₹${order.total ?? order.totals?.total ?? 0}</p>
-        <ul>${items.map((it) => `<li>${it.qty || 1} × ${it.name || it.productId || ''} — ₹${it.price || 0}</li>`).join('')}</ul>
-      `;
-      const customerEmail = String(customer.email || addr.email || order.email || '').trim().toLowerCase();
-      const sendMail = async (dest, subject, bodyHtml) => {
-        if (!key || !dest) return { skipped: true, reason: !key ? 'missing_key' : 'missing_to' };
-        const r = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from, to: [dest], reply_to: to, subject, html: bodyHtml }),
-        });
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) console.error('resend failed', dest, r.status, data);
-        return { ok: r.ok, status: r.status, id: data.id || null, skipped: false, reason: data.message || null };
-      };
-      const owner = await sendMail(to, `New order ${order.orderId || orderId}`, html);
-      const customerNotify = await sendMail(
-        customerEmail,
-        `Order ${order.orderId || orderId} confirmed — Sukhmal Dry Fruits`,
-        `${html}<p>Track it with Order ID <strong>${order.orderId || orderId}</strong>.</p>`,
-      );
+      const notify = await notifyOrderPlaced({
+        ...order,
+        orderId: order.orderId || orderId,
+      });
       try {
         await notifyOwnerWhatsapp({
           ...order,
@@ -146,10 +168,7 @@ function registerCommerceRoutes(app) {
         orderId,
         paymentMethod: 'cod',
         skipPayment: true,
-        ownerNotified: Boolean(owner.ok),
-        customerNotified: Boolean(customerNotify.ok),
-        ownerNotify: owner,
-        customerNotify,
+        ...notify,
       });
     }
     const keyId = process.env.RAZORPAY_KEY_ID;

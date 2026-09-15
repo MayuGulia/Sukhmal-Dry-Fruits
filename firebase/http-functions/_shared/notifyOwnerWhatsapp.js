@@ -27,13 +27,20 @@ function buildMessage(order = {}) {
   const customer = order.customer || {};
   const addr = order.shippingAddress || {};
   const name = String(customer.name || addr.name || 'Customer').trim();
+  const phone = String(customer.phone || addr.phone || '').trim();
+  const pin = String(addr.pincode || '').trim();
+  const address = [addr.line1, addr.line2, pin ? `PIN ${pin}` : ''].filter(Boolean).join(', ');
   const total = order.total ?? order.totals?.total ?? 0;
+  const method = String(order.paymentMethod || '').toUpperCase();
   return [
     `New Sukhmal order ${orderId}`,
     `Customer: ${name}`,
+    phone ? `Phone: ${phone}` : '',
+    address ? `Address: ${address}` : '',
+    method ? `Payment: ${method}` : '',
     `Total: ₹${total}`,
     `Items (${itemCount(order)}): ${itemNames(order)}`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 function isAbort(err) {

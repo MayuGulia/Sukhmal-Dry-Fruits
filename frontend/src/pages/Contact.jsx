@@ -11,6 +11,8 @@ import {
   STORE_ADDRESS, STORE_EMAIL, STORE_HOURS, STORE_MAPS_URL,
   STORE_PHONE_DISPLAY, STORE_PHONE_TEL, STORE_PHOTOS, STORE_WHATSAPP,
 } from '@/data/storeInfo';
+import { api } from '@/lib/api';
+import { isValidEmail, isValidIndianPhone, stripHtml } from '@/lib/security';
 
 const STORE_GALLERY = [
   { src: STORE_PHOTOS[0], alt: 'Sukhmal Dry Fruits Korner storefront' },
@@ -93,6 +95,8 @@ export default function Contact() {
     qtype: 'General', orderId: '', msg: '', consent: false,
   });
   const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState('');
   const [openFaq, setOpenFaq] = useState(-1);
 
   const set = (key) => (e) => {
@@ -100,13 +104,44 @@ export default function Contact() {
     setForm((f) => ({ ...f, [key]: value }));
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.consent) {
-      alert('Please accept the privacy policy.');
+      setFormError('Please accept the privacy policy.');
       return;
     }
-    setSent(true);
+    if (!stripHtml(form.first, 80) || !stripHtml(form.last, 80)) {
+      setFormError('Please enter your first and last name.');
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
+    if (!isValidIndianPhone(form.phone)) {
+      setFormError('Please enter a valid Indian mobile number.');
+      return;
+    }
+    setBusy(true);
+    setFormError('');
+    try {
+      await api.post('/enquiry/contact', {
+        type: 'contact',
+        first: stripHtml(form.first, 80),
+        last: stripHtml(form.last, 80),
+        email: stripHtml(form.email, 120),
+        phone: stripHtml(form.phone, 20),
+        subject: stripHtml(form.subject, 160),
+        qtype: form.qtype,
+        orderId: stripHtml(form.orderId, 40),
+        msg: stripHtml(form.msg, 2000),
+      });
+      setSent(true);
+    } catch {
+      setFormError('Could not send your message. Please try again or call us.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -245,9 +280,10 @@ export default function Contact() {
                     .
                   </span>
                 </label>
-                <button type="submit" className="sk-btn-primary w-full">
-                  <Send size={16} /> Send Message
+                <button type="submit" disabled={busy} className="sk-btn-primary w-full">
+                  <Send size={16} /> {busy ? 'Sending…' : 'Send Message'}
                 </button>
+                {formError ? <p className="text-sm text-red-700">{formError}</p> : null}
                 <div className="flex items-center justify-center gap-1.5 text-[11px] text-ink-400 pt-1">
                   <Lock size={12} /> Your information is protected with SSL encryption.
                 </div>

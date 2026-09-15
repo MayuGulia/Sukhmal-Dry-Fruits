@@ -15,6 +15,10 @@ function orderFromBody(body, orderId) {
     total: raw.total ?? raw.totals?.total ?? 0,
     paymentMethod: raw.paymentMethod || 'cod',
     eta: raw.eta || '',
+    giftMsg: raw.giftMsg || null,
+    coupon: raw.coupon || null,
+    deliveryDate: raw.deliveryDate || null,
+    customDate: raw.customDate || null,
     email: raw.email || raw.customer?.email || '',
   };
 }
@@ -32,6 +36,9 @@ async function loadOrder(orderId, body) {
           ...data,
           orderId: data.orderId || orderId,
           customer: { ...fallback.customer, ...(data.customer || {}) },
+          shippingAddress: { ...(fallback.shippingAddress || {}), ...(data.shippingAddress || {}) },
+          items: Array.isArray(data.items) && data.items.length ? data.items : fallback.items,
+          totals: { ...(fallback.totals || {}), ...(data.totals || {}) },
         };
       }
     } catch (err) {

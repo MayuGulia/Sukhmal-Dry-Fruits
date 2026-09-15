@@ -56,7 +56,7 @@ export default function Nav() {
 
   return (
     <div className="hidden lg:block bg-white border-b border-line relative z-30">
-      <div className="sk-container flex items-center gap-4 xl:gap-5 h-12">
+      <div className="sk-container flex items-center gap-4 xl:gap-5 h-14">
         <div ref={wrapRef} className="relative shrink-0">
           <button
             type="button"
@@ -65,7 +65,7 @@ export default function Nav() {
             aria-haspopup="true"
             onClick={() => setOpen((v) => !v)}
             onMouseEnter={() => setOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-[8px] bg-brand-900 text-white text-[13px] font-semibold whitespace-nowrap shadow-sk-sm"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[8px] bg-brand-900 text-white text-[14px] font-semibold whitespace-nowrap shadow-sk-sm"
           >
             <Menu size={15} strokeWidth={2} /> Shop by Category
             <ChevronDown size={14} className={`opacity-80 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -99,7 +99,7 @@ export default function Nav() {
           )}
         </div>
 
-        <nav className="flex items-center gap-3 xl:gap-4 text-[12px] xl:text-[12.5px] font-medium text-brand-900 whitespace-nowrap overflow-x-auto scrollbar-none">
+        <nav className="flex items-center gap-3.5 xl:gap-5 text-[13.5px] xl:text-[14.5px] font-medium text-brand-900 whitespace-nowrap overflow-x-auto scrollbar-none">
           {PRIMARY.map((l) => (
             <NavLink
               key={l.to}

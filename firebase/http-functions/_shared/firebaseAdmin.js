@@ -153,6 +153,9 @@ async function claimCodOrderEmails(order = {}) {
       ...data,
       orderId: data.orderId || orderId,
       customer: { ...(order.customer || {}), ...(data.customer || {}) },
+      shippingAddress: { ...(order.shippingAddress || {}), ...(data.shippingAddress || {}) },
+      items: Array.isArray(data.items) && data.items.length ? data.items : (order.items || []),
+      totals: { ...(order.totals || {}), ...(data.totals || {}) },
     };
     if (data.emailsSentAt) return;
     tx.update(ref, {

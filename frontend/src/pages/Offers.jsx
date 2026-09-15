@@ -5,6 +5,8 @@ import ProductCard from '@/components/shared/ProductCard';
 import { useProducts, useHampers, ProductSkeleton, HamperSkeleton } from '@/lib/catalog';
 import { PremiumHamperCard } from '@/pages/GiftHampers';
 
+const HERO_IMG = '/brand/offers-deals-banner.jpg';
+
 const HIGHLIGHTS = [
   { Ic: Percent, t: 'Seasonal markdowns', s: 'Curated cuts on bestsellers every week' },
   { Ic: Sparkles, t: 'Hamper combos', s: 'Gift-ready sets at special onwards pricing' },
@@ -21,11 +23,15 @@ export default function Offers() {
 
   return (
     <div className="bg-[var(--sk-cream-100)]">
-      <div className="relative overflow-hidden bg-brand-900 text-white">
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{ background: 'radial-gradient(ellipse at 20% 20%, #BDAA7E55, transparent 55%), radial-gradient(ellipse at 80% 80%, #E8A11A33, transparent 50%)' }}
-        />
+      <div className="relative overflow-hidden bg-[#1a120e] text-white min-h-[42vh] md:min-h-[52vh] flex items-center">
+        <div className="absolute inset-0">
+          <img
+            src={HERO_IMG}
+            alt="Sukhmal luxury dry fruit gift hamper with gold ribbon"
+            className="w-full h-full object-cover object-[18%_center] sm:object-[28%_center] lg:object-[78%_center]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1a120e]/94 via-[#2a1a12]/88 to-[#1a120e]/78 lg:from-[#1a120e]/90 lg:via-[#2a1a12]/68 lg:to-[#3C2415]/28" />
+        </div>
         <div className="relative sk-container py-12 md:py-16">
           <div className="text-white/70 text-[12px] mb-3">
             <Link to="/" className="hover:text-white">Home</Link>
@@ -39,7 +45,7 @@ export default function Offers() {
           <p className="text-white/80 mt-3 max-w-xl text-sm md:text-base">
             Save on premium dry fruits, nuts, and curated gift hampers — without compromising on quality.
           </p>
-          <div className="mt-8 grid sm:grid-cols-3 gap-3 max-w-3xl">
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-3 max-w-xl lg:max-w-3xl">
             {HIGHLIGHTS.map(({ Ic, t, s }) => (
               <div key={t} className="flex items-start gap-3 bg-white/10 border border-white/15 rounded-xl px-4 py-3">
                 <Ic size={18} strokeWidth={1.5} className="text-[var(--sk-gold-300)] mt-0.5 shrink-0" />

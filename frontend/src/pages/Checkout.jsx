@@ -239,6 +239,10 @@ export default function Checkout() {
               paymentMethod: 'cod',
               eta: created.eta,
               email: customerEmail,
+              giftMsg: created.giftMsg || giftMsg || null,
+              coupon: created.coupon || coupon?.code || null,
+              deliveryDate: created.deliveryDate || deliveryDate || null,
+              customDate: created.customDate || customDate || null,
             },
           });
           if (!notify.data?.ownerNotified || !notify.data?.customerNotified) {

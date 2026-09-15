@@ -85,7 +85,7 @@ export default function Header({ onOpenDrawer }) {
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-line">
       {/* Mobile + tablet (&lt; lg / 1024): hamburger | compact logo | search + cart */}
-      <div className="lg:hidden relative flex items-center h-16 px-3 sm:px-4">
+      <div className="lg:hidden relative flex items-center h-[4.6rem] px-3 sm:px-4">
         <button
           type="button"
           data-testid="mob-hamburger"
@@ -97,7 +97,7 @@ export default function Header({ onOpenDrawer }) {
         </button>
 
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <BrandLockup sealSize={48} compact showTagline={false} />
+          <BrandLockup sealSize={56} compact showTagline={false} />
         </div>
 
         <div className="ml-auto relative z-10 flex items-center gap-0.5">
@@ -129,9 +129,9 @@ export default function Header({ onOpenDrawer }) {
 
       {/* Desktop (≥ lg / 1024) */}
       <div className="hidden lg:block">
-        <div className="sk-container flex items-center h-[5.35rem] gap-3 xl:gap-4">
+        <div className="sk-container flex items-center h-[6.15rem] gap-3 xl:gap-4">
           <div className="shrink-0">
-            <BrandLockup sealSize={64} />
+            <BrandLockup sealSize={76} />
           </div>
 
           <form
@@ -144,13 +144,13 @@ export default function Header({ onOpenDrawer }) {
                 onChange={(e) => setQ(e.target.value)}
                 data-testid="hdr-search"
                 placeholder="Search for dry fruits, nuts, gift hampers..."
-                className="sk-input !rounded-full !py-[0.85rem] pr-14 pl-6 !border-[var(--sk-line-strong)] shadow-sk-sm bg-white"
+                className="sk-input !rounded-full !py-[0.95rem] pr-14 pl-6 !border-[var(--sk-line-strong)] shadow-sk-sm bg-white"
               />
               <button
                 type="submit"
                 data-testid="hdr-search-submit"
                 aria-label="Search"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-[var(--sk-espresso)] text-gold-300 grid place-items-center hover:bg-brand-800 transition-colors"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 h-11 w-11 rounded-full bg-[var(--sk-espresso)] text-gold-300 grid place-items-center hover:bg-brand-800 transition-colors"
               >
                 <Search size={17} strokeWidth={2.25} />
               </button>

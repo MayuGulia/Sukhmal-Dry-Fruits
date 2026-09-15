@@ -27,6 +27,8 @@ const verifyPayment = httpsFn(async (req, res) => {
     ok: true,
     verified: true,
     firestoreUpdated: Boolean(result.updated),
+    ownerNotified: Boolean(result.notify?.ownerNotified),
+    customerNotified: Boolean(result.notify?.customerNotified),
   });
 }, {
   secrets: [...RAZORPAY_SECRETS, ...RESEND_SECRETS, ...WHATSAPP_SECRETS],
