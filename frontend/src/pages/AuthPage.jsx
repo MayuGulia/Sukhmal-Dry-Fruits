@@ -272,12 +272,12 @@ export default function AuthPage({ mode = 'login' }) {
   }, [resendIn]);
 
   useEffect(() => {
-    if (mode === 'otp') {
+    if (mode === 'otp' || phoneChallenge) {
       const t = setTimeout(() => otpRef.current?.focus(), 50);
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [mode]);
+  }, [mode, phoneChallenge]);
 
   const set = (key) => (e) => {
     const v = e.target.value;
@@ -588,8 +588,37 @@ export default function AuthPage({ mode = 'login' }) {
                 <p className="text-ink-600 mt-1.5 text-[15px]">
                   {mode === 'otp' && maskedPhone
                     ? `Enter the 6-digit code sent to ${maskedPhone}.`
-                    : cfg.sub}
+                    : phoneChallenge && maskedPhone
+                      ? `Enter the 6-digit code sent to ${maskedPhone}.`
+                      : cfg.sub}
                 </p>
+
+                {(mode === 'login' || mode === 'signup') && (
+                  <div className="mt-5 grid grid-cols-2 rounded-lg bg-cream-200 p-1 border border-line">
+                    <Link
+                      to="/login"
+                      state={returnState}
+                      className={`py-2.5 rounded-md text-sm font-semibold text-center transition-all ${
+                        mode === 'login'
+                          ? 'bg-white text-brand-900 shadow-sk-sm'
+                          : 'text-ink-500 hover:text-brand-900'
+                      }`}
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      to="/signup"
+                      state={returnState}
+                      className={`py-2.5 rounded-md text-sm font-semibold text-center transition-all ${
+                        mode === 'signup'
+                          ? 'bg-white text-brand-900 shadow-sk-sm'
+                          : 'text-ink-500 hover:text-brand-900'
+                      }`}
+                    >
+                      Create account
+                    </Link>
+                  </div>
+                )}
 
                 {returnTo === '/checkout' && mode === 'login' && (
                   <div className="mt-4">
@@ -805,7 +834,7 @@ export default function AuthPage({ mode = 'login' }) {
                   <div id="sk-recaptcha" />
                 </form>
 
-                {firebaseEnabled && (mode === 'login' || mode === 'signup') && tab !== 'otp' && (
+                {firebaseEnabled && (mode === 'login' || mode === 'signup') && tab === 'email' && !phoneChallenge && (
                   <div className="mt-4">
                     <div className="relative my-4 text-center text-[11px] uppercase tracking-widest text-ink-400">
                       <span className="bg-cream-100 px-2 relative z-10">or</span>
@@ -837,7 +866,7 @@ export default function AuthPage({ mode = 'login' }) {
                 )}
 
                 <div className="mt-5 text-center text-sm text-ink-600">
-                  {mode === 'login' && (
+                  {mode === 'login' && !phoneChallenge && (
                     <>
                       New to Sukhmal?{' '}
                       <Link
@@ -850,7 +879,7 @@ export default function AuthPage({ mode = 'login' }) {
                       </Link>
                     </>
                   )}
-                  {mode === 'signup' && (
+                  {mode === 'signup' && !phoneChallenge && (
                     <>
                       Already have an account?{' '}
                       <Link to="/login" state={returnState} className="text-brand-900 font-semibold hover:underline">
@@ -858,7 +887,7 @@ export default function AuthPage({ mode = 'login' }) {
                       </Link>
                     </>
                   )}
-                  {mode === 'otp' && (
+                  {(mode === 'otp' || phoneChallenge) && (
                     <div className="flex flex-col items-center gap-1">
                       <span>Didn’t get the code?</span>
                       {resendIn > 0 ? (

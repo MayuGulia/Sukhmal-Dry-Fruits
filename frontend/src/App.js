@@ -69,6 +69,7 @@ export default function App() {
                 <Route path="/login" element={<PublicOnly><AuthPage mode="login" /></PublicOnly>} />
                 <Route path="/signup" element={<PublicOnly><AuthPage mode="signup" /></PublicOnly>} />
                 <Route path="/forgot-password" element={<PublicOnly><AuthPage mode="forgot" /></PublicOnly>} />
+                <Route path="/verify-otp" element={<PublicOnly><AuthPage mode="otp" /></PublicOnly>} />
 
                 <Route path="/admin" element={<RequireAdmin><React.Suspense fallback={<AdminFallback />}><AdminLayout /></React.Suspense></RequireAdmin>}>
                   <Route index element={<AdminDashboard />} />
@@ -121,9 +122,6 @@ function CustomerRoutes() {
 
       {/* Wishlist */}
       <Route path="/wishlist" element={<Wishlist />} />
-
-      {/* Auth */}
-      <Route path="/verify-otp" element={<Navigate to="/login" replace />} />
 
       {/* Account */}
       <Route path="/account" element={<RequireAuth><AccountLayout /></RequireAuth>}>
