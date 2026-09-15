@@ -42,9 +42,8 @@ function ensurePhoneRecaptcha() {
   if (typeof document === 'undefined' || !document.getElementById(RECAPTCHA_ID)) {
     throw new Error('Phone verification is still loading. Try again in a moment.');
   }
-  if (!recaptchaVerifier) {
-    recaptchaVerifier = new RecaptchaVerifier(auth, RECAPTCHA_ID, { size: 'invisible' });
-  }
+  resetPhoneRecaptcha();
+  recaptchaVerifier = new RecaptchaVerifier(auth, RECAPTCHA_ID, { size: 'invisible' });
   return recaptchaVerifier;
 }
 
