@@ -395,6 +395,17 @@ export default function AuthPage({ mode = 'login' }) {
         setMsg({ text: MSG.needName, tone: 'error' });
         return;
       }
+      if (tab === 'otp') {
+        setLoading(true);
+        try {
+          await sendPhoneCode(form.phone.trim());
+        } catch (err) {
+          setMsg({ text: firebaseError(err, MSG.needPhone), tone: 'error' });
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
       if (!form.email.trim() || !isValidEmail(form.email)) {
         setMsg({ text: MSG.needEmail, tone: 'error' });
         return;
@@ -440,19 +451,14 @@ export default function AuthPage({ mode = 'login' }) {
 
     // ——— Login ———
     if (tab === 'otp') {
-      if (firebaseEnabled) {
-        setMsg({ text: 'Use email, password, or Google to sign in.', tone: 'error' });
-        return;
-      }
-      const phone = form.phone.trim();
-      if (!phone || phone.replace(/\D/g, '').length < 10) {
-        setMsg({ text: MSG.needPhone, tone: 'error' });
-        return;
-      }
       setLoading(true);
-      await delay(700);
-      setLoading(false);
-      nav('/verify-otp', { state: { ...returnState, phone } });
+      try {
+        await sendPhoneCode(form.phone.trim());
+      } catch (err) {
+        setMsg({ text: firebaseError(err, MSG.needPhone), tone: 'error' });
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -591,16 +597,21 @@ export default function AuthPage({ mode = 'login' }) {
                   </div>
                 )}
 
-                {mode === 'login' && !firebaseEnabled && (
+                {(mode === 'login' || mode === 'signup') && (
                   <div className="mt-5 grid grid-cols-2 rounded-lg bg-cream-200 p-1 border border-line">
                     {[
                       { id: 'email', label: 'Email' },
-                      { id: 'otp', label: 'Phone OTP' },
+                      { id: 'otp', label: 'Phone' },
                     ].map((t) => (
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => { setTab(t.id); setMsg({ text: '', tone: 'error' }); }}
+                        onClick={() => {
+                          setTab(t.id);
+                          setPhoneChallenge(false);
+                          setForm((f) => ({ ...f, otp: '' }));
+                          setMsg({ text: '', tone: 'error' });
+                        }}
                         className={`py-2.5 rounded-md text-sm font-semibold transition-all ${
                           tab === t.id
                             ? 'bg-white text-brand-900 shadow-sk-sm'
@@ -614,7 +625,7 @@ export default function AuthPage({ mode = 'login' }) {
                 )}
 
                 <form onSubmit={submit} className="mt-5 space-y-3.5" noValidate>
-                  {cfg.hasName && (
+                  {cfg.hasName && !(tab === 'otp' && phoneChallenge) && (
                     <Field icon={User}>
                       <input
                         value={form.name}
@@ -627,7 +638,7 @@ export default function AuthPage({ mode = 'login' }) {
                     </Field>
                   )}
 
-                  {mode === 'otp' ? (
+                  {mode === 'otp' || phoneChallenge ? (
                     <div>
                       <label className="sr-only" htmlFor="otp-input">One-time password</label>
                       <div
@@ -664,12 +675,19 @@ export default function AuthPage({ mode = 'login' }) {
                           />
                         ))}
                       </div>
-                      <p className="mt-2 text-center text-[12px] text-ink-500">
-                        Demo code: <span className="font-mono font-semibold text-brand-900">{MOCK_OTP}</span>
-                      </p>
+                      {!firebaseEnabled && (
+                        <p className="mt-2 text-center text-[12px] text-ink-500">
+                          Demo code: <span className="font-mono font-semibold text-brand-900">{MOCK_OTP}</span>
+                        </p>
+                      )}
+                      {maskedPhone && (
+                        <p className="mt-2 text-center text-[12px] text-ink-500">
+                          Code sent to {maskedPhone}.
+                        </p>
+                      )}
                     </div>
-                  ) : mode === 'login' && tab === 'otp' ? (
-                    <Field icon={Phone} hint="We’ll text a one-time code. Standard rates may apply.">
+                  ) : (mode === 'login' || mode === 'signup') && tab === 'otp' ? (
+                    <Field icon={Phone} hint="We’ll text a one-time code to this Indian mobile number.">
                       <input
                         value={form.phone}
                         onChange={set('phone')}
@@ -720,7 +738,7 @@ export default function AuthPage({ mode = 'login' }) {
                     </Field>
                   )}
 
-                  {((mode === 'login' && tab === 'email') || mode === 'signup') && (
+                  {((mode === 'login' && tab === 'email') || (mode === 'signup' && tab === 'email')) && !phoneChallenge && (
                     <Field
                       icon={Lock}
                       trailing={(
@@ -778,8 +796,13 @@ export default function AuthPage({ mode = 'login' }) {
                   )}
 
                   <SubmitButton loading={loading}>
-                    {mode === 'login' && tab === 'otp' ? 'Send OTP' : cfg.cta}
+                    {mode === 'otp' || phoneChallenge
+                      ? 'Verify & Continue'
+                      : tab === 'otp'
+                        ? 'Send OTP'
+                        : cfg.cta}
                   </SubmitButton>
+                  <div id="sk-recaptcha" />
                 </form>
 
                 {firebaseEnabled && (mode === 'login' || mode === 'signup') && tab !== 'otp' && (
