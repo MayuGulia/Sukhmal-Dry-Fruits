@@ -36,7 +36,6 @@ const WHATSAPP_SECRETS = [
 ];
 
 const VERTEX_RUNTIME_SA = 'firebase-adminsdk-fbsvc@sukhmal-website.iam.gserviceaccount.com';
-const VERTEX_PREDICT_SA = '1035357939609-compute@developer.gserviceaccount.com';
 
 function json(res, data, status = 200) {
   res.status(status).type('application/json').send(JSON.stringify(data));
@@ -77,7 +76,6 @@ module.exports = {
   RESEND_SECRETS,
   WHATSAPP_SECRETS,
   VERTEX_RUNTIME_SA,
-  VERTEX_PREDICT_SA,
   json,
   readJsonBody,
   httpsFn,

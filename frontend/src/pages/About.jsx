@@ -110,11 +110,6 @@ export default function About() {
               20,000+ customers and 500+ corporate clients — but the counter, the care, and
               the family behind it haven&apos;t changed.
             </p>
-            <div className="mt-6 pt-4 border-t border-line">
-              <div className="font-display text-2xl italic text-brand-900" style={{ fontFamily: 'cursive, "Playfair Display", serif' }}>
-                Run by the Malhotra family, since day one.
-              </div>
-            </div>
           </div>
           <div className="lg:col-span-3">
             <div className="h-full rounded-2xl bg-brand-900 text-white p-6 md:p-7 flex flex-col justify-between shadow-[var(--sk-shadow-lg)]">
