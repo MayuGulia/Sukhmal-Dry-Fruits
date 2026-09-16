@@ -45,7 +45,10 @@ service cloud.firestore {
         && request.auth.uid == resource.data.userId
         && resource.data.paymentStatus == 'pending'
         && request.resource.data.paymentStatus == resource.data.paymentStatus
-        && request.resource.data.orderStatus == resource.data.orderStatus
+        && request.resource.data.get('orderStatus', '') == resource.data.get('orderStatus', '')
+        && request.resource.data.get('status', resource.data.get('status', '')) == resource.data.get('status', '')
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['status', 'orderStatus', 'trackingNumber', 'courierName', 'estimatedDeliveryDate', 'shippedNotifyAt'])
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['razorpayOrderId', 'updatedAt'])
       );

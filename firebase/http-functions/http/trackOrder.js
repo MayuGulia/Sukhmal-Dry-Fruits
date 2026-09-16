@@ -23,6 +23,10 @@ const trackOrder = httpsFn(async (req, res) => {
       totals: data.totals || {},
       total: data.total || 0,
       orderStatus: data.orderStatus,
+      status: data.status || data.orderStatus,
+      estimatedDeliveryDate: data.estimatedDeliveryDate || data.eta || '',
+      trackingNumber: data.trackingNumber || null,
+      courierName: data.courierName || null,
       paymentStatus: data.paymentStatus,
       paymentMethod: data.paymentMethod,
       shippingAddress: {

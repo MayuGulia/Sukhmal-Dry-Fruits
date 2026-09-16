@@ -8,6 +8,7 @@ import { useProducts, ProductSkeleton } from '@/lib/catalog';
 import { getOrderById, mapOrderDoc } from '@/lib/orders';
 import { api } from '@/lib/api';
 import { STORE_WHATSAPP } from '@/data/storeInfo';
+import { inr } from '@/lib/utils';
 import {
   MapPin,
   ArrowRight,
@@ -26,21 +27,25 @@ import {
   ShieldCheck,
   AlertCircle,
   Info,
+  ClipboardList,
+  ExternalLink,
 } from 'lucide-react';
 
 const STEPS = [
-  { key: 'confirmed', label: 'Order Confirmed', short: 'Confirmed', Ic: Check },
-  { key: 'packed', label: 'Packed', short: 'Packed', Ic: Check },
+  { key: 'placed', label: 'Placed', short: 'Placed', Ic: ClipboardList },
+  { key: 'confirmed', label: 'Confirmed', short: 'Confirmed', Ic: Check },
+  { key: 'packed', label: 'Packed', short: 'Packed', Ic: Package },
   { key: 'shipped', label: 'Shipped', short: 'Shipped', Ic: Truck },
-  { key: 'ofd', label: 'Out For Delivery', short: 'Out For Delivery', Ic: Truck },
+  { key: 'ofd', label: 'Out for Delivery', short: 'Out for Delivery', Ic: Truck },
   { key: 'delivered', label: 'Delivered', short: 'Delivered', Ic: Gift },
 ];
 
 const STATUS_COPY = {
+  placed: 'Your order has been placed. We’ll confirm it shortly.',
   confirmed: 'Your order is confirmed — we’re preparing your hamper with care.',
   packed: 'Your hamper is carefully packed and ready for dispatch.',
   shipped: 'Your hamper is on the move with our delivery partner.',
-  ofd: 'Your hamper is carefully packed and on its way with premium handling.',
+  ofd: 'Your hamper is out for delivery with premium handling.',
   delivered: 'Your gift has been delivered. We hope it brings a smile!',
 };
 
@@ -80,18 +85,6 @@ function DiamondRule() {
   );
 }
 
-function BlueDartMark() {
-  return (
-    <div
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-[#1B4F9C]/20 bg-[#F0F5FC]"
-      aria-hidden
-    >
-      <span className="font-bold text-[11px] tracking-wide text-[#1B4F9C]">BLUE</span>
-      <span className="font-bold text-[11px] tracking-wide text-[#2E8B57]">DART</span>
-    </div>
-  );
-}
-
 async function lookupOrder(raw) {
   const key = String(raw || '')
     .trim()
@@ -121,11 +114,11 @@ async function lookupOrder(raw) {
 }
 
 function Stepper({ result, compact = false }) {
-  const statusIdx = STEPS.findIndex((s) => s.key === result.status);
+  const statusIdx = Math.max(0, STEPS.findIndex((s) => s.key === result.status));
 
   return (
     <div className={`w-full ${compact ? 'overflow-x-auto pb-1 -mx-1 px-1' : ''}`}>
-      <div className={`flex items-start ${compact ? 'min-w-[540px] gap-0' : 'justify-between gap-1'}`}>
+      <div className={`flex items-start ${compact ? 'min-w-[660px] gap-0' : 'justify-between gap-1'}`}>
         {STEPS.map((s, i) => {
           const done = i < statusIdx;
           const active = i === statusIdx;
@@ -236,9 +229,12 @@ function Timeline({ items, expanded, onToggle, columns = false }) {
 
 function PartnerBody({ partner }) {
   const [copied, setCopied] = useState(false);
+  const trackingCode = partner.tracking && partner.tracking !== '—' ? partner.tracking : '';
+  const trackingUrl = partner.trackingUrl || '';
   const copy = async () => {
+    if (!trackingCode) return;
     try {
-      await navigator.clipboard.writeText(partner.tracking);
+      await navigator.clipboard.writeText(trackingCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -253,22 +249,36 @@ function PartnerBody({ partner }) {
           <div className="text-[11px] uppercase tracking-wide text-ink-500">Partner Name</div>
           <div className="font-semibold text-brand-900 mt-0.5">{partner.name}</div>
         </div>
-        <BlueDartMark />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-line bg-cream-200 text-[11px] font-semibold text-brand-900">
+          {partner.name === 'Assigned after dispatch' ? 'Pending' : (partner.name || 'DTDC')}
+        </span>
       </div>
       <div>
         <div className="text-[11px] uppercase tracking-wide text-ink-500">Tracking Number</div>
-        <div className="mt-0.5 flex items-center gap-2">
+        <div className="mt-0.5 flex items-center gap-2 flex-wrap">
           <span className="font-mono font-semibold text-brand-900 tracking-wide">{partner.tracking}</span>
-          <button
-            type="button"
-            onClick={copy}
-            className="text-ink-500 hover:text-brand-900"
-            aria-label="Copy tracking number"
-          >
-            <Copy size={14} />
-          </button>
+          {trackingCode && (
+            <button
+              type="button"
+              onClick={copy}
+              className="text-ink-500 hover:text-brand-900"
+              aria-label="Copy tracking number"
+            >
+              <Copy size={14} />
+            </button>
+          )}
           {copied && <span className="text-[11px] text-[var(--sk-green-500)]">Copied</span>}
         </div>
+        {trackingCode && trackingUrl && (
+          <a
+            href={trackingUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-900 hover:underline"
+          >
+            Track on {partner.name || 'DTDC'} <ExternalLink size={13} />
+          </a>
+        )}
       </div>
       <div className="pt-3 border-t border-line flex items-start justify-between gap-3 flex-wrap">
         <div>
@@ -282,7 +292,7 @@ function PartnerBody({ partner }) {
         </div>
         <div className="flex items-center gap-2">
           <a
-            href={`tel:${partner.support.replace(/\s/g, '')}`}
+            href={`tel:${String(partner.support || '').replace(/\s/g, '')}`}
             className="h-8 w-8 rounded-full border border-line-strong grid place-items-center text-brand-900 hover:bg-cream-200"
             aria-label="Call support"
           >

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { inr } from '@/lib/utils';
 import { attachRazorpayOrderId, createCustomerOrder, saveUserAddresses } from '@/lib/orders';
 import { orderItemImage, isHamperLine } from '@/lib/orderImages';
+import { estimateDeliveryByPincode } from '@/lib/deliveryEstimate';
 import { useUserProfile } from '@/hooks/useAccountData';
 import { api } from '@/lib/api';
 import {
@@ -60,7 +61,7 @@ function FlourishGold() {
   );
 }
 
-function OrderSummaryBody({ items, totals, count }) {
+function OrderSummaryBody({ items, totals, count, estimate }) {
   return (
     <>
       <div className="space-y-0 text-sm max-h-[240px] overflow-auto">
@@ -101,6 +102,12 @@ function OrderSummaryBody({ items, totals, count }) {
             {totals.shipping === 0 ? 'FREE' : inr(totals.shipping)}
           </span>
         </div>
+        {estimate?.window && (
+          <div className="text-[12px] text-brand-900 bg-cream-200 rounded-lg px-3 py-2">
+            Estimated delivery: <span className="font-semibold">{estimate.window}</span>
+            {estimate.label ? <span className="text-ink-500"> · {estimate.label}</span> : null}
+          </div>
+        )}
 
         <div className="mt-3 rounded-lg bg-cream-300/80 px-3.5 py-3 flex justify-between items-end gap-2">
           <div>
@@ -172,6 +179,8 @@ export default function Checkout() {
   }
 
   const selectedAddr = addresses.find((a) => a.id === address) || addresses[0] || null;
+  // TODO: Replace static estimate / manual tracking entry with DTDC API once API key is available — DTDC will provide real-time status + ETA.
+  const deliveryEstimate = estimateDeliveryByPincode(selectedAddr?.pincode);
 
   const saveNewAddress = async () => {
     if (!user?.uid || !newAddr.name.trim() || !newAddr.line1.trim() || !newAddr.pincode.trim()) return;
@@ -238,6 +247,8 @@ export default function Checkout() {
               total: created.total,
               paymentMethod: 'cod',
               eta: created.eta,
+              estimatedDeliveryDate: created.estimatedDeliveryDate,
+              estimatedDeliveryWindow: created.estimatedDeliveryWindow,
               email: customerEmail,
               giftMsg: created.giftMsg || giftMsg || null,
               coupon: created.coupon || coupon?.code || null,
@@ -312,6 +323,8 @@ export default function Checkout() {
         count,
         coupon: coupon?.code || null,
         eta: created.eta,
+        estimatedDeliveryDate: created.estimatedDeliveryDate,
+        estimatedDeliveryWindow: created.estimatedDeliveryWindow,
       };
       try {
         sessionStorage.setItem('sk_last_order', JSON.stringify(snap));
@@ -382,6 +395,12 @@ export default function Checkout() {
                   <MapPin size={18} /> Delivery Address
                 </div>
                 <p className="text-[12px] text-ink-500 mt-1 ml-9">Select or add a delivery address.</p>
+            {selectedAddr?.pincode && (
+              <p className="text-[12px] text-brand-900 mt-1 ml-9">
+                Estimated delivery for PIN {selectedAddr.pincode}: <b>{deliveryEstimate.window}</b>
+                {' '}({deliveryEstimate.label})
+              </p>
+            )}
               </div>
               <button
                 type="button"
@@ -615,7 +634,7 @@ export default function Checkout() {
               <FlourishGold />
             </div>
             <div className="p-5 bg-gradient-to-b from-cream-100 to-white">
-              <OrderSummaryBody items={items} totals={totals} count={count} />
+              <OrderSummaryBody items={items} totals={totals} count={count} estimate={deliveryEstimate} />
               <button
                 type="button"
                 onClick={placeOrder}
@@ -656,7 +675,7 @@ export default function Checkout() {
         </button>
         {showSummary && (
           <div className="px-4 pb-3 border-t border-line pt-3 max-h-[40vh] overflow-auto">
-            <OrderSummaryBody items={items} totals={totals} count={count} />
+            <OrderSummaryBody items={items} totals={totals} count={count} estimate={deliveryEstimate} />
           </div>
         )}
         <button

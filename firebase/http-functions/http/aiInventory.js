@@ -1,10 +1,10 @@
-const { json, readJsonBody, httpsFn, GEMINI_SECRETS, VERTEX_RUNTIME_SA } = require('../_shared/httpFn');
+const { json, readJsonBody, httpsFn, VERTEX_RUNTIME_SA } = require('../_shared/httpFn');
 
 const aiInventory = httpsFn(async (req, res) => {
   if (req.method !== 'POST') return json(res, { error: 'method', message: 'POST required' }, 405);
 
   const { previewInventoryCommand, buildPreviewPayload } = await import('../_shared/ai/geminiInventory.js');
-  const { CUSTOMER_AI_FALLBACK, GEMINI_AUTH_HELP, GEMINI_QUOTA_HELP, envGet } = await import('../_shared/ai/geminiEnv.js');
+  const { CUSTOMER_AI_FALLBACK } = await import('../_shared/ai/geminiEnv.js');
 
   const op = String(req.query?.op || '').trim();
   const path = String(req.path || req.originalUrl || req.url || '');
@@ -23,13 +23,6 @@ const aiInventory = httpsFn(async (req, res) => {
 
   if (!isPreview) return json(res, { error: 'not_found', message: 'Unknown inventory path' }, 404);
 
-  if (!envGet('GEMINI_API_KEY') && !envGet('GEMINI_ASSISTANT_API_KEY') && !envGet('GOOGLE_GENAI_USE_VERTEXAI') && !envGet('GOOGLE_GENAI_USE_ENTERPRISE')) {
-    return json(res, {
-      error: 'not_configured',
-      message: 'GEMINI_API_KEY is not set on the server. Add it in Secret Manager and bind it to this function.',
-    }, 501);
-  }
-
   try {
     const result = await previewInventoryCommand(body.command, body.catalog);
     return json(res, buildPreviewPayload(result));
@@ -40,12 +33,12 @@ const aiInventory = httpsFn(async (req, res) => {
       code === 'bad_request' || code === 'no_match'
         ? (err.message || 'Could not understand that command')
         : code === 'quota'
-          ? (err.message || GEMINI_QUOTA_HELP)
+          ? (err.message || 'Vertex AI quota is exhausted on this GCP project. Check billing for sukhmal-website, then try again.')
         : code === 'gemini_auth' || code === 'not_configured'
-          ? (err.message || GEMINI_AUTH_HELP)
+          ? (err.message || 'Vertex AI auth failed. The inventory command uses the Cloud Functions service account, not a Gemini API key.')
           : CUSTOMER_AI_FALLBACK;
     return json(res, { error: code, message }, status);
   }
-}, { timeoutSeconds: 60, secrets: GEMINI_SECRETS, serviceAccount: VERTEX_RUNTIME_SA });
+}, { timeoutSeconds: 60, serviceAccount: VERTEX_RUNTIME_SA });
 
 module.exports = { aiInventory };

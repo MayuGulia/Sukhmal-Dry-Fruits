@@ -1,99 +1,77 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Bot, Truck, MapPin, User, Leaf, Award, Hand, ShoppingBag, Package, LogOut } from 'lucide-react';
-import { useCart } from '@/contexts/CartContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
+import { Truck, MapPin, Package, Leaf, Award, Hand } from 'lucide-react';
 
-const LEFT = [
+const TICKER = [
+  { Icon: null, label: 'Razorpay UPI coming soon · COD works', gold: true },
   { Icon: Truck, label: 'Free Delivery on Orders Above ₹999' },
   { Icon: Leaf, label: '100% Natural' },
   { Icon: Award, label: 'Premium Quality' },
   { Icon: Hand, label: 'Handpicked with Care' },
 ];
 
-function RazorpaySoonMark({ className = '' }) {
+function TickerItem({ Icon, label, gold, testId }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[10px] font-semibold tracking-[0.16em] uppercase text-gold-300 ${className}`}
+      data-testid={testId}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap px-5 ${
+        gold ? 'text-gold-300 font-semibold tracking-[0.12em] uppercase text-[10px]' : ''
+      }`}
     >
-      <span className="h-1 w-1 rotate-45 bg-gold-400 shrink-0" aria-hidden />
-      Razorpay UPI coming soon · COD works
+      {gold
+        ? <span className="h-1 w-1 rotate-45 bg-gold-400 shrink-0" aria-hidden />
+        : Icon ? <Icon size={13} strokeWidth={1.75} className="text-gold-400 shrink-0" /> : null}
+      {label}
     </span>
   );
 }
 
-export default function TopUtilityBar() {
-  const { count } = useCart();
-  const { user, isAuthed, logout } = useAuth();
-  const nav = useNavigate();
-
+function TickerTrack() {
+  const loop = [...TICKER, ...TICKER];
   return (
     <>
-    <div className="lg:hidden bg-[var(--sk-espresso)] text-center">
-      <div className="h-8 flex items-center justify-center px-3">
-        <RazorpaySoonMark />
+      <p className="sr-only">
+        Razorpay UPI coming soon, COD works. Free delivery on orders above ₹999. 100% natural, premium quality, handpicked with care.
+      </p>
+      <div className="sk-ticker" aria-hidden="true">
+        {loop.map((item, i) => (
+          <TickerItem key={`${item.label}-${i}`} {...item} />
+        ))}
       </div>
-    </div>
-    <div className="hidden lg:block bg-[var(--sk-espresso)] text-white text-[12px] leading-none">
-      <div className="sk-container flex items-center justify-between h-9">
-        <div className="flex items-center gap-5 min-w-0">
-          <RazorpaySoonMark className="mr-1" />
-          {LEFT.map(({ Icon, label }, i) => (
-            <span
-              key={label}
-              className={`${i >= 2 ? 'hidden xl:inline-flex' : 'inline-flex'} items-center gap-1.5 whitespace-nowrap text-white`}
-            >
-              <Icon size={13} strokeWidth={1.75} className="text-white shrink-0" />
-              {label}
-            </span>
-          ))}
-        </div>
-        <div className="flex items-center gap-5 shrink-0">
-          <button
-            type="button"
-            data-testid="top-ai"
-            onClick={() => window.dispatchEvent(new CustomEvent('sk-open-gift-advisor'))}
-            className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
-          >
-            <Bot size={13} strokeWidth={1.75} className="text-gold-400" /> AI Assistant
-          </button>
-          <Link data-testid="top-track" to="/track-order" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-            <Package size={13} strokeWidth={1.75} className="text-gold-400" /> Track Order
-          </Link>
-          <Link to="/store-locator" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-            <MapPin size={13} strokeWidth={1.75} className="text-gold-400" /> Store Locator
-          </Link>
-          {isAuthed ? (
-            <>
-              <Link data-testid="top-account" to="/account" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-                <User size={13} strokeWidth={1.75} className="text-gold-400" /> {user?.displayName || 'Account'}
-              </Link>
-              <button
-                type="button"
-                data-testid="top-logout"
-                onClick={() => { logout(); nav('/login'); }}
-                className="inline-flex items-center gap-1.5 hover:text-white transition-colors"
-              >
-                <LogOut size={13} strokeWidth={1.75} className="text-gold-400" /> Log out
-              </button>
-            </>
-          ) : (
-            <Link data-testid="top-login" to="/login" className="inline-flex items-center gap-1.5 hover:text-white transition-colors">
-              <User size={13} strokeWidth={1.75} className="text-gold-400" /> Login / Sign Up
-            </Link>
-          )}
-          <Link to="/cart" data-testid="top-cart" className="relative inline-flex items-center text-cream-200 hover:text-white transition-colors" aria-label="Cart">
-            <ShoppingBag size={16} strokeWidth={1.75} className="text-gold-400" />
-            <span
-              data-testid="top-cart-badge"
-              className="absolute -top-2 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--sk-badge-red)] text-white text-[9px] font-bold grid place-items-center leading-none shadow-sm"
-            >
-              {count}
-            </span>
-          </Link>
-        </div>
-      </div>
-    </div>
     </>
+  );
+}
+
+export default function TopUtilityBar() {
+  return (
+    <div className="bg-[var(--sk-espresso)] text-white text-[12px] leading-none">
+      <div className="lg:hidden h-8 flex items-center overflow-hidden">
+        <TickerTrack />
+      </div>
+      <div className="hidden lg:block">
+        <div className="sk-container flex items-center gap-6 h-9">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <TickerTrack />
+          </div>
+          <div className="shrink-0 flex items-center gap-5">
+            <Link
+              data-testid="top-track"
+              to="/track-order"
+              className="inline-flex items-center gap-1.5 hover:text-white/80 transition-colors whitespace-nowrap"
+            >
+              <Package size={13} strokeWidth={1.75} className="text-gold-400" />
+              Track Order
+            </Link>
+            <Link
+              to="/store-locator"
+              className="inline-flex items-center gap-1.5 hover:text-white/80 transition-colors whitespace-nowrap"
+            >
+              <MapPin size={13} strokeWidth={1.75} className="text-gold-400" />
+              Store Locator
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

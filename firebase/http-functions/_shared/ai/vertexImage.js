@@ -209,7 +209,7 @@ export async function vertexAuthPing() {
 function apiError(status, message) {
   const err = new Error(message || `Vertex image request failed (${status})`);
   err.status = status;
-  err.code = status === 401 || status === 403 ? 'gemini_auth' : 'gemini_error';
+  err.code = status === 401 || status === 403 ? 'gemini_auth' : status === 429 ? 'quota' : 'gemini_error';
   return err;
 }
 
@@ -270,10 +270,10 @@ function textFromParts(parts) {
   return (parts || []).map((part) => part.text || '').join('\n').trim();
 }
 
-export async function generateVertexContent({ contents, generationConfig, label = 'vertex-text' }) {
+export async function generateVertexContent({ contents, generationConfig, label = 'vertex-text', model: modelOverride }) {
   const project = vertexProject();
   const location = vertexLocation();
-  const model = vertexTextModel();
+  const model = String(modelOverride || vertexTextModel() || 'gemini-2.5-flash').replace(/^models\//, '');
   const token = await vertexAccessToken();
   const url = vertexGenerateUrl(project, location, model);
 

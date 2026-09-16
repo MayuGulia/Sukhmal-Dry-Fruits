@@ -9,7 +9,7 @@ async function addResendContact(email) {
   const key = envGet('RESEND_API_KEY');
   if (!key) return { skipped: true, reason: 'missing_key' };
   const admin = ownerNotifyTo();
-  const from = envGet('RESEND_FROM') || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
+  const from = envGet('RESEND_FROM') || 'Sukhmal Dry Fruits <info@sukhmaldryfruits.com>';
   const send = async (to, subject, html) => fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },

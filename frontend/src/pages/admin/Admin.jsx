@@ -11,6 +11,8 @@ import { inr } from '@/lib/utils';
 import { adminApi } from '@/lib/adminApi';
 import { productInStock } from '@/lib/commerceStore';
 import { AiInventoryBar } from './AiInventoryBar';
+import { OrderStatusControls } from './OrderStatusControls';
+import { ORDER_STATUSES } from '@/lib/orderStatus';
 
 const SIDE = [
   { to: '/admin', label: 'Dashboard', Ic: LayoutDashboard, end: true },
@@ -21,7 +23,7 @@ const SIDE = [
   { to: '/admin/settings', label: 'Settings', Ic: Settings },
 ];
 
-const STATUS_OPTS = ['placed', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled', 'pending_cod'];
+const STATUS_OPTS = ORDER_STATUSES;
 const RANGE_OPTS = [
   { id: 'today', label: 'Today' },
   { id: 'week', label: 'This week' },
@@ -313,11 +315,11 @@ export function AdminDashboard() {
           </select>
         </div>
         <div className="rounded-xl border border-line bg-white overflow-hidden">
-          <div className="grid grid-cols-[1fr_1.3fr_1fr_0.8fr_1.1fr] gap-2 px-4 py-2.5 text-[11px] uppercase tracking-widest text-ink-500 border-b border-line">
+          <div className="grid grid-cols-[1fr_1.3fr_1fr_0.8fr_1.4fr] gap-2 px-4 py-2.5 text-[11px] uppercase tracking-widest text-ink-500 border-b border-line">
             <div>Order</div><div>Recipient</div><div>Payment</div><div>Total</div><div>Status</div>
           </div>
           {orders.map((o) => (
-            <div key={o.orderId} className="grid grid-cols-[1fr_1.3fr_1fr_0.8fr_1.1fr] gap-2 px-4 py-3 border-b border-line last:border-0 items-center text-sm">
+            <div key={o.orderId} className="grid grid-cols-[1fr_1.3fr_1fr_0.8fr_1.4fr] gap-2 px-4 py-3 border-b border-line last:border-0 items-start text-sm">
               <div className="font-mono text-brand-900">#{o.orderId}</div>
               <div>
                 <div className="font-medium">{o.recipientName}</div>
@@ -325,19 +327,10 @@ export function AdminDashboard() {
               </div>
               <div>{payLabel(o.paymentMethod)}</div>
               <div className="font-semibold">{inr(o.total)}</div>
-              <select
-                value={o.orderStatus}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  adminApi.setStatus(o.orderId, next).catch((err) => {
-                    setLiveErr(err?.message || 'Could not update order status.');
-                    e.target.value = o.orderStatus;
-                  });
-                }}
-                className="sk-input !py-1.5 !text-[13px]"
-              >
-                {STATUS_OPTS.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
-              </select>
+              <OrderStatusControls
+                order={o}
+                onError={(err) => setLiveErr(err?.message || 'Could not update order status.')}
+              />
             </div>
           ))}
           {!orders.length && <div className="px-4 py-8 text-center text-ink-500 text-sm">No orders yet.</div>}

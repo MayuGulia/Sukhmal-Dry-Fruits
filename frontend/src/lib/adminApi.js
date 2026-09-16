@@ -12,6 +12,7 @@ import {
 import { PRODUCTS as MOCK_PRODUCTS } from '@/data/mockCatalog';
 import { auth, db, storage } from '@/lib/firebase';
 import { appendOrderStatus, mapAdminOrder, newOrderId } from '@/lib/orders';
+import { canonicalStatus, statusSlug } from '@/lib/orderStatus';
 import { applyProductPackPatch, productFromImportRow } from '@/lib/adminProductPatch';
 import { productDocIdFromSlug, slugifyProductName } from '@/lib/adminProductExcel';
 import { adminApi } from '@/lib/adminApiBinding';
@@ -105,10 +106,17 @@ function inRange(order, from, to) {
   return t >= fromD && t <= toD;
 }
 
+function matchesAdminStatus(order, status) {
+  if (!status || status === 'all') return true;
+  const canonical = canonicalStatus(order.status || order.orderStatus);
+  const slug = statusSlug(canonical);
+  return canonical === status || slug === status || order.orderStatus === status;
+}
+
 function filterAdminOrders(orders, { status = 'all', from, to } = {}) {
   return orders
     .filter((o) => inRange(o, from, to))
-    .filter((o) => !status || status === 'all' || o.orderStatus === status)
+    .filter((o) => matchesAdminStatus(o, status))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
@@ -451,10 +459,10 @@ Object.assign(adminApi, {
     requireDb();
     return filterAdminOrders(await listFirestoreOrders(), params);
   },
-  setStatus: async (orderId, newStatus) => {
+  setStatus: async (orderId, newStatus, extra = {}) => {
     requireDb();
-    await appendOrderStatus(orderId, newStatus);
-    return { orderId, orderStatus: newStatus };
+    await appendOrderStatus(orderId, newStatus, extra);
+    return { orderId, orderStatus: newStatus, status: canonicalStatus(newStatus) };
   },
   createManual: async (payload) => {
     requireDb();
@@ -465,6 +473,7 @@ Object.assign(adminApi, {
     const name = payload.recipientName || 'Walk-in';
     const phone = payload.recipientPhone || '';
     const total = Number(payload.total) || 0;
+    const status = 'Confirmed';
     await setDoc(doc(db, 'orders', orderId), {
       orderId,
       userId: user?.uid || null,
@@ -474,13 +483,17 @@ Object.assign(adminApi, {
       recipientPhone: phone,
       paymentMethod: payload.paymentMethod || 'whatsapp',
       paymentStatus: isCod ? 'pending' : 'paid',
-      orderStatus: isCod ? 'pending_cod' : 'confirmed',
+      status,
+      orderStatus: statusSlug(status),
+      estimatedDeliveryDate: null,
+      trackingNumber: null,
+      courierName: null,
       total,
       totals: { subtotal: total, discount: 0, gst: 0, shipping: 0, total },
       items: payload.items || [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      statusHistory: [{ status: isCod ? 'pending_cod' : 'confirmed', at: nowIso, byAdmin: true }],
+      statusHistory: [{ status, at: nowIso, byAdmin: true }],
     });
     return { orderId };
   },

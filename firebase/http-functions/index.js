@@ -17,3 +17,5 @@ exports.webhooksRazorpay = require('./http/webhooksRazorpay').webhooksRazorpay;
 exports.createAdminSession = require('./http/adminSession').createAdminSession;
 exports.clearAdminSession = require('./http/adminSession').clearAdminSession;
 exports.admin = require('./http/admin').admin;
+// Firestore trigger deploy needs a working databases.get; keep source in triggers/
+// and export again once that API call succeeds for this CLI identity.

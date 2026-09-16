@@ -26,7 +26,25 @@ function esc(value) {
 function orderCustomerEmail(order = {}) {
   const customer = order.customer || {};
   const addr = order.shippingAddress || {};
-  return firstEmail(customer.email, addr.email, order.email);
+  return firstEmail(order.email, customer.email, addr.email);
+}
+
+function siteOrigin() {
+  return String(envGet('SITE_ORIGIN') || 'https://sukhmaldryfruits.com').replace(/\/$/, '');
+}
+
+function deliveryCopy(order = {}) {
+  const { estimateDeliveryByPincode } = require('./deliveryEstimate');
+  const pin = order.shippingAddress?.pincode || order.pincode || '';
+  const guess = estimateDeliveryByPincode(pin);
+  const range = order.estimatedDeliveryDate || order.eta || guess.estimatedDeliveryDate;
+  const window = order.estimatedDeliveryWindow || guess.window;
+  return {
+    pin: String(pin || '').replace(/\D/g, '').slice(0, 6),
+    range,
+    window,
+    zone: guess.zoneLabel,
+  };
 }
 
 function compactNotify(sent = {}) {
@@ -164,26 +182,35 @@ async function sendResend({ to, subject, html, replyTo }) {
   const key = envGet('RESEND_API_KEY');
   const dest = firstEmail(...(Array.isArray(to) ? to : [to]));
   if (!key || !dest) return { skipped: true, reason: !key ? 'missing_key' : 'missing_to' };
-  const from = envGet('RESEND_FROM') || 'Sukhmal Dry Fruits <onboarding@resend.dev>';
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from,
-        to: [dest],
-        reply_to: firstEmail(replyTo) || ownerNotifyTo(),
-        subject,
-        html,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) console.error('resend failed', dest, res.status, data);
-    return { ok: res.ok, status: res.status, id: data?.id || null, data };
-  } catch (err) {
-    console.error('resend throw', dest, err?.message);
-    return { ok: false, reason: err?.message || 'network' };
+  const preferred = envGet('RESEND_FROM') || 'Sukhmal Dry Fruits <info@sukhmaldryfruits.com>';
+  const froms = [preferred];
+  if (!/onboarding@resend\.dev/i.test(preferred)) {
+    froms.push('Sukhmal Dry Fruits <onboarding@resend.dev>');
   }
+  let last = { ok: false, reason: 'resend_failed' };
+  for (const from of froms) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from,
+          to: [dest],
+          reply_to: firstEmail(replyTo) || ownerNotifyTo(),
+          subject,
+          html,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) return { ok: true, status: res.status, id: data?.id || null, data, from };
+      last = { ok: false, status: res.status, id: data?.id || null, data };
+      console.error('resend failed', dest, from, res.status, data);
+    } catch (err) {
+      last = { ok: false, reason: err?.message || 'network' };
+      console.error('resend throw', dest, err?.message);
+    }
+  }
+  return last;
 }
 
 async function notifyOwnerOfOrder(order = {}) {
@@ -199,6 +226,75 @@ async function notifyOwnerOfOrder(order = {}) {
   return sent;
 }
 
+function customerOrderHtml(order = {}) {
+  const addr = order.shippingAddress || {};
+  const customer = order.customer || {};
+  const name = customer.name || addr.name || 'there';
+  const orderId = order.orderId || '';
+  const total = rupee(order.total ?? order.totals?.total);
+  const method = String(order.paymentMethod || '').toLowerCase() === 'cod'
+    ? 'Cash on Delivery'
+    : 'Paid online';
+  const delivery = deliveryCopy(order);
+  const trackUrl = `${siteOrigin()}/track-order?id=${encodeURIComponent(orderId)}`;
+  const pinLine = delivery.pin
+    ? `For pincode <strong>${esc(delivery.pin)}</strong>, your hamper is expected in <strong>${esc(delivery.window)}</strong> (${esc(delivery.range)}).`
+    : `Your hamper is expected in <strong>${esc(delivery.window)}</strong> (${esc(delivery.range)}).`;
+  return `
+    <div style="font-family:Georgia,'Times New Roman',serif;color:#1f1610;max-width:640px;margin:0 auto;background:#FDFCFB">
+      <div style="background:#3C2415;color:#F7E7C3;padding:28px 28px 24px;text-align:center">
+        <div style="letter-spacing:0.28em;font-size:11px;text-transform:uppercase;opacity:0.85">Sukhmal Dry Fruits</div>
+        <h1 style="margin:12px 0 0;font-size:28px;line-height:1.2;color:#F7E7C3">Thank you for your order</h1>
+      </div>
+      <div style="padding:28px;border:1px solid #E8DCC8;border-top:none">
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.55">Dear ${esc(name)},</p>
+        <p style="margin:0 0 14px;font-size:15px;line-height:1.65">
+          Your order has been placed successfully. We are honoured you chose Sukhmal —
+          every nut, date, and dry fruit is handpicked so this box feels as special as the moment it arrives.
+        </p>
+        <p style="margin:0 0 18px;font-size:15px;line-height:1.65">${pinLine}</p>
+        <div style="background:#F6EFE4;border:1px solid #E8DCC8;border-radius:12px;padding:16px 18px;margin:0 0 22px">
+          <table style="border-collapse:collapse;width:100%;font-size:14px">
+            ${row('Order ID', orderId)}
+            ${row('Payment', method)}
+            ${row('Order total', inr(total))}
+            ${row('Pincode', delivery.pin || '—')}
+            ${row('Estimated delivery', `${delivery.window} · ${delivery.range}`)}
+          </table>
+        </div>
+        <h2 style="margin:0 0 10px;font-size:18px;color:#3C2415">What you ordered</h2>
+        <table style="border-collapse:collapse;width:100%;font-size:14px">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:0 12px 8px 0;border-bottom:2px solid #C59B27">Item</th>
+              <th style="text-align:center;padding:0 12px 8px;border-bottom:2px solid #C59B27">Qty</th>
+              <th style="text-align:right;padding:0 12px 8px;border-bottom:2px solid #C59B27">Price</th>
+              <th style="text-align:right;padding:0 0 8px 12px;border-bottom:2px solid #C59B27">Amount</th>
+            </tr>
+          </thead>
+          <tbody>${cartRows(order)}</tbody>
+        </table>
+        <table style="border-collapse:collapse;width:100%;font-size:14px;margin-top:16px">
+          ${rawRow('Delivering to', formatAddressHtml(addr, name))}
+        </table>
+        <p style="margin:22px 0 8px;font-size:15px;line-height:1.65">
+          We will confirm, pack, and dispatch your order with care. Follow every step with your Order ID.
+        </p>
+        <p style="text-align:center;margin:24px 0 8px">
+          <a href="${esc(trackUrl)}" style="display:inline-block;background:#3C2415;color:#F7E7C3;text-decoration:none;padding:12px 22px;border-radius:999px;font-size:14px;letter-spacing:0.04em">Track your order</a>
+        </p>
+        <p style="margin:18px 0 0;font-size:13px;color:#6b5e54;line-height:1.55;text-align:center">
+          Save this email. For anything at all, simply reply — we are always glad to help.
+        </p>
+        <p style="margin:22px 0 0;font-size:15px;line-height:1.6">
+          With warmth,<br/>
+          <strong>The Sukhmal family</strong>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
 async function notifyCustomerOfOrder(order = {}) {
   const to = orderCustomerEmail(order);
   const orderId = order.orderId || '';
@@ -207,18 +303,26 @@ async function notifyCustomerOfOrder(order = {}) {
     console.warn('customer order email skipped', orderId, skipped.reason);
     return skipped;
   }
-  const eta = order.eta || '2–4 business days';
+  const delivery = deliveryCopy(order);
+  const html = customerOrderHtml(order);
   const sent = await sendResend({
     to,
-    subject: `Order ${orderId} confirmed — Sukhmal Dry Fruits`,
-    html: `
-      ${ownerOrderHtml(order)}
-      <p>We’ll pack your order with care. Expected delivery: <strong>${esc(eta)}</strong>.</p>
-      <p>Track it with Order ID <strong>${esc(orderId)}</strong>.</p>
-    `,
+    subject: `Thank you — order ${orderId} is placed · arriving in ${delivery.window}`,
+    html,
     replyTo: ownerNotifyTo(),
   });
-  if (!sent?.ok) console.error('customer order email failed', orderId, to, sent);
+  if (sent?.ok) return sent;
+  console.error('customer order email failed', orderId, to, sent);
+  const owner = ownerNotifyTo();
+  if (owner && owner !== to) {
+    const forwarded = await sendResend({
+      to: owner,
+      subject: `Customer copy (deliver to ${to}) — order ${orderId} placed`,
+      html: `<p style="font-size:13px;color:#6b5e54">Resend could not deliver to <strong>${esc(to)}</strong>. Forward this confirmation to the customer.</p>${html}`,
+      replyTo: to,
+    });
+    return { ...sent, forwardedToOwner: Boolean(forwarded?.ok) };
+  }
   return sent;
 }
 
@@ -229,6 +333,48 @@ async function notifyOrderPlaced(order = {}) {
     ownerNotified: Boolean(owner?.ok),
     customerNotified: Boolean(customer?.ok),
     ownerNotify: compactNotify(owner),
+    customerNotify: compactNotify(customer),
+  };
+}
+
+async function notifyCustomerShipped(order = {}) {
+  const { courierTrackingUrl } = require('./orderStatus');
+  const to = orderCustomerEmail(order);
+  const orderId = order.orderId || '';
+  const tracking = String(order.trackingNumber || '').trim();
+  const courier = String(order.courierName || 'DTDC').trim() || 'DTDC';
+  const eta = order.estimatedDeliveryDate || order.eta || '';
+  const trackUrl = courierTrackingUrl(courier, tracking);
+  if (!to || !orderId) {
+    const skipped = { skipped: true, reason: 'missing_customer_email' };
+    console.warn('customer shipped email skipped', orderId, skipped.reason);
+    return skipped;
+  }
+  const trackingBlock = tracking
+    ? `<p>Courier: <strong>${esc(courier)}</strong><br/>Tracking number: <strong>${esc(tracking)}</strong><br/><a href="${esc(trackUrl)}">Track shipment</a></p>`
+    : `<p>Your order is with <strong>${esc(courier)}</strong>. Tracking details will follow shortly.</p>`;
+  const sent = await sendResend({
+    to,
+    subject: `Order ${orderId} shipped — Sukhmal Dry Fruits`,
+    html: `
+      <div style="font-family:Georgia,serif;color:#1f1610;max-width:640px">
+        <h2 style="margin:0 0 12px">Your order is on its way</h2>
+        <p>Order <strong>${esc(orderId)}</strong> has been shipped.</p>
+        ${trackingBlock}
+        ${eta ? `<p>Estimated delivery: <strong>${esc(eta)}</strong>.</p>` : ''}
+        <p>This is an interim update. Live courier status and ETA will use DTDC once the API key is available.</p>
+      </div>
+    `,
+    replyTo: ownerNotifyTo(),
+  });
+  if (!sent?.ok) console.error('customer shipped email failed', orderId, to, sent);
+  return sent;
+}
+
+async function notifyOrderShipped(order = {}) {
+  const customer = await notifyCustomerShipped(order);
+  return {
+    customerNotified: Boolean(customer?.ok),
     customerNotify: compactNotify(customer),
   };
 }
@@ -253,4 +399,6 @@ module.exports = {
   notifyCustomerOfOrder,
   notifyOrderPlaced,
   notifyOwnerOfEnquiry,
+  notifyCustomerShipped,
+  notifyOrderShipped,
 };

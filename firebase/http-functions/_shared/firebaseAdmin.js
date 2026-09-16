@@ -72,8 +72,9 @@ async function confirmOrderPayment(orderId, extra = {}) {
     if (!snap.exists) return;
     const data = snap.data() || {};
     if (data.paymentMethod === 'cod') return;
-    if (data.paymentStatus === 'paid' || data.emailsSentAt) {
+    if (data.paymentStatus === 'paid') {
       result.alreadyPaid = true;
+      result.order = { ...data, orderId: data.orderId || orderId };
       return;
     }
 
@@ -92,7 +93,7 @@ async function confirmOrderPayment(orderId, extra = {}) {
 
     const history = Array.isArray(data.statusHistory) ? [...data.statusHistory] : [];
     history.push({
-      status: 'confirmed',
+      status: 'Confirmed',
       at: new Date().toISOString(),
       byAdmin: false,
       note: 'Razorpay signature verified',
@@ -101,9 +102,9 @@ async function confirmOrderPayment(orderId, extra = {}) {
     tx.update(ref, {
       ...extra,
       paymentStatus: 'paid',
+      status: 'Confirmed',
       orderStatus: 'confirmed',
       stockDecremented: true,
-      emailsSentAt: sdk.FieldValue.serverTimestamp(),
       updatedAt: sdk.FieldValue.serverTimestamp(),
       statusHistory: history,
     });
@@ -123,18 +124,42 @@ async function confirmOrderPayment(orderId, extra = {}) {
     result.order = { ...data, orderId: data.orderId || orderId };
   });
 
-  if (result.updated === true && result.order) {
+  const needsMail = Boolean(result.order) && (
+    result.updated === true || result.order.emailsSent?.customer !== true
+  );
+  if (needsMail) {
+    const email = pickEmail(
+      result.order.email,
+      result.order.customer?.email,
+      result.order.shippingAddress?.email,
+    );
+    result.order = {
+      ...result.order,
+      email,
+      customer: { ...(result.order.customer || {}), email },
+    };
     const notify = await notifyOrderPlaced(result.order);
     await markOrderEmailsSent(result.order.orderId, notify);
     result.notify = notify;
-    try {
-      await notifyOwnerWhatsapp(result.order);
-    } catch (err) {
-      console.error('owner whatsapp ignored', result.order.orderId, err?.message);
+    if (result.updated === true) {
+      try {
+        await notifyOwnerWhatsapp(result.order);
+      } catch (err) {
+        console.error('owner whatsapp ignored', result.order.orderId, err?.message);
+      }
     }
   }
 
   return result;
+}
+
+function pickEmail(...values) {
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  for (const value of values) {
+    const email = String(value || '').trim().toLowerCase();
+    if (EMAIL_RE.test(email)) return email;
+  }
+  return '';
 }
 
 async function claimCodOrderEmails(order = {}) {
@@ -146,22 +171,35 @@ async function claimCodOrderEmails(order = {}) {
   let payload = order;
   await sdk.db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists) return;
+    if (!snap.exists) {
+      const email = pickEmail(order.email, order.customer?.email, order.shippingAddress?.email);
+      payload = { ...order, orderId, email, customer: { ...(order.customer || {}), email } };
+      claimed = Boolean(email || orderId);
+      return;
+    }
     const data = snap.data() || {};
+    const email = pickEmail(
+      order.email,
+      order.customer?.email,
+      data.email,
+      data.customer?.email,
+      data.shippingAddress?.email,
+    );
     payload = {
       ...order,
       ...data,
       orderId: data.orderId || orderId,
-      customer: { ...(order.customer || {}), ...(data.customer || {}) },
-      shippingAddress: { ...(order.shippingAddress || {}), ...(data.shippingAddress || {}) },
+      email,
+      customer: {
+        ...(data.customer || {}),
+        ...(order.customer || {}),
+        email,
+      },
+      shippingAddress: { ...(data.shippingAddress || {}), ...(order.shippingAddress || {}) },
       items: Array.isArray(data.items) && data.items.length ? data.items : (order.items || []),
       totals: { ...(order.totals || {}), ...(data.totals || {}) },
     };
-    if (data.emailsSentAt) return;
-    tx.update(ref, {
-      emailsSentAt: sdk.FieldValue.serverTimestamp(),
-      updatedAt: sdk.FieldValue.serverTimestamp(),
-    });
+    if (data.emailsSent?.customer === true) return;
     claimed = true;
   });
   return { claimed, order: payload };
@@ -183,4 +221,4 @@ async function markOrderEmailsSent(orderId, notify = {}) {
   }
 }
 
-module.exports = { adminDb, adminAuth, orderAmountPaise, confirmOrderPayment, claimCodOrderEmails, markOrderEmailsSent };
+module.exports = { adminDb, adminAuth, orderAmountPaise, confirmOrderPayment, claimCodOrderEmails, markOrderEmailsSent, pickEmail };

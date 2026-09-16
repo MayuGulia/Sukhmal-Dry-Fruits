@@ -13,8 +13,10 @@ import {
 import { db } from '@/lib/firebase';
 import { stripHtml } from '@/lib/security';
 import { firestoreSafeMediaUrl, persistOrderItemImage } from '@/lib/orderImages';
+import { estimateDeliveryByPincode } from '@/lib/deliveryEstimate';
+import { canonicalStatus, courierTrackingUrl, ORDER_STATUSES, statusIndex, statusSlug } from '@/lib/orderStatus';
 
-export const ORDER_FLOW = ['confirmed', 'packed', 'shipped', 'delivered'];
+export const ORDER_FLOW = ORDER_STATUSES;
 
 export function newOrderId() {
   const n = Date.now().toString(36).toUpperCase();
@@ -22,16 +24,14 @@ export function newOrderId() {
   return `SKF${n}${r}`.slice(0, 12);
 }
 
-export function etaWindow(from = new Date()) {
-  const start = new Date(from);
-  start.setDate(start.getDate() + 2);
-  const end = new Date(from);
-  end.setDate(end.getDate() + 4);
-  const fmt = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+export function etaWindow(from = new Date(), pincode = '') {
+  const estimate = estimateDeliveryByPincode(pincode, from);
   return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-    label: `${fmt(start)} – ${fmt(end)}`,
+    start: estimate.start,
+    end: estimate.end,
+    label: estimate.label,
+    window: estimate.window,
+    detail: estimate.detail,
   };
 }
 
@@ -62,15 +62,7 @@ export function formatDay(value) {
 
 /** Normalize admin/legacy statuses onto the public tracking ladder. */
 export function normalizeTrackStatus(raw) {
-  const s = String(raw || '').toLowerCase();
-  if (s === 'delivered') return 'delivered';
-  if (s === 'ofd' || s === 'out_for_delivery') return 'ofd';
-  if (s === 'shipped' || s === 'dispatched') return 'shipped';
-  if (s === 'packed' || s === 'in_preparation') return 'packed';
-  if (s === 'cancelled') return 'cancelled';
-  if (s === 'placed' || s === 'pending' || s === 'pending_cod') return 'confirmed';
-  if (s === 'confirmed') return 'confirmed';
-  return 'confirmed';
+  return statusSlug(raw);
 }
 
 export function accountStatus(raw) {
@@ -98,8 +90,10 @@ export async function createCustomerOrder({
 }) {
   const isCod = paymentMethod === 'cod';
   const orderId = newOrderId();
-  const eta = etaWindow();
+  const estimate = estimateDeliveryByPincode(address?.pincode);
+  const eta = etaWindow(new Date(), address?.pincode);
   const nowIso = new Date().toISOString();
+  const status = isCod ? 'Confirmed' : 'Placed';
   const lineItems = (items || []).map((it) => ({
     key: it.key || `${it.id}-${it.variant || ''}`,
     productId: it.id,
@@ -119,6 +113,7 @@ export async function createCustomerOrder({
   const payload = {
     orderId,
     userId: user?.uid || null,
+    email: user?.email || address?.email || null,
     customer: {
       name: stripHtml(user?.displayName || address?.name || '', 80),
       email: user?.email || address?.email || null,
@@ -143,7 +138,12 @@ export async function createCustomerOrder({
     total: Number(totals?.total) || 0,
     paymentMethod: isCod ? 'cod' : 'razorpay',
     paymentStatus: 'pending',
-    orderStatus: isCod ? 'confirmed' : 'placed',
+    status,
+    orderStatus: statusSlug(status),
+    estimatedDeliveryDate: estimate.estimatedDeliveryDate,
+    estimatedDeliveryWindow: estimate.window,
+    trackingNumber: null,
+    courierName: null,
     giftMsg: giftMsg ? {
       name: stripHtml(giftMsg.name, 80),
       phone: String(giftMsg.phone || '').replace(/\D/g, '').slice(-10),
@@ -160,7 +160,7 @@ export async function createCustomerOrder({
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     statusHistory: [
-      historyStamp(isCod ? 'confirmed' : 'placed', nowIso),
+      historyStamp(status, nowIso),
     ],
   };
 
@@ -190,7 +190,11 @@ export function mapAdminOrder(id, data = {}) {
     recipientPhone: data.recipientPhone || data.customer?.phone || data.shippingAddress?.phone || '',
     paymentMethod: data.paymentMethod || '',
     paymentStatus: data.paymentStatus || '',
-    orderStatus: data.orderStatus || 'placed',
+    status: canonicalStatus(data.status || data.orderStatus),
+    orderStatus: statusSlug(data.status || data.orderStatus || 'placed'),
+    estimatedDeliveryDate: data.estimatedDeliveryDate || data.eta || '',
+    trackingNumber: data.trackingNumber || '',
+    courierName: data.courierName || '',
     total: Number(data.total ?? data.totals?.total) || 0,
     items: Array.isArray(data.items) ? data.items : [],
     statusHistory: Array.isArray(data.statusHistory) ? data.statusHistory : [],
@@ -203,29 +207,35 @@ export function mapOrderDoc(id, data) {
   const items = Array.isArray(data.items) ? data.items : [];
   const first = items[0] || {};
   const history = Array.isArray(data.statusHistory) ? data.statusHistory : [];
-  const track = normalizeTrackStatus(data.orderStatus);
+  const currentStatus = canonicalStatus(data.status || data.orderStatus);
+  const track = statusSlug(currentStatus);
+  const currentIdx = statusIndex(currentStatus);
   const stepTimes = {};
   history.forEach((h) => {
-    const key = normalizeTrackStatus(h.status);
+    const key = statusSlug(h.status);
     if (key && !stepTimes[key]) stepTimes[key] = formatWhen(h.at);
   });
+  if (!stepTimes.placed) stepTimes.placed = formatWhen(created);
   const timeline = [...history]
     .sort((a, b) => new Date(a.at) - new Date(b.at))
     .map((h, i, arr) => ({
-      title: String(h.status || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      title: canonicalStatus(h.status),
       at: formatWhen(h.at),
-      text: h.note || `Status updated to ${h.status}.`,
+      text: h.note || `Status updated to ${canonicalStatus(h.status)}.`,
       current: i === arr.length - 1,
     }))
     .reverse();
 
-  const uiTimeline = [
-    { label: 'Order Placed', at: formatWhen(created), done: true },
-    { label: 'Confirmed', at: stepTimes.confirmed || (track !== 'cancelled' ? formatWhen(created) : '—'), done: ['confirmed', 'packed', 'shipped', 'ofd', 'delivered'].includes(track) },
-    { label: 'Packed', at: stepTimes.packed || '—', done: ['packed', 'shipped', 'ofd', 'delivered'].includes(track) },
-    { label: 'Shipped', at: stepTimes.shipped || stepTimes.ofd || '—', done: ['shipped', 'ofd', 'delivered'].includes(track) },
-    { label: 'Delivered', at: stepTimes.delivered || '—', done: track === 'delivered' },
-  ];
+  const uiTimeline = ORDER_STATUSES.map((label, i) => ({
+    label,
+    at: stepTimes[statusSlug(label)] || (i === 0 ? formatWhen(created) : '—'),
+    done: currentStatus !== 'Cancelled' && currentIdx >= i,
+  }));
+
+  const trackingNumber = data.trackingNumber || '';
+  const courierName = data.courierName || '';
+  const estimate = data.estimatedDeliveryDate || data.eta || formatDay(data.etaEnd);
+  const pincodeGuess = estimateDeliveryByPincode(data.shippingAddress?.pincode);
 
   return {
     id: data.orderId || id,
@@ -233,8 +243,9 @@ export function mapOrderDoc(id, data) {
     date: formatDay(created),
     placedAt: formatWhen(created),
     total: Number(data.total ?? data.totals?.total) || 0,
-    status: accountStatus(data.orderStatus),
-    orderStatus: data.orderStatus,
+    status: accountStatus(data.status || data.orderStatus),
+    orderStatus: statusSlug(currentStatus),
+    fulfillmentStatus: currentStatus,
     paymentStatus: data.paymentStatus,
     paymentMethod: data.paymentMethod,
     items: items.reduce((n, it) => n + (Number(it.qty) || 1), 0),
@@ -260,7 +271,11 @@ export function mapOrderDoc(id, data) {
       gst: Number(data.totals?.gst) || 0,
       paid: data.paymentStatus === 'paid' ? Number(data.total ?? data.totals?.total) || 0 : 0,
     },
-    eta: data.eta || '',
+    eta: estimate,
+    estimatedDeliveryDate: estimate,
+    estimatedDeliveryWindow: pincodeGuess.window,
+    trackingNumber,
+    courierName,
     customer: data.customer || {},
     track: {
       id: data.orderId || id,
@@ -269,14 +284,19 @@ export function mapOrderDoc(id, data) {
       recipient: data.shippingAddress?.name || data.customer?.name || '',
       paymentStatus: data.paymentStatus === 'paid' ? 'Paid Successfully' : (data.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Pending payment'),
       amount: Number(data.total ?? data.totals?.total) || 0,
-      status: track === 'cancelled' ? 'confirmed' : track,
+      status: track === 'cancelled' ? 'placed' : track,
+      fulfillmentStatus: currentStatus,
       stepTimes,
-      etaDate: data.eta || formatDay(data.etaEnd),
-      etaTime: 'Standard delivery window',
-      onTime: true,
-      partner: data.partner || {
-        name: 'Assigned after dispatch',
-        tracking: '—',
+      etaDate: estimate,
+      etaTime: pincodeGuess.detail,
+      onTime: currentStatus !== 'Delivered' ? true : true,
+      trackingNumber,
+      courierName: courierName || (trackingNumber ? 'DTDC' : ''),
+      trackingUrl: courierTrackingUrl(courierName, trackingNumber),
+      partner: {
+        name: courierName || (trackingNumber ? 'DTDC' : 'Assigned after dispatch'),
+        tracking: trackingNumber || '—',
+        trackingUrl: courierTrackingUrl(courierName || 'DTDC', trackingNumber),
         support: data.customer?.phone || '',
         hours: 'Mon – Sat | 9 AM – 7 PM',
       },
@@ -369,16 +389,21 @@ export async function appendOrderStatus(orderId, newStatus, extra = {}) {
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error('Order not found');
   const data = snap.data();
+  const status = canonicalStatus(newStatus);
   const entry = {
-    status: newStatus,
+    status,
     at: new Date().toISOString(),
     byAdmin: true,
-    ...extra,
+    note: extra.note || `Status changed to ${status}`,
   };
-  await updateDoc(ref, {
-    orderStatus: newStatus,
+  const patch = {
+    status,
+    orderStatus: statusSlug(status),
     updatedAt: serverTimestamp(),
     statusHistory: [...(data.statusHistory || []), entry],
-    ...(newStatus === 'delivered' && data.paymentMethod === 'cod' ? { paymentStatus: 'paid' } : {}),
-  });
+    ...(status === 'Delivered' && data.paymentMethod === 'cod' ? { paymentStatus: 'paid' } : {}),
+  };
+  if (extra.trackingNumber !== undefined) patch.trackingNumber = String(extra.trackingNumber || '').trim() || null;
+  if (extra.courierName !== undefined) patch.courierName = String(extra.courierName || '').trim() || null;
+  await updateDoc(ref, patch);
 }

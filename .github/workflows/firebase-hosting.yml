@@ -1,0 +1,47 @@
+name: Deploy Firebase Hosting + Functions
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PROJECT_ID: sukhmal-website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Prepare frontend env
+        run: |
+          if [ ! -f frontend/.env ]; then
+            cp frontend/.env.example frontend/.env
+          fi
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          CI: "false"
+        run: npm run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy Hosting and Cloud Functions
+        run: npx -y firebase-tools@latest deploy --only hosting,functions --project sukhmal-website --non-interactive

@@ -1,6 +1,6 @@
 const { json, readJsonBody, httpsFn, RAZORPAY_SECRETS, RESEND_SECRETS, WHATSAPP_SECRETS } = require('../_shared/httpFn');
 const { envGet } = require('../_shared/env');
-const { adminDb, orderAmountPaise, claimCodOrderEmails, markOrderEmailsSent } = require('../_shared/firebaseAdmin');
+const { adminDb, orderAmountPaise, claimCodOrderEmails, markOrderEmailsSent, pickEmail } = require('../_shared/firebaseAdmin');
 const { notifyOrderPlaced } = require('../_shared/notify');
 const { notifyOwnerWhatsapp } = require('../_shared/notifyOwnerWhatsapp');
 
@@ -15,6 +15,8 @@ function orderFromBody(body, orderId) {
     total: raw.total ?? raw.totals?.total ?? 0,
     paymentMethod: raw.paymentMethod || 'cod',
     eta: raw.eta || '',
+    estimatedDeliveryDate: raw.estimatedDeliveryDate || raw.eta || '',
+    estimatedDeliveryWindow: raw.estimatedDeliveryWindow || '',
     giftMsg: raw.giftMsg || null,
     coupon: raw.coupon || null,
     deliveryDate: raw.deliveryDate || null,
@@ -31,11 +33,23 @@ async function loadOrder(orderId, body) {
       const snap = await admin.db.collection('orders').doc(orderId).get();
       if (snap.exists) {
         const data = snap.data() || {};
+        const email = pickEmail(
+          fallback.email,
+          fallback.customer?.email,
+          data.email,
+          data.customer?.email,
+          data.shippingAddress?.email,
+        );
         return {
           ...fallback,
           ...data,
           orderId: data.orderId || orderId,
-          customer: { ...fallback.customer, ...(data.customer || {}) },
+          email,
+          customer: {
+            ...(data.customer || {}),
+            ...(fallback.customer || {}),
+            email,
+          },
           shippingAddress: { ...(fallback.shippingAddress || {}), ...(data.shippingAddress || {}) },
           items: Array.isArray(data.items) && data.items.length ? data.items : fallback.items,
           totals: { ...(fallback.totals || {}), ...(data.totals || {}) },

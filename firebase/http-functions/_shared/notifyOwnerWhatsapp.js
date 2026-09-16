@@ -32,6 +32,19 @@ function buildMessage(order = {}) {
   const address = [addr.line1, addr.line2, pin ? `PIN ${pin}` : ''].filter(Boolean).join(', ');
   const total = order.total ?? order.totals?.total ?? 0;
   const method = String(order.paymentMethod || '').toUpperCase();
+  const tracking = String(order.trackingNumber || '').trim();
+  const courier = String(order.courierName || 'DTDC').trim() || 'DTDC';
+  const shipped = Boolean(order._shipped) || /ship/i.test(String(order.status || order.orderStatus || ''));
+  if (shipped) {
+    return [
+      `Sukhmal order ${orderId} shipped`,
+      `Customer: ${name}`,
+      phone ? `Phone: ${phone}` : '',
+      `Courier: ${courier}`,
+      tracking ? `Tracking: ${tracking}` : 'Tracking: pending',
+      'Please share tracking with the customer (email already sent).',
+    ].filter(Boolean).join('\n');
+  }
   return [
     `New Sukhmal order ${orderId}`,
     `Customer: ${name}`,

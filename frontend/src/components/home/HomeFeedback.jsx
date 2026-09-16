@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Send, MessageSquareHeart } from 'lucide-react';
+import { Star, Send, MessageSquareHeart, User, Mail, FileText, Heart, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useAccountData';
 import { submitFeedback, subscribePublishedFeedback } from '@/lib/feedback';
-import FlourishTitle from '@/components/home/FlourishTitle';
+import { FEEDBACK_SCENE_IMG } from '@/data/homeBrand';
 
 const EMPTY = { name: '', email: '', rating: 5, text: '', company: '' };
+
+const fieldClass =
+  'w-full h-12 pl-11 pr-4 rounded-2xl border border-[#E8DFD3] bg-white text-[14px] text-[#3A2C1F] placeholder:text-[#6F6A62]/70 outline-none transition focus:border-[#D4A762] focus:ring-2 focus:ring-[#D4A762]/20';
 
 function initials(name) {
   return String(name || 'G')
@@ -14,6 +17,22 @@ function initials(name) {
     .map((p) => p[0])
     .join('')
     .toUpperCase();
+}
+
+function GoldFlourish({ mirror = false }) {
+  return (
+    <svg
+      aria-hidden
+      className={`text-[#D4A762] shrink-0 ${mirror ? 'scale-x-[-1]' : ''}`}
+      width="44"
+      height="16"
+      viewBox="0 0 44 16"
+      fill="none"
+    >
+      <path d="M1 8c6-7 12-7 21 0 9 7 14 7 21 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="22" cy="8" r="2.1" fill="currentColor" />
+    </svg>
+  );
 }
 
 function StarPick({ value, onChange, disabled }) {
@@ -36,12 +55,12 @@ function StarPick({ value, onChange, disabled }) {
           >
             <Star
               size={22}
-              className={on ? 'text-[var(--sk-star)] fill-current' : 'text-ink-300'}
+              className={on ? 'text-[#E8A11A] fill-current' : 'text-[#E8DFD3]'}
             />
           </button>
         );
       })}
-      <span className="ml-2 text-[12px] text-ink-500">{value}/5</span>
+      <span className="ml-2 text-[13px] text-[#6F6A62] font-medium">{value}/5</span>
     </div>
   );
 }
@@ -100,27 +119,51 @@ export default function HomeFeedback() {
   };
 
   return (
-    <section id="home-feedback" className="scroll-mt-24 bg-[#F6F0E8] py-12 md:py-16 border-t border-[var(--sk-line)]" data-testid="home-feedback">
-      <div className="sk-container">
-        <FlourishTitle title="Share Your Feedback" />
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-5 md:gap-6 -mt-2">
+    <section
+      id="home-feedback"
+      className="relative overflow-hidden scroll-mt-24"
+      data-testid="home-feedback"
+    >
+      <img
+        src={FEEDBACK_SCENE_IMG}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 w-full h-full object-cover object-center"
+      />
+      <div className="absolute inset-0 bg-[#FAF7F0]/35" aria-hidden />
+
+      <div className="relative sk-container py-14 md:py-16 lg:py-[4.25rem]">
+        <div className="text-center mb-8 md:mb-10">
+          <div className="flex items-center justify-center gap-3 md:gap-4">
+            <GoldFlourish />
+            <h2 className="font-display text-[1.85rem] md:text-[2.15rem] lg:text-[2.35rem] font-semibold leading-[1.3] tracking-[-0.02em] text-[#4A2E1E]">
+              Share Your Feedback
+            </h2>
+            <GoldFlourish mirror />
+          </div>
+          <p className="mt-2.5 text-[14px] md:text-[16px] text-[#6F6A62] font-normal">
+            Your thoughts help us grow and serve you better.
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-5 md:gap-6 items-start">
           <form
             onSubmit={submit}
-            className="bg-white rounded-2xl border border-[var(--sk-line)] p-6 md:p-8 shadow-sk-sm space-y-4"
+            className="bg-white/95 backdrop-blur-[2px] rounded-[24px] border border-[#E8DFD3] p-5 sm:p-7 md:p-8 shadow-[0_12px_40px_rgba(74,46,30,0.08)] space-y-4"
             data-testid="feedback-form"
           >
             {sent ? (
               <div className="text-center py-8">
-                <div className="mx-auto h-12 w-12 rounded-full bg-[var(--sk-green-100)] text-[var(--sk-green-500)] grid place-items-center">
+                <div className="mx-auto h-12 w-12 rounded-full bg-[#F8F1E6] text-[#4A2E1E] grid place-items-center">
                   <MessageSquareHeart size={22} />
                 </div>
-                <div className="font-display font-bold text-brand-900 text-2xl mt-4">Thank you!</div>
-                <p className="text-ink-600 mt-2 text-sm leading-relaxed max-w-md mx-auto">
+                <div className="font-display font-semibold text-[#4A2E1E] text-2xl mt-4">Thank you!</div>
+                <p className="text-[#6F6A62] mt-2 text-sm leading-relaxed max-w-md mx-auto">
                   Your review has been sent to our team and may appear with other customer stories on this page.
                 </p>
                 <button
                   type="button"
-                  className="sk-btn-outline mt-5 text-sm"
+                  className="mt-5 inline-flex items-center justify-center h-12 px-5 rounded-full border border-[#4A2E1E] text-[#4A2E1E] text-sm font-medium hover:bg-[#F8F1E6] transition"
                   onClick={() => setSent(false)}
                 >
                   Write another review
@@ -128,94 +171,135 @@ export default function HomeFeedback() {
               </div>
             ) : (
               <>
-                <p className="text-ink-600 text-sm md:text-[15px] leading-relaxed">
-                  Tell us about your order, hamper, or store visit. We read every note.
-                </p>
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 h-9 w-9 rounded-full bg-[#F8F1E6] text-[#6B4F3B] grid place-items-center shrink-0">
+                    <User size={16} strokeWidth={1.75} />
+                  </span>
+                  <p className="text-[#6F6A62] text-[14px] leading-relaxed pt-1.5">
+                    Tell us about your order, hamper, or store visit. We read every note.
+                  </p>
+                </div>
+
                 <div>
-                  <label className="text-[11px] font-semibold text-ink-500 mb-1.5 block">Your rating *</label>
+                  <label className="text-[13px] font-medium text-[#3A2C1F] mb-1.5 block">Your rating *</label>
                   <StarPick value={form.rating} onChange={(rating) => setForm((f) => ({ ...f, rating }))} disabled={busy} />
                 </div>
+
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-semibold text-ink-500 mb-1 block">Name *</label>
-                    <input
-                      required
-                      value={form.name}
-                      onChange={set('name')}
-                      className="sk-input"
-                      placeholder="Your name"
-                      maxLength={80}
-                      data-testid="feedback-name"
-                    />
+                    <label className="text-[13px] font-medium text-[#3A2C1F] mb-1.5 block">Name *</label>
+                    <div className="relative">
+                      <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6F6A62]" strokeWidth={1.75} />
+                      <input
+                        required
+                        value={form.name}
+                        onChange={set('name')}
+                        className={fieldClass}
+                        placeholder="Your name"
+                        maxLength={80}
+                        data-testid="feedback-name"
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="text-[11px] font-semibold text-ink-500 mb-1 block">Email</label>
-                    <input
-                      type="email"
-                      value={form.email}
-                      onChange={set('email')}
-                      className="sk-input"
-                      placeholder="you@email.com"
-                      maxLength={120}
-                      data-testid="feedback-email"
-                    />
+                    <label className="text-[13px] font-medium text-[#3A2C1F] mb-1.5 block">Email</label>
+                    <div className="relative">
+                      <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6F6A62]" strokeWidth={1.75} />
+                      <input
+                        type="email"
+                        value={form.email}
+                        onChange={set('email')}
+                        className={fieldClass}
+                        placeholder="you@email.com"
+                        maxLength={120}
+                        data-testid="feedback-email"
+                      />
+                    </div>
                   </div>
                 </div>
+
                 <div className="hidden" aria-hidden>
                   <label>Company
                     <input tabIndex={-1} autoComplete="off" value={form.company} onChange={set('company')} />
                   </label>
                 </div>
+
                 <div>
-                  <label className="text-[11px] font-semibold text-ink-500 mb-1 block">Your feedback *</label>
+                  <label className="text-[13px] font-medium text-[#3A2C1F] mb-1.5 block">Your feedback *</label>
                   <textarea
                     required
-                    rows={4}
+                    rows={5}
                     value={form.text}
                     onChange={set('text')}
-                    className="sk-input"
+                    className="w-full min-h-[120px] px-4 py-3 rounded-2xl border border-[#E8DFD3] bg-white text-[14px] text-[#3A2C1F] placeholder:text-[#6F6A62]/70 outline-none transition focus:border-[#D4A762] focus:ring-2 focus:ring-[#D4A762]/20 resize-y"
                     placeholder="What did you love? What can we improve?"
                     maxLength={600}
                     data-testid="feedback-message"
                   />
-                  <div className="text-[11px] text-ink-400 text-right mt-1">{form.text.length}/600</div>
+                  <div className="text-[11px] text-[#6F6A62] text-right mt-1">{form.text.length}/600</div>
                 </div>
+
                 {error && <p className="text-sm text-red-700">{error}</p>}
-                <button type="submit" disabled={busy} className="sk-btn-primary !bg-[var(--sk-espresso)]" data-testid="feedback-submit">
-                  <Send size={16} /> {busy ? 'Sending…' : 'Submit Feedback'}
+
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-[#4A2E1E] text-white text-[15px] font-medium hover:bg-[#6B4F3B] disabled:opacity-60 transition shadow-[0_8px_18px_rgba(74,46,30,0.18)]"
+                  data-testid="feedback-submit"
+                >
+                  <Send size={16} strokeWidth={1.8} />
+                  {busy ? 'Sending…' : 'Submit Feedback'}
+                  <ChevronRight size={16} strokeWidth={2.2} />
                 </button>
               </>
             )}
           </form>
 
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-[var(--sk-line)] bg-white p-6 md:p-8 shadow-sk-sm">
-              <div className="font-display font-bold text-brand-900 text-xl">Recent notes from customers</div>
-              <p className="text-ink-500 text-sm mt-1.5">Live reviews from this page, shown as they come in.</p>
+          <div className="relative lg:mt-2">
+            <p className="hidden lg:block absolute -right-3 top-16 text-[13px] italic text-[#D4A762] whitespace-nowrap origin-center rotate-90 translate-x-1/2 pointer-events-none">
+              Your opinion matters
+            </p>
+            <div className="bg-white/95 backdrop-blur-[2px] rounded-[24px] border border-[#E8DFD3] p-5 sm:p-7 shadow-[0_12px_40px_rgba(74,46,30,0.08)]">
+              <div className="flex items-start gap-3">
+                <span className="h-9 w-9 rounded-lg bg-[#F8F1E6] text-[#6B4F3B] grid place-items-center shrink-0">
+                  <FileText size={16} strokeWidth={1.75} />
+                </span>
+                <div>
+                  <div className="font-display font-semibold text-[#4A2E1E] text-[1.15rem] leading-snug">
+                    Recent notes from customers
+                  </div>
+                  <p className="text-[#6F6A62] text-[13px] mt-1">Live reviews from this page, shown as they come in.</p>
+                </div>
+              </div>
+
               <div className="mt-5 space-y-3" data-testid="feedback-live">
                 {live.length === 0 && (
-                  <p className="text-sm text-ink-500 leading-relaxed">
-                    Be the first to share a review here. Star ratings and a few kind words help other families choose with confidence.
+                  <p className="text-[14px] text-[#6F6A62] leading-relaxed italic">
+                    “Be the first to share a review here. Star ratings and a few kind words help other families choose with confidence.”
                   </p>
                 )}
                 {live.slice(0, 4).map((row) => (
-                  <article key={row.id} className="rounded-xl border border-[var(--sk-line)] bg-[#FAF7F2] p-4">
+                  <article key={row.id} className="rounded-2xl border border-[#E8DFD3] bg-[#F8F1E6]/70 p-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-[var(--sk-espresso)] text-white text-[12px] font-semibold grid place-items-center shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-[#4A2E1E] text-white text-[12px] font-semibold grid place-items-center shrink-0">
                         {initials(row.name)}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-semibold text-brand-900 text-[13px] truncate">{row.name}</div>
-                        <div className="flex items-center gap-0.5 text-[var(--sk-star)] mt-0.5">
+                        <div className="font-medium text-[#3A2C1F] text-[13px] truncate">{row.name}</div>
+                        <div className="flex items-center gap-0.5 text-[#E8A11A] mt-0.5">
                           {Array.from({ length: 5 }).map((_, j) => (
                             <Star key={j} size={12} className={j < row.rating ? 'fill-current' : 'opacity-20'} />
                           ))}
                         </div>
                       </div>
                     </div>
-                    <p className="text-[13px] text-ink-600 leading-relaxed mt-3 italic">“{row.text}”</p>
+                    <p className="text-[13px] text-[#6F6A62] leading-relaxed mt-3 italic">“{row.text}”</p>
                   </article>
                 ))}
+              </div>
+
+              <div className="mt-5 flex justify-center text-[#D4A762]">
+                <Heart size={16} className="fill-current" />
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ const { json, readJsonBody, httpsFn, WHATSAPP_SECRETS } = require('../_shared/ht
 const { adminDb } = require('../_shared/firebaseAdmin');
 const { notifyOwnerWhatsapp } = require('../_shared/notifyOwnerWhatsapp');
 const { notConfigured, requireAdminSession } = require('../_shared/adminSession');
+const { canonicalStatus, statusSlug } = require('../_shared/orderStatus');
 
 function toIso(value, fallback = new Date()) {
   if (!value) return fallback.toISOString();
@@ -20,7 +21,11 @@ function mapAdminOrder(id, data = {}) {
     recipientPhone: data.recipientPhone || data.customer?.phone || data.shippingAddress?.phone || '',
     paymentMethod: data.paymentMethod || '',
     paymentStatus: data.paymentStatus || '',
-    orderStatus: data.orderStatus || 'placed',
+    status: canonicalStatus(data.status || data.orderStatus),
+    orderStatus: statusSlug(data.status || data.orderStatus || 'placed'),
+    estimatedDeliveryDate: data.estimatedDeliveryDate || data.eta || '',
+    trackingNumber: data.trackingNumber || '',
+    courierName: data.courierName || '',
     total: Number(data.total ?? data.totals?.total) || 0,
     items: Array.isArray(data.items) ? data.items : [],
     statusHistory: Array.isArray(data.statusHistory) ? data.statusHistory : [],
@@ -69,10 +74,17 @@ function inRange(order, from, to) {
   return t >= fromD && t <= toD;
 }
 
+function matchesAdminStatus(order, status) {
+  if (!status || status === 'all') return true;
+  const canonical = canonicalStatus(order.status || order.orderStatus);
+  const slug = statusSlug(canonical);
+  return canonical === status || slug === status || order.orderStatus === status;
+}
+
 function filterAdminOrders(orders, { status = 'all', from, to } = {}) {
   return orders
     .filter((o) => inRange(o, from, to))
-    .filter((o) => !status || status === 'all' || o.orderStatus === status)
+    .filter((o) => matchesAdminStatus(o, status))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
@@ -168,8 +180,8 @@ async function handleStatus(req, res, db, FieldValue) {
   if (req.method !== 'POST') return json(res, { error: 'method' }, 405);
   const body = readJsonBody(req);
   const orderId = String(body.orderId || '').trim();
-  const newStatus = String(body.orderStatus || body.status || body.newStatus || '').trim();
-  if (!orderId || !newStatus) return json(res, { error: 'invalid_request' }, 400);
+  const status = canonicalStatus(body.orderStatus || body.status || body.newStatus || '');
+  if (!orderId || !status) return json(res, { error: 'invalid_request' }, 400);
 
   const ref = db.collection('orders').doc(orderId);
   const snap = await ref.get();
@@ -177,19 +189,22 @@ async function handleStatus(req, res, db, FieldValue) {
   const data = snap.data() || {};
   const history = Array.isArray(data.statusHistory) ? [...data.statusHistory] : [];
   history.push({
-    status: newStatus,
+    status,
     at: new Date().toISOString(),
     byAdmin: true,
-    note: body.note || `Status changed to ${newStatus}`,
+    note: body.note || `Status changed to ${status}`,
   });
   const patch = {
-    orderStatus: newStatus,
+    status,
+    orderStatus: statusSlug(status),
     updatedAt: FieldValue.serverTimestamp(),
     statusHistory: history,
   };
-  if (newStatus === 'delivered' && data.paymentMethod === 'cod') patch.paymentStatus = 'paid';
+  if (body.trackingNumber !== undefined) patch.trackingNumber = String(body.trackingNumber || '').trim() || null;
+  if (body.courierName !== undefined) patch.courierName = String(body.courierName || '').trim() || null;
+  if (status === 'Delivered' && data.paymentMethod === 'cod') patch.paymentStatus = 'paid';
   await ref.update(patch);
-  return json(res, { orderId, orderStatus: newStatus });
+  return json(res, { orderId, orderStatus: statusSlug(status), status });
 }
 
 async function handleManual(req, res, db, FieldValue, decoded) {
@@ -201,6 +216,7 @@ async function handleManual(req, res, db, FieldValue, decoded) {
   const name = body.recipientName || 'Walk-in';
   const phone = body.recipientPhone || '';
   const total = Number(body.total) || 0;
+  const status = 'Confirmed';
   await db.collection('orders').doc(orderId).set({
     orderId,
     userId: decoded?.uid || null,
@@ -210,13 +226,17 @@ async function handleManual(req, res, db, FieldValue, decoded) {
     recipientPhone: phone,
     paymentMethod: body.paymentMethod || 'whatsapp',
     paymentStatus: isCod ? 'pending' : 'paid',
-    orderStatus: isCod ? 'pending_cod' : 'confirmed',
+    status,
+    orderStatus: statusSlug(status),
+    estimatedDeliveryDate: null,
+    trackingNumber: null,
+    courierName: null,
     total,
     totals: { subtotal: total, discount: 0, gst: 0, shipping: 0, total },
     items: Array.isArray(body.items) ? body.items : [],
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
-    statusHistory: [{ status: isCod ? 'pending_cod' : 'confirmed', at: nowIso, byAdmin: true, note: 'Manual order' }],
+    statusHistory: [{ status, at: nowIso, byAdmin: true, note: 'Manual order' }],
   });
   try {
     await notifyOwnerWhatsapp({

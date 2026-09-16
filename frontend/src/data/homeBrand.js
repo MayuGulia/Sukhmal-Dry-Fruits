@@ -17,7 +17,8 @@ export const WEDDING_VIDEO_POSITION = 'center center';
 /** Optional YouTube/Vimeo embed URL — used in the lightbox if set. */
 export const HERO_VIDEO_EMBED = '';
 
-export const BYOH_BANNER_IMG = '/brand/byoh-lifestyle.png';
+export const BYOH_BANNER_IMG = '/brand/gift-special-banner.jpg';
+export const FEEDBACK_SCENE_IMG = '/brand/feedback-scene-bg.jpg';
 export const WEDDING_PROMO_IMG = '/brand/wedding-gifts-banner.png';
 export const CORP_PROMO_IMG = '/brand/corporate-gifts-banner.png';
 export const AI_PREVIEW_IMG = '/brand/hero-luxury-hamper-v2.png';

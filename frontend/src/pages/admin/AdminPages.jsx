@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { inr } from '@/lib/utils';
 import { adminApi } from '@/lib/adminApi';
 import { AiInventoryBar } from './AiInventoryBar';
+import { OrderStatusControls } from './OrderStatusControls';
+import { ORDER_STATUSES } from '@/lib/orderStatus';
 
 const AdminProductTable = React.lazy(() => import('./AdminProductTable').then((m) => ({ default: m.AdminProductTable })));
 
-const STATUS_OPTS = ['placed', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled', 'pending_cod'];
+const STATUS_OPTS = ORDER_STATUSES;
 const statusLabel = (s) => String(s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 export function AdminOrders() {
@@ -38,7 +40,7 @@ export function AdminOrders() {
       </div>
       <div className="rounded-xl border border-line bg-white overflow-hidden mb-8">
         {rows.map((o) => (
-          <div key={o.orderId} className="grid md:grid-cols-[1fr_1fr_120px_120px_180px] gap-3 items-center px-4 py-3 border-b border-line last:border-0">
+          <div key={o.orderId} className="grid md:grid-cols-[1fr_1fr_120px_120px_220px] gap-3 items-start px-4 py-3 border-b border-line last:border-0">
             <div>
               <div className="font-mono font-semibold">#{o.orderId}</div>
               <div className="text-[11px] text-ink-500">{new Date(o.createdAt).toLocaleString('en-IN')}</div>
@@ -49,19 +51,10 @@ export function AdminOrders() {
             </div>
             <div className="capitalize text-sm">{o.paymentMethod}</div>
             <div className="font-semibold">{inr(o.total)}</div>
-            <select
-              value={o.orderStatus}
-              onChange={(e) => {
-                const next = e.target.value;
-                adminApi.setStatus(o.orderId, next).catch((error) => {
-                  setErr(error?.message || 'Could not update order status.');
-                  e.target.value = o.orderStatus;
-                });
-              }}
-              className="sk-input !py-1.5 !text-sm"
-            >
-              {STATUS_OPTS.map((x) => <option key={x} value={x}>{statusLabel(x)}</option>)}
-            </select>
+            <OrderStatusControls
+              order={o}
+              onError={(error) => setErr(error?.message || 'Could not update order status.')}
+            />
           </div>
         ))}
         {!rows.length && <div className="px-4 py-8 text-center text-ink-500 text-sm">No orders yet.</div>}

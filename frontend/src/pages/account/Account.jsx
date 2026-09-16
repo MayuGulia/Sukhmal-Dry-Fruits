@@ -402,7 +402,7 @@ export function MyOrders({ history = false }) {
 function TrackingTimeline({ steps }) {
   return (
     <div className="overflow-x-auto pb-1">
-      <ol className="flex min-w-[520px] items-start gap-0">
+          <ol className="flex min-w-[640px] items-start gap-0">
         {steps.map((step, i) => {
           const last = i === steps.length - 1;
           return (

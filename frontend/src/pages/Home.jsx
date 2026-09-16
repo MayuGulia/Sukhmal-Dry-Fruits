@@ -21,7 +21,6 @@ import {
   CORP_PROMO_IMG,
   HERO_IMG,
 } from '@/data/homeBrand';
-import { GiftBasketIcon } from '@/components/brand/BrandSeal';
 import { STORE_INSTAGRAM, STORE_INSTAGRAM_HANDLE } from '@/data/storeInfo';
 
 const ANIMATED_TILES = new Set(['Gift Hampers', 'Festive Gift Hampers']);
@@ -252,29 +251,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Make Every Gift Extra Special ─── */}
+      {/* ─── Make Every Gift Special ─── */}
       <section className="bg-[#F6F0E8]" data-testid="home-byoh">
-        <div className="sk-container py-12 md:py-16 lg:py-[4.5rem] grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
-          <div>
-            <h2 className="sk-section-title text-3xl md:text-4xl lg:text-[2.5rem] leading-[1.15] max-w-md">
-              Make Every Gift Extra Special
-            </h2>
-            <p className="text-ink-600 mt-4 md:text-[16px] max-w-md leading-relaxed">
-              Create a custom hamper — pick your budget, container, and favourites, then add a personal message.
-            </p>
-            <Link
-              to="/build-hamper/budget"
-              className="sk-btn-hamper mt-7 inline-flex text-[15px] !py-3.5 !px-6"
-              data-testid="cta-build"
-            >
-              <GiftBasketIcon size={17} className="text-gold-400" />
-              Build Your Own Hamper <ChevronRight size={16} />
-            </Link>
-          </div>
-          <div className="relative rounded-2xl overflow-hidden shadow-sk-lg aspect-[16/10] lg:h-[380px] lg:aspect-auto ring-1 ring-[var(--sk-line)]">
-            <img src={BYOH_BANNER_IMG} alt="Luxury open gift box with dry fruits" className="w-full h-full object-cover object-center" loading="lazy" />
-          </div>
-        </div>
+        <Link
+          to="/build-hamper/budget"
+          className="relative mx-auto block w-full overflow-hidden h-[280px] sm:h-[360px] lg:h-[480px]"
+          data-testid="cta-build"
+        >
+          <img
+            src={BYOH_BANNER_IMG}
+            alt="Make every gift special — build your own Sukhmal hamper"
+            className="absolute inset-0 w-full h-full object-cover object-center"
+            loading="lazy"
+          />
+          <span className="sr-only">Build Your Own Hamper</span>
+        </Link>
       </section>
 
       {/* ─── AI Image + Gift Advisor ─── */}

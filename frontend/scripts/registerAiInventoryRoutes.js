@@ -3,7 +3,13 @@ const { pathToFileURL } = require('url');
 
 function loadFrontendEnv() {
   try {
-    require('dotenv').config({ path: path.join(__dirname, '../.env'), override: true });
+    require('dotenv').config({ path: path.join(__dirname, '../.env') });
+  } catch {}
+  try {
+    require('dotenv').config({
+      path: path.join(__dirname, '../../firebase/http-functions/.env.sukhmal-website'),
+      override: true,
+    });
   } catch {}
 }
 
@@ -40,7 +46,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'firebase-http-ai-v4';
+const GEMINI_MODULE_BUST = 'firebase-http-ai-v5-vertex-inventory';
 const firebaseAiDir = path.join(__dirname, '../../firebase/http-functions/_shared/ai');
 const helperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiInventory.js')).href}?v=${GEMINI_MODULE_BUST}`;
 const giftHelperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiGiftAdvisor.js')).href}?v=${GEMINI_MODULE_BUST}`;
@@ -71,9 +77,9 @@ function registerAiInventoryRoutes(app) {
         code === 'bad_request' || code === 'no_match'
           ? (err.message || 'Could not understand that command')
           : code === 'quota'
-            ? (err.message || 'Gemini prepaid credits are depleted. Add billing in Google AI Studio, then try again.')
+            ? (err.message || 'Vertex AI quota is exhausted on this GCP project. Check Cloud billing, then try again.')
           : code === 'gemini_auth' || code === 'not_configured'
-            ? (err.message || 'Gemini rejected this API key. Add a new GEMINI_API_KEY in frontend/.env and restart.')
+            ? (err.message || 'Vertex AI auth failed. Sign in with gcloud or set GOOGLE_APPLICATION_CREDENTIALS, then retry.')
             : "I'm having trouble connecting, please try again in a moment, or chat with us on WhatsApp.";
       send(res, status, { error: code, message });
     }

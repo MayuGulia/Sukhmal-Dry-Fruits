@@ -7,6 +7,7 @@ import ProductCard, { SectionHeader, TrustStrip } from '@/components/shared/Prod
 import { useProducts, ProductSkeleton } from '@/lib/catalog';
 import { getOrderById } from '@/lib/orders';
 import { isHamperLine, orderItemImage } from '@/lib/orderImages';
+import { estimateDeliveryByPincode } from '@/lib/deliveryEstimate';
 import { inr } from '@/lib/utils';
 
 const FALLBACK_IMG = '/brand/byoh-lifestyle.png';
@@ -84,7 +85,10 @@ export default function OrderSuccess() {
   const placedLabel = formatPlacedAt(snap?.placedAt) || remote?.placedAt || new Date().toLocaleString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
-  const eta = snap?.eta || remote?.eta || '2 – 4 Business Days';
+  const pin = snap?.address?.pincode || remote?.address?.pincode;
+  const guess = estimateDeliveryByPincode(pin);
+  const eta = snap?.estimatedDeliveryDate || snap?.eta || remote?.estimatedDeliveryDate || remote?.eta || guess.label;
+  const etaWindow = snap?.estimatedDeliveryWindow || remote?.estimatedDeliveryWindow || guess.window;
   const payLabel = snap?.paymentLabel || 'UPI';
   const isCod = (snap?.paymentMethod || remote?.paymentMethod) === 'cod';
   const totals = snap?.totals || (remote ? { ...remote.summary, total: remote.total } : null);
@@ -210,7 +214,7 @@ export default function OrderSuccess() {
                   <div>
                     <div className="text-[11px] uppercase tracking-wider text-ink-500">Estimated Delivery</div>
                     <div className="font-semibold text-brand-900">{eta}</div>
-                    <div className="text-[11px] text-ink-500 mt-0.5">2 – 4 Business Days</div>
+                    <div className="text-[11px] text-ink-500 mt-0.5">{etaWindow}</div>
                   </div>
                 </div>
               </div>

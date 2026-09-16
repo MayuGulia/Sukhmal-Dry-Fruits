@@ -1,11 +1,13 @@
-import { generateGeminiContent } from './geminiClient.js';
-import { geminiApiKey } from './geminiEnv.js';
+import { envGet } from './geminiEnv.js';
+import { generateVertexContent } from './vertexImage.js';
 
 const ALLOWED_FIELDS = new Set(['inStock', 'stock', 'price', 'isActive', 'isDeleted', 'isBestseller']);
 const PRODUCT_FIELDS = new Set(['isActive', 'isDeleted', 'isBestseller']);
 
-function geminiKey() {
-  return geminiApiKey();
+function vertexInventoryModel() {
+  const configured = String(envGet('GEMINI_MODEL') || '').replace(/^models\//, '');
+  if (/^gemini-2\.5-flash/.test(configured)) return configured;
+  return 'gemini-2.5-flash';
 }
 
 function norm(s) {
@@ -199,12 +201,6 @@ function commandImpliesOutOfStock(command) {
 }
 
 async function callGemini(command, catalog) {
-  const key = geminiKey();
-  if (!key) {
-    const err = new Error('GEMINI_API_KEY is not set on the server');
-    err.code = 'not_configured';
-    throw err;
-  }
 
   const slim = (catalog || []).slice(0, 120).map((p) => ({
     id: p.id,
@@ -243,35 +239,17 @@ Rules:
 - newValue is the TARGET value.
 - Never return only one change when multiple variants or fields are named.`;
 
-  const { text } = await generateGeminiContent({
-    key,
+  const contents = [{ role: 'user', parts: [{ text: prompt }] }];
+  const generationConfig = {
+    temperature: 0.1,
+    responseMimeType: 'application/json',
+  };
+
+  const { text } = await generateVertexContent({
+    contents,
+    generationConfig,
     label: 'ai-inventory',
-    body: {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            changes: {
-              type: 'ARRAY',
-              items: {
-                type: 'OBJECT',
-                properties: {
-                  productName: { type: 'STRING' },
-                  variant: { type: 'STRING' },
-                  field: { type: 'STRING' },
-                  newValue: { type: 'STRING' },
-                },
-                required: ['productName', 'field', 'newValue'],
-              },
-            },
-          },
-          required: ['changes'],
-        },
-      },
-    },
+    model: vertexInventoryModel(),
   });
   return parseGeminiJson(text);
 }
