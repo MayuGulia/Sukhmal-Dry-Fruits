@@ -26,8 +26,8 @@ export function StoreLocator() {
             <div key={s.name} className="sk-card overflow-hidden flex flex-col">
               <div className="aspect-[16/10] bg-cream-200">
                 <img
-                  src={s.photos?.[0] || '/brand/store-storefront.webp'}
-                  alt={`${s.name} storefront`}
+                  src={s.photos?.[0] || '/brand/sukhmal.png'}
+                  alt="Sukhmal Dry Fruits Korner store front, Surajmal Vihar, East Delhi"
                   className="w-full h-full object-cover"
                   loading="lazy"
                   decoding="async"

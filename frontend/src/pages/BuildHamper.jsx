@@ -7,6 +7,7 @@ import { verifiedImg } from '@/data/verifiedImages';
 import { requestHamperPreview } from '@/lib/hamperImageCloud';
 import { saveHamperBuild } from '@/lib/commerceStore';
 import { listHamperBuilderProducts, mapHamperBuilderProduct, subscribeLiveProducts } from '@/lib/liveCatalog';
+import { trackEvent } from '@/lib/analyticsEvents';
 import { HAMPERS } from '@/data/mockCatalog';
 import {
   ArrowLeft, ArrowRight, Sparkles, Plus, Minus, Check, X, Gift, ShieldCheck,
@@ -528,6 +529,12 @@ export default function BuildHamper() {
   useEffect(() => {
     if (!STEPS.includes(stepParam)) nav('/build-hamper/budget', { replace: true });
   }, [stepParam, nav]);
+
+  useEffect(() => {
+    if (step !== 'budget') return undefined;
+    trackEvent('hamper_builder_started', { metadata: { source: 'builder' } });
+    return undefined;
+  }, [step]);
 
   useEffect(() => {
     if (idx <= 0) return;

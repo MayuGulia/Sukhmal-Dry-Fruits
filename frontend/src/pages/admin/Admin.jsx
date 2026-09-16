@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import {
-  LayoutDashboard, ShoppingBag, Package, Sparkles, Wallet, Settings, LogOut,
-  Search, Heart, ExternalLink, ChevronDown, CalendarDays,
+  LayoutDashboard, ShoppingBag, Package, BarChart3, Sparkles, Wallet, Settings, LogOut,
+  Search, Heart, ExternalLink, ChevronDown, CalendarDays, MessageSquareHeart,
   User, Truck, Leaf, Award, Hand, MapPin,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +18,8 @@ const SIDE = [
   { to: '/admin', label: 'Dashboard', Ic: LayoutDashboard, end: true },
   { to: '/admin/orders', label: 'Orders', Ic: ShoppingBag },
   { to: '/admin/products', label: 'Products', Ic: Package },
+  { to: '/admin/analytics', label: 'Analytics', Ic: BarChart3 },
+  { to: '/admin/feedback', label: 'Feedback', Ic: MessageSquareHeart },
   { to: '/admin/ai-inventory', label: 'AI Inventory', Ic: Sparkles },
   { to: '/admin/payments', label: 'Payments', Ic: Wallet },
   { to: '/admin/settings', label: 'Settings', Ic: Settings },
@@ -270,6 +272,11 @@ export function AdminDashboard() {
     { l: 'In Stock', v: String(stats?.inStock ?? 0) },
     { l: 'Out of Stock', v: String(stats?.outOfStock ?? 0) },
   ];
+  const insightCards = [
+    { l: 'Clicks today', v: String(stats?.clicksToday ?? 0), to: '/admin/analytics' },
+    { l: 'Users this month', v: String(stats?.usersMonth ?? 0), to: '/admin/analytics' },
+    { l: 'New feedback', v: String(stats?.feedbackNew ?? 0), to: '/admin/feedback' },
+  ];
 
   return (
     <div>
@@ -301,6 +308,15 @@ export function AdminDashboard() {
             <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-ink-500">{c.l}</div>
             <div className="font-display font-bold text-2xl mt-2 text-brand-900">{c.v}</div>
           </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+        {insightCards.map((c) => (
+          <Link key={c.l} to={c.to} className="rounded-xl border border-line bg-white px-4 py-4 hover:border-brand-900/30 transition">
+            <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-ink-500">{c.l}</div>
+            <div className="font-display font-bold text-2xl mt-2 text-brand-900">{c.v}</div>
+          </Link>
         ))}
       </div>
 

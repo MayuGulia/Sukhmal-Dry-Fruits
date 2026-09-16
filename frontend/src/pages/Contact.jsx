@@ -15,9 +15,9 @@ import { api } from '@/lib/api';
 import { isValidEmail, isValidIndianPhone, stripHtml } from '@/lib/security';
 
 const STORE_GALLERY = [
-  { src: STORE_PHOTOS[0], alt: 'Sukhmal Dry Fruits Korner storefront' },
-  { src: STORE_PHOTOS[1], alt: "Roasted 'N' Salted wall inside the store" },
-  { src: STORE_PHOTOS[2], alt: 'Hand Mixed Blends wall inside the store' },
+  { src: STORE_PHOTOS[0], alt: 'Sukhmal Dry Fruits Korner store front, Surajmal Vihar, East Delhi' },
+  { src: STORE_PHOTOS[1], alt: 'Sukhmal Dry Fruits Korner store front, Surajmal Vihar, East Delhi' },
+  { src: STORE_PHOTOS[2], alt: 'Sukhmal Dry Fruits Korner store front, Surajmal Vihar, East Delhi' },
 ];
 const HERO_IMG = '/brand/contact-hero-hamper.png';
 const BULK_IMG = '/brand/contact-bulk-hamper.png';

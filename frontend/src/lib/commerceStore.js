@@ -476,8 +476,6 @@ export function compactInventoryCatalog(products) {
       isActive: p.isActive !== false,
       isDeleted: Boolean(p.isDeleted),
       isBestseller: Boolean(p.bestseller || p.isBestseller),
-      image: Array.isArray(p.images) ? p.images[0] : (p.img || null),
-      images: Array.isArray(p.images) && p.images[0] ? [p.images[0]] : (p.img ? [p.img] : []),
       weightVariants: variants.map((v) => ({ weight: v.weight, price: v.price, stock: v.stock })),
     };
   });

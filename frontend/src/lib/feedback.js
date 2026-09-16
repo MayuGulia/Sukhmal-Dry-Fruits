@@ -1,11 +1,13 @@
 import {
   addDoc,
   collection,
+  doc,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -36,7 +38,7 @@ export function mapFeedbackDoc(id, data = {}) {
     email: data.email || '',
     rating: Math.min(5, Math.max(1, Number(data.rating) || 5)),
     text: data.text || data.message || '',
-    published: data.published !== false,
+    published: data.published === true,
     createdAt: created,
   };
 }
@@ -60,6 +62,29 @@ export function subscribePublishedFeedback(onRows, onError) {
       onRows([]);
     },
   );
+}
+
+export function subscribeAllFeedback(onRows, onError) {
+  if (!db) {
+    onRows([]);
+    return () => {};
+  }
+  const q = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'), limit(200));
+  return onSnapshot(
+    q,
+    (snap) => onRows(snap.docs.map((d) => mapFeedbackDoc(d.id, d.data()))),
+    (err) => {
+      onError?.(err);
+      onRows([]);
+    },
+  );
+}
+
+export async function setFeedbackPublished(id, published) {
+  if (!db || !id) throw new Error('Could not update this review.');
+  await updateDoc(doc(db, 'feedback', id), {
+    published: Boolean(published),
+  });
 }
 
 export async function submitFeedback({ name, email, rating, text, company = '' }) {
@@ -125,7 +150,7 @@ export async function submitFeedback({ name, email, rating, text, company = '' }
     try {
       await addDoc(collection(db, 'feedback'), {
         ...payload,
-        published: true,
+        published: false,
         createdAt: serverTimestamp(),
         createdAtIso: new Date().toISOString(),
       });

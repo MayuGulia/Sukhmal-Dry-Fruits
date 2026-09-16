@@ -1,5 +1,9 @@
+import { createRequire } from 'node:module';
 import { envGet } from './geminiEnv.js';
 import { generateVertexContent } from './vertexImage.js';
+
+const require = createRequire(import.meta.url);
+const { ASSISTANT_TOOLS, runInventoryTool } = require('./inventoryTools.cjs');
 
 const ALLOWED_FIELDS = new Set(['inStock', 'stock', 'price', 'isActive', 'isDeleted', 'isBestseller']);
 const PRODUCT_FIELDS = new Set(['isActive', 'isDeleted', 'isBestseller']);
@@ -200,22 +204,79 @@ function commandImpliesOutOfStock(command) {
   return /out of stock|\boos\b|unavailable/.test(String(command || '').toLowerCase());
 }
 
-async function callGemini(command, catalog) {
+const GREETING_RE = /^(hi|hii+|hello|hey|namaste|yo|hola|good\s+(morning|afternoon|evening))\b/i;
 
-  const slim = (catalog || []).slice(0, 120).map((p) => ({
-    id: p.id,
-    slug: p.slug,
+export function greetingAnswer() {
+  return 'Hi — I’m Sukhmal’s inventory assistant. I can check today’s revenue, list low-stock products, summarise the cart-to-checkout funnel, and preview stock or price changes before anything is written. Try “what’s today’s revenue”, “which products are low in stock”, or “set almonds 250g price to ₹399”.';
+}
+
+function slimCatalog(catalog) {
+  return (catalog || []).slice(0, 80).map((p) => ({
     name: p.name,
-    category: p.category,
+    slug: p.slug,
     price: p.price,
     weightVariants: (p.weightVariants || []).map((v) => ({
       weight: v.weight,
       price: v.price,
       stock: v.stock,
-      inStock: (v.stock ?? 0) > 0,
     })),
   }));
+}
 
+const SYSTEM_PROMPT = `You are the admin assistant for Sukhmal Dry Fruits Korner.
+Use tools for business questions and catalog writes. Reply in concise plain English.
+For greetings, introduce what you can do and do not call tools.
+For revenue, orders, low stock, top products, website funnel, or how many products are in a category (including “total stock of dry fruits”), call the matching tool then answer from the tool result. For category questions, report the product COUNT, never kilograms.
+For stock or price updates (Hindi or English), call updateStock and/or updatePrice. Never claim the change is already saved.
+If a write tool returns proposed:true, tell the admin to review the preview table and tap Apply.
+Use catalog names from the prompt. Do not invent products.`;
+
+async function callAssistant(command, catalog) {
+  const slim = looksLikeWrite(command) ? slimCatalog(catalog) : [];
+  const catalogBlock = slim.length ? `\n\nCatalog:\n${JSON.stringify(slim)}` : '';
+  const contents = [{
+    role: 'user',
+    parts: [{
+      text: `Command: ${JSON.stringify(command)}${catalogBlock}`,
+    }],
+  }];
+  const toolsUsed = [];
+  const proposed = [];
+
+  for (let round = 0; round < 2; round += 1) {
+    const result = await generateVertexContent({
+      contents,
+      systemInstruction: SYSTEM_PROMPT,
+      tools: ASSISTANT_TOOLS,
+      generationConfig: { temperature: 0.1, maxOutputTokens: 512 },
+      label: 'ai-inventory',
+      model: vertexInventoryModel(),
+      allowEmpty: true,
+    });
+    const calls = result.functionCalls || [];
+    if (!calls.length) {
+      return { text: result.text || '', toolsUsed, proposed };
+    }
+    contents.push({ role: 'model', parts: result.parts });
+    const responseParts = [];
+    for (const call of calls) {
+      const output = await runInventoryTool(call.name, call.args, catalog);
+      toolsUsed.push(call.name);
+      if (output?.proposed) proposed.push(output);
+      responseParts.push({
+        functionResponse: {
+          name: call.name,
+          response: output && typeof output === 'object' ? output : { result: output },
+        },
+      });
+    }
+    contents.push({ role: 'user', parts: responseParts });
+  }
+  return { text: 'I looked that up. Ask me to Preview again if you need a shorter summary.', toolsUsed, proposed };
+}
+
+async function callGeminiLegacy(command, catalog) {
+  const slim = slimCatalog(catalog);
   const prompt = `You are the inventory manager for Sukhmal Dry Fruits Korner.
 Parse the admin's Hindi-English command into EVERY field change and EVERY pack size mentioned.
 
@@ -239,16 +300,10 @@ Rules:
 - newValue is the TARGET value.
 - Never return only one change when multiple variants or fields are named.`;
 
-  const contents = [{ role: 'user', parts: [{ text: prompt }] }];
-  const generationConfig = {
-    temperature: 0.1,
-    responseMimeType: 'application/json',
-  };
-
   const { text } = await generateVertexContent({
-    contents,
-    generationConfig,
-    label: 'ai-inventory',
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 800 },
+    label: 'ai-inventory-json',
     model: vertexInventoryModel(),
   });
   return parseGeminiJson(text);
@@ -343,6 +398,155 @@ function dedupeRows(rows) {
   return out;
 }
 
+function rowsFromProposed(proposed, command, catalog) {
+  return (proposed || []).flatMap((row) => expandRow({
+    productName: row.productName,
+    variant: row.variant,
+    field: row.field,
+    newValue: row.newValue,
+  }, command, catalog));
+}
+
+function looksLikeWrite(command) {
+  const t = String(command || '').trim();
+  if (/^(what|which|how many|show|list|tell me|kaun|kitna|kya)\b/i.test(t)) return false;
+  return /price|₹|set |update |instock|in stock|out of stock|\boos\b|unavailable|isactive|bestseller|delete/i.test(t);
+}
+
+function extractCategoryFromCommand(command) {
+  const t = String(command || '').toLowerCase();
+  if (/dry[\s_-]*fruits?/.test(t)) return 'dry-fruits';
+  if (/gift[\s_-]*hampers?|\bhampers?\b/.test(t)) return 'gift-hampers';
+  if (/\bnuts?\b/.test(t)) return 'nuts';
+  if (/\bseeds?\b/.test(t)) return 'seeds';
+  if (/\bdates?\b/.test(t)) return 'dates';
+  if (/\bberr(?:y|ies)\b/.test(t)) return 'berries';
+  if (/all products|whole catalog|entire catalog/.test(t)) return 'all';
+  return '';
+}
+
+function looksLikeCategoryCount(command) {
+  const t = String(command || '').toLowerCase();
+  if (/^(set|update|make)\b/.test(t) || /out of stock|\boos\b|₹/.test(t)) return false;
+  if (!extractCategoryFromCommand(command)) return false;
+  return /how many|total|kitne|kitna|count|stock|product|categor/.test(t);
+}
+
+function looksLikeLookup(command) {
+  const t = String(command || '').toLowerCase();
+  if (looksLikeCategoryCount(command)) return 'getCategorySummary';
+  if (looksLikeWrite(command)) return '';
+  if (/revenue|sales|kitna.*(aaya|kamaya|sale)/i.test(t)) return 'getRevenue';
+  if (/orders? today|aaj.*order/i.test(t)) return 'getOrdersToday';
+  if (/low.?stock|kam stock|out of stock list|khatam|khatm/i.test(t)) return 'getLowStock';
+  if (/top (sell|product)|sabse.*(bik|zyada)/i.test(t)) return 'getTopProducts';
+  if (/funnel|visitor|website analytic|traffic|clicks/i.test(t)) return 'getWebsiteAnalyticsSummary';
+  return '';
+}
+
+function rupee(n) {
+  return `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
+}
+
+function formatToolAnswer(name, data) {
+  if (!data || data.error) return data?.error || 'Could not load that figure.';
+  if (name === 'getRevenue' || name === 'getOrdersToday') {
+    return `${data.dateRange || 'today'}: ${rupee(data.revenue)} paid from ${data.paidOrders} paid orders (${data.orderCount} total).`;
+  }
+  if (name === 'getLowStock') {
+    if (!data.count) return `Nothing at or below ${data.threshold} units.`;
+    const lines = (data.items || []).slice(0, 12).map((row) => (
+      `${row.productName}${row.variant ? ` ${row.variant}` : ''}: ${row.stock}`
+    ));
+    return `${data.count} low-stock packs:\n${lines.join('\n')}`;
+  }
+  if (name === 'getTopProducts') {
+    const lines = (data.items || []).map((row, i) => (
+      `${i + 1}. ${row.name}: ${row.units} units, ${rupee(row.revenue)}`
+    ));
+    return lines.length ? `Top sellers (${data.dateRange}):\n${lines.join('\n')}` : 'No paid sales in that range yet.';
+  }
+  if (name === 'getWebsiteAnalyticsSummary') {
+    if (data.empty) return data.message || 'No website analytics yet.';
+    return [
+      `Visitors: ${data.uniqueVisitors} unique, ${data.returningVisitors} returning.`,
+      `Funnel: ${data.funnel?.productView || 0} views → ${data.funnel?.addToCart || 0} carts → ${data.funnel?.checkoutStarted || 0} checkouts → ${data.funnel?.orderPlaced || 0} orders.`,
+    ].join('\n');
+  }
+  if (name === 'getCategorySummary') {
+    const label = data.label || 'this category';
+    const count = Number(data.productCount) || 0;
+    if (!count) return `There are no products in the ${label} category.`;
+    const samples = (data.names || []).slice(0, 8);
+    const extra = samples.length ? `\nExamples: ${samples.join(', ')}.` : '';
+    return `The ${label} category has ${count} products.${extra}`;
+  }
+  return JSON.stringify(data);
+}
+
+function extractStockQty(command) {
+  const m = String(command || '').match(/(?:stock|qty|quantity)\s*(?:to|=|:)?\s*(\d{1,5})/i)
+    || String(command || '').match(/(\d{1,5})\s*(?:units?|pcs|pieces)/i);
+  return m ? Number(m[1]) : null;
+}
+
+function localWriteRows(command, catalog) {
+  const product = fuzzyFindProduct(catalog, command);
+  if (!product) return [];
+  const lower = String(command || '').toLowerCase();
+  const seed = [];
+  const paired = extractPairedPrices(command);
+  const priceHit = String(command || '').match(/(?:₹|rs\.?|price)\s*(?:to|=|:)?\s*(\d{2,5})/i);
+  if (paired || priceHit) {
+    seed.push({
+      productName: product.name,
+      field: 'price',
+      newValue: paired ? paired[0] : Number(priceHit[1]),
+      variant: '',
+    });
+  }
+  if (/in\s*stock|instock|out of stock|\boos\b|unavailable|available/.test(lower)) {
+    seed.push({
+      productName: product.name,
+      field: 'inStock',
+      newValue: commandImpliesOutOfStock(command) ? false : true,
+      variant: '',
+    });
+  }
+  const qty = extractStockQty(command);
+  if (qty != null) {
+    seed.push({ productName: product.name, field: 'stock', newValue: qty, variant: '' });
+  }
+  if (/bestseller/.test(lower)) {
+    seed.push({
+      productName: product.name,
+      field: 'isBestseller',
+      newValue: !/\bnot\b|nahi|remove|unmark/.test(lower),
+    });
+  }
+  if (!seed.length) return [];
+  return dedupeRows(ensureStockAndPriceCoverage(
+    command,
+    catalog,
+    seed.flatMap((row) => expandRow(row, command, catalog)),
+  ));
+}
+
+async function localLookup(command, catalog) {
+  const tool = looksLikeLookup(command);
+  if (!tool) return null;
+  const args = tool === 'getCategorySummary'
+    ? { category: extractCategoryFromCommand(command) || 'all' }
+    : {};
+  const output = await runInventoryTool(tool, args, catalog);
+  return {
+    mode: 'answer',
+    answer: formatToolAnswer(tool, output),
+    rows: [],
+    toolsUsed: [tool],
+  };
+}
+
 export async function previewInventoryCommand(command, catalog) {
   const text = String(command || '').trim();
   if (!text) {
@@ -350,31 +554,58 @@ export async function previewInventoryCommand(command, catalog) {
     err.code = 'bad_request';
     throw err;
   }
-  if (!Array.isArray(catalog) || !catalog.length) {
-    const err = new Error('No products available to look up');
-    err.code = 'bad_request';
-    throw err;
+  if (GREETING_RE.test(text) && text.length < 24) {
+    return { mode: 'answer', answer: greetingAnswer(), rows: [], toolsUsed: [] };
   }
 
-  const parsed = await callGemini(text, catalog);
-  const rawRows = rowsFromGemini(parsed);
-  if (!rawRows.length) {
-    const err = new Error('Gemini did not propose a product change');
-    err.code = 'bad_request';
-    throw err;
+  const catalogRows = Array.isArray(catalog) ? catalog : [];
+
+  const localAnswer = await localLookup(text, catalogRows);
+  if (localAnswer) return localAnswer;
+
+  if (looksLikeWrite(text)) {
+    const localRows = localWriteRows(text, catalogRows);
+    if (localRows.length) {
+      return {
+        mode: 'changes',
+        answer: 'Preview of the catalog change. Nothing is written until you tap Apply.',
+        rows: localRows,
+        toolsUsed: ['local'],
+      };
+    }
   }
 
-  let expanded = rawRows.flatMap((row) => expandRow(row, text, catalog));
-  expanded = ensureStockAndPriceCoverage(text, catalog, expanded);
-  expanded = dedupeRows(expanded);
-
-  if (!expanded.length) {
-    const err = new Error(`No product matched "${rawRows[0]?.productName || text}"`);
-    err.code = 'no_match';
+  try {
+    const assistant = await callAssistant(text, catalogRows);
+    let expanded = dedupeRows(rowsFromProposed(assistant.proposed, text, catalogRows));
+    if (!expanded.length && looksLikeWrite(text) && !assistant.proposed.length && !assistant.text) {
+      try {
+        const parsed = await callGeminiLegacy(text, catalogRows);
+        expanded = dedupeRows(
+          ensureStockAndPriceCoverage(text, catalogRows, rowsFromGemini(parsed).flatMap((row) => expandRow(row, text, catalogRows))),
+        );
+      } catch {}
+    }
+    if (expanded.length) {
+      return {
+        mode: 'changes',
+        answer: assistant.text || '',
+        rows: expanded,
+        toolsUsed: assistant.toolsUsed,
+      };
+    }
+    return {
+      mode: 'answer',
+      answer: assistant.text || greetingAnswer(),
+      rows: [],
+      toolsUsed: assistant.toolsUsed,
+    };
+  } catch (err) {
+    if (GREETING_RE.test(text)) {
+      return { mode: 'answer', answer: greetingAnswer(), rows: [], toolsUsed: [] };
+    }
     throw err;
   }
-
-  return { rows: expanded };
 }
 
 export function buildPreviewPayload(result) {
@@ -393,7 +624,11 @@ export function buildPreviewPayload(result) {
     newValue: row.newValue,
     noop: !row.changed,
   }));
+  const mode = result.mode || (changes.length ? 'changes' : 'answer');
   return {
+    mode,
+    answer: result.answer || '',
+    toolsUsed: result.toolsUsed || [],
     changes,
     hasChanges: changes.some((c) => !c.noop),
   };

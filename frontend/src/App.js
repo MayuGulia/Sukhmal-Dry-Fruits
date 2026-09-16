@@ -35,6 +35,8 @@ const AdminDashboard = React.lazy(() => import('@/pages/admin/Admin').then((m) =
 const AdminProducts = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminProducts })));
 const AdminOrders = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminOrders })));
 const AdminInventory = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminInventory })));
+const AdminAnalytics = React.lazy(() => import('@/pages/admin/AdminAnalytics').then((m) => ({ default: m.AdminAnalytics })));
+const AdminFeedback = React.lazy(() => import('@/pages/admin/AdminFeedback').then((m) => ({ default: m.AdminFeedback })));
 const AdminPayments = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminPayments })));
 const AdminSettings = React.lazy(() => import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminSettings })));
 
@@ -75,6 +77,8 @@ export default function App() {
                   <Route index element={<AdminDashboard />} />
                   <Route path="products" element={<AdminProducts />} />
                   <Route path="orders" element={<AdminOrders />} />
+                  <Route path="analytics" element={<AdminAnalytics />} />
+                  <Route path="feedback" element={<AdminFeedback />} />
                   <Route path="ai-inventory" element={<AdminInventory />} />
                   <Route path="inventory" element={<AdminInventory />} />
                   <Route path="payments" element={<AdminPayments />} />

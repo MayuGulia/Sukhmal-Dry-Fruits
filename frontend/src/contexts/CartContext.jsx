@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { cartItemImage } from '@/lib/orderImages';
+import { trackEvent } from '@/lib/analyticsEvents';
 
 const CartCtx = createContext(null);
 const LS_KEY = 'sk_cart_v1';
@@ -31,6 +32,15 @@ export const CartProvider = ({ children }) => {
   }, [items, coupon, hydrated]);
 
   const add = (p, { qty = 1, variant, source = 'product', meta } = {}) => {
+    trackEvent('add_to_cart', {
+      productId: p?.id || p?.slug || null,
+      metadata: {
+        name: p?.name || '',
+        qty,
+        price: (variant && variant.price) || p?.price || 0,
+        source,
+      },
+    });
     setItems((cur) => {
       const key = cartLineKey(p, { variant, source });
       const exist = cur.find((x) => x.key === key);

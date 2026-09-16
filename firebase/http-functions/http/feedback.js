@@ -32,7 +32,7 @@ const feedback = httpsFn(async (req, res) => {
     email: parsed.email,
     text: parsed.text,
     rating: parsed.rating,
-    published: true,
+    published: false,
     source: 'homepage',
   };
 

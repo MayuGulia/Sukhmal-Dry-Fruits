@@ -9,6 +9,7 @@ import FlourishTitle from '@/components/home/FlourishTitle';
 import HomeFeedback from '@/components/home/HomeFeedback';
 import { useProducts, ProductSkeleton } from '@/lib/catalog';
 import { TESTIMONIALS } from '@/data/mockContent';
+import { subscribePublishedFeedback } from '@/lib/feedback';
 import { aiApi } from '@/lib/api';
 import {
   SHOP_CATEGORY_TILES,
@@ -24,6 +25,15 @@ import {
 import { STORE_INSTAGRAM, STORE_INSTAGRAM_HANDLE } from '@/data/storeInfo';
 
 const ANIMATED_TILES = new Set(['Gift Hampers', 'Festive Gift Hampers']);
+
+function initials(name) {
+  return String(name || 'G')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase();
+}
 
 function useSoftIn() {
   const ref = useRef(null);
@@ -120,6 +130,9 @@ export default function Home() {
   const [aiPreview, setAiPreview] = useState(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [liveReviews, setLiveReviews] = useState([]);
+
+  useEffect(() => subscribePublishedFeedback(setLiveReviews), []);
 
   const generateImage = async (e) => {
     e.preventDefault();
@@ -139,7 +152,7 @@ export default function Home() {
     }
   };
 
-  const reviews = TESTIMONIALS.slice(0, 4);
+  const reviews = (liveReviews.length ? liveReviews : TESTIMONIALS).slice(0, 4);
 
   return (
     <div className="home-page bg-white">
@@ -406,7 +419,7 @@ export default function Home() {
           />
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5" data-testid="testimonials">
             {reviews.map((t, i) => (
-              <article key={i} className="bg-white rounded-2xl border border-[var(--sk-line)] p-5 md:p-6 flex flex-col shadow-sk-sm">
+              <article key={t.id || t.name || i} className="bg-white rounded-2xl border border-[var(--sk-line)] p-5 md:p-6 flex flex-col shadow-sk-sm">
                 <div className="flex items-center gap-0.5 text-[var(--sk-star)] mb-3">
                   {Array.from({ length: 5 }).map((_, j) => (
                     <Star key={j} size={14} className={j < t.rating ? 'fill-current' : 'opacity-20'} />
@@ -414,11 +427,17 @@ export default function Home() {
                 </div>
                 <p className="text-[13px] md:text-[14px] leading-relaxed text-ink-600 italic flex-1">“{t.text}”</p>
                 <div className="mt-5 flex items-center gap-3 pt-4 border-t border-[var(--sk-line)]">
-                  <img src={t.avatar} alt={t.name} className="w-11 h-11 rounded-full object-cover" loading="lazy" />
+                  {t.avatar ? (
+                    <img src={t.avatar} alt={t.name} className="w-11 h-11 rounded-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-[var(--sk-espresso)] text-white text-[12px] font-semibold grid place-items-center">
+                      {initials(t.name)}
+                    </div>
+                  )}
                   <div>
                     <div className="font-semibold text-brand-900 text-[13px]">{t.name}</div>
                     <div className="text-[11px] text-[var(--sk-gold-600)] font-semibold inline-flex items-center gap-1 mt-0.5">
-                      <ShieldCheck size={12} /> Verified Buyer
+                      <ShieldCheck size={12} /> {t.id ? 'Customer review' : 'Verified Buyer'}
                     </div>
                   </div>
                 </div>

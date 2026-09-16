@@ -7,6 +7,7 @@ import MobileBottomNav from './MobileBottomNav';
 import HamburgerDrawer from './HamburgerDrawer';
 import WhatsAppFloat from './WhatsAppFloat';
 import GiftAdvisor from '@/components/ai/GiftAdvisor';
+import AnalyticsTracker from '@/components/analytics/AnalyticsTracker';
 import RouteSeo from '@/seo/RouteSeo';
 
 export default function AppLayout({ children }) {
@@ -34,6 +35,7 @@ export default function AppLayout({ children }) {
   return (
     <div className="min-h-screen flex flex-col">
       <RouteSeo />
+      <AnalyticsTracker />
       <div
         className={`sticky top-0 z-40 bg-white shadow-[0_1px_0_rgba(31,22,16,0.06)] transition-transform duration-300 ease-out will-change-transform ${
           chromeHidden ? '-translate-y-full' : 'translate-y-0'

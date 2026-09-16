@@ -6,6 +6,7 @@ import { compactInventoryCatalog, getLiveProducts } from '@/lib/commerceStore';
 import { aiApi } from '@/lib/api';
 import { inr } from '@/lib/utils';
 import { HAMPERS as MOCK_HAMPERS } from '@/data/mockCatalog';
+import { trackEvent } from '@/lib/analyticsEvents';
 
 import { storeWhatsAppNumber } from '@/data/storeInfo';
 
@@ -106,6 +107,7 @@ export default function GiftAdvisor() {
     }
     countRef.current += 1;
     setInput('');
+    trackEvent('ai_widget_used', { metadata: { length: text.length } });
     const history = [...messages, { role: 'user', text }].slice(-12);
     setMessages(history);
     setBusy(true);

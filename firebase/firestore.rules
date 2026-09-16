@@ -99,7 +99,8 @@ service cloud.firestore {
         && request.resource.data.text.size() <= 600
         && request.resource.data.rating is number
         && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5;
+        && request.resource.data.rating <= 5
+        && request.resource.data.get('published', false) == false;
       allow update, delete: if isAdmin();
     }
 
@@ -132,6 +133,33 @@ service cloud.firestore {
       allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.userId);
+    }
+
+    match /analytics_events/{id} {
+      allow create: if request.resource.data.keys().hasOnly([
+          'event_type', 'session_id', 'user_id', 'product_id', 'page',
+          'timestamp', 'day', 'metadata', 'returning'
+        ])
+        && request.resource.data.event_type in [
+          'page_view', 'product_view', 'add_to_cart', 'wishlist_add',
+          'checkout_started', 'order_placed', 'hamper_builder_started', 'ai_widget_used'
+        ]
+        && request.resource.data.session_id is string
+        && request.resource.data.session_id.size() >= 8
+        && request.resource.data.session_id.size() <= 80
+        && request.resource.data.page is string
+        && request.resource.data.page.size() < 200
+        && request.resource.data.timestamp == request.time;
+      allow read: if isStaff();
+      allow update, delete: if false;
+    }
+    match /analytics_daily/{id} {
+      allow read: if isStaff();
+      allow write: if false;
+    }
+    match /analytics_monthly/{id} {
+      allow read: if isStaff();
+      allow write: if false;
     }
   }
 }

@@ -10,6 +10,7 @@ import { inr, cn } from '@/lib/utils';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { PremiumHamperCard } from '@/pages/GiftHampers';
 import AddToCartButton, { hamperAsProduct, hamperVariant } from '@/components/shared/AddToCartButton';
+import { trackEvent } from '@/lib/analyticsEvents';
 
 const DETAIL_BULLETS = [
   'Perfect for weddings and engagements',
@@ -74,6 +75,11 @@ export default function GiftHamperDetail() {
   useEffect(() => {
     setImgIdx(0);
   }, [slug]);
+
+  useEffect(() => {
+    if (!h) return;
+    trackEvent('product_view', { productId: h.id || h.slug, metadata: { name: h.name, type: 'hamper' } });
+  }, [h]);
 
   if (loading || !h) {
     return (

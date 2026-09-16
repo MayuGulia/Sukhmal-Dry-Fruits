@@ -7,6 +7,7 @@ import { inr } from '@/lib/utils';
 import { attachRazorpayOrderId, createCustomerOrder, saveUserAddresses } from '@/lib/orders';
 import { orderItemImage, isHamperLine } from '@/lib/orderImages';
 import { estimateDeliveryByPincode } from '@/lib/deliveryEstimate';
+import { trackEvent } from '@/lib/analyticsEvents';
 import { useUserProfile } from '@/hooks/useAccountData';
 import { api } from '@/lib/api';
 import {
@@ -148,6 +149,10 @@ export default function Checkout() {
   useEffect(() => {
     if (!address && addresses[0]?.id) setAddress(addresses[0].id);
   }, [addresses, address]);
+
+  useEffect(() => {
+    trackEvent('checkout_started', { metadata: { itemCount: count, cartValue: totals?.total || 0 } });
+  }, []);
 
   // Guests must log in — never silent auto-login
   useEffect(() => {

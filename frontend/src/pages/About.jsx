@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 const HERO_IMG = '/brand/about-hero-family.png';
-const FOUNDER_IMG = '/brand/about-founder-portrait.png';
+const STORE_IMG = '/brand/sukhmal.png';
 const QUOTE_IMG = '/brand/about-quote-nuts.png';
 const CTA_IMG = '/brand/about-thankyou-nuts.png';
 
@@ -89,33 +89,31 @@ export default function About() {
         </div>
       </section>
 
-      {/* FOUNDER STORY */}
+      {/* OUR STORE */}
       <section className="sk-container py-14 md:py-20">
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
           <div className="lg:col-span-4">
             <img
-              src={FOUNDER_IMG}
-              alt="Saurabh Malhotra, Founder"
+              src={STORE_IMG}
+              alt="Sukhmal Dry Fruits Korner store front, Surajmal Vihar, East Delhi"
               className="w-full h-full min-h-[320px] object-cover rounded-2xl border border-line shadow-[var(--sk-shadow-md)]"
             />
           </div>
           <div className="lg:col-span-5 flex flex-col justify-center">
-            <div className="sk-section-eyebrow">FOUNDER&apos;S NOTE</div>
-            <h2 className="sk-section-title text-3xl md:text-4xl mt-2">A Dream Rooted in Passion</h2>
+            <div className="sk-section-eyebrow">OUR STORE</div>
+            <h2 className="sk-section-title text-3xl md:text-4xl mt-2">Where It All Began</h2>
             <p className="text-ink-600 mt-4 leading-relaxed">
-              Sukhmal was born from a simple belief — that every family deserves access to the
-              freshest, purest dry fruits, sourced with honesty and packed with care. What began
-              as a small shop has become a promise we renew with every order.
-            </p>
-            <p className="text-ink-600 mt-3 leading-relaxed">
-              Purity, freshness, and trust aren&apos;t marketing words for us. They are how we
-              source, sort, pack, and ship — every single day.
+              Tucked in the heart of Surajmal Vihar, East Delhi, our store has been the beating
+              heart of Sukhmal since day one. Every jar, every hamper, every order that reaches
+              you starts right here — hand-sorted, hand-packed, and checked by our team before
+              it leaves the shelf. What began as a small neighbourhood shop is now trusted by
+              20,000+ customers and 500+ corporate clients — but the counter, the care, and
+              the family behind it haven&apos;t changed.
             </p>
             <div className="mt-6 pt-4 border-t border-line">
               <div className="font-display text-2xl italic text-brand-900" style={{ fontFamily: 'cursive, "Playfair Display", serif' }}>
-                Saurabh Malhotra
+                Run by the Malhotra family, since day one.
               </div>
-              <div className="text-[12px] text-ink-500 mt-0.5">Founder, Sukhmal Dry Fruits Korner</div>
             </div>
           </div>
           <div className="lg:col-span-3">

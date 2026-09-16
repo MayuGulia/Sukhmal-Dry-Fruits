@@ -159,7 +159,7 @@ export default function HomeFeedback() {
                 </div>
                 <div className="font-display font-semibold text-[#4A2E1E] text-2xl mt-4">Thank you!</div>
                 <p className="text-[#6F6A62] mt-2 text-sm leading-relaxed max-w-md mx-auto">
-                  Your review has been sent to our team and may appear with other customer stories on this page.
+                  Your review has been sent to our team. We’ll share it on the website after we read it.
                 </p>
                 <button
                   type="button"
@@ -268,14 +268,14 @@ export default function HomeFeedback() {
                   <div className="font-display font-semibold text-[#4A2E1E] text-[1.15rem] leading-snug">
                     Recent notes from customers
                   </div>
-                  <p className="text-[#6F6A62] text-[13px] mt-1">Live reviews from this page, shown as they come in.</p>
+                  <p className="text-[#6F6A62] text-[13px] mt-1">Reviews our team has shared from this page.</p>
                 </div>
               </div>
 
               <div className="mt-5 space-y-3" data-testid="feedback-live">
                 {live.length === 0 && (
                   <p className="text-[14px] text-[#6F6A62] leading-relaxed italic">
-                    “Be the first to share a review here. Star ratings and a few kind words help other families choose with confidence.”
+                    “New reviews appear here after our team shares them.”
                   </p>
                 )}
                 {live.slice(0, 4).map((row) => (

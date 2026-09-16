@@ -46,7 +46,7 @@ function send(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-const GEMINI_MODULE_BUST = 'firebase-http-ai-v5-vertex-inventory';
+const GEMINI_MODULE_BUST = 'firebase-http-ai-v11-category-count';
 const firebaseAiDir = path.join(__dirname, '../../firebase/http-functions/_shared/ai');
 const helperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiInventory.js')).href}?v=${GEMINI_MODULE_BUST}`;
 const giftHelperUrl = `${pathToFileURL(path.join(firebaseAiDir, 'geminiGiftAdvisor.js')).href}?v=${GEMINI_MODULE_BUST}`;

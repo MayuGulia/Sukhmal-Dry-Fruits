@@ -17,6 +17,7 @@ import { api } from '@/lib/api';
 import { CATEGORIES } from '@/data/mockCatalog';
 import { STORE_WHATSAPP } from '@/data/storeInfo';
 import { productGalleryImages } from '@/lib/liveCatalog';
+import { trackEvent } from '@/lib/analyticsEvents';
 
 const TRUST = [
   { Ic: Leaf, l: '100% Natural', s: 'No Preservatives' },
@@ -481,6 +482,7 @@ export default function PDP() {
 
   useEffect(() => {
     if (!p) return;
+    trackEvent('product_view', { productId: p.id || p.slug, metadata: { name: p.name } });
     const next = packVariants(p);
     setVariantW((w) => (w && next.some((v) => v.w === w) ? w : (pickDefaultVariant(next)?.w || next[0]?.w || null)));
   }, [p]);

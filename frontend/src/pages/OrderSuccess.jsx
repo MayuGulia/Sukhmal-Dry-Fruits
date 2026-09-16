@@ -9,6 +9,7 @@ import { getOrderById } from '@/lib/orders';
 import { isHamperLine, orderItemImage } from '@/lib/orderImages';
 import { estimateDeliveryByPincode } from '@/lib/deliveryEstimate';
 import { inr } from '@/lib/utils';
+import { trackEvent } from '@/lib/analyticsEvents';
 
 const FALLBACK_IMG = '/brand/byoh-lifestyle.png';
 
@@ -56,6 +57,10 @@ export default function OrderSuccess() {
   const [remote, setRemote] = useState(null);
 
   const snap = useMemo(() => loadOrderSnap(orderId), [orderId]);
+
+  useEffect(() => {
+    trackEvent('order_placed', { productId: orderId, metadata: { orderId } });
+  }, [orderId]);
 
   useEffect(() => {
     const t = requestAnimationFrame(() => setCelebrate(true));

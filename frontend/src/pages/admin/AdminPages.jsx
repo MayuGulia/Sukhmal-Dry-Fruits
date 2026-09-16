@@ -99,8 +99,8 @@ export function AdminInventory() {
     <div>
       <h1 className="font-display text-3xl font-bold mb-2">AI Inventory</h1>
       <p className="text-sm text-ink-500 mb-4">
-        Type a stock or price command, then Preview. Apply writes to Firestore only after you confirm.
-        If Preview fails, restart the frontend so the Gemini route can load.
+        Ask a business question or type a stock/price command, then Preview.
+        Write commands still need Apply before anything is saved to Firestore.
       </p>
       <AiInventoryBar onApplied={() => window.dispatchEvent(new Event('sk-catalog-updated'))} />
     </div>

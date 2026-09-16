@@ -31,7 +31,12 @@ export function vertexProject() {
 }
 
 export function vertexLocation() {
-  return envGet('GOOGLE_CLOUD_LOCATION') || envGet('GOOGLE_CLOUD_LOCATION') || 'global';
+  return envGet('GOOGLE_CLOUD_LOCATION') || envGet('GOOGLE_CLOUD_LOCATION') || 'us-central1';
+}
+
+export function vertexLocationCandidates() {
+  const primary = vertexLocation();
+  return [...new Set([primary, 'us-central1', 'global'].filter(Boolean))];
 }
 
 export function vertexImageModel() {
@@ -270,43 +275,82 @@ function textFromParts(parts) {
   return (parts || []).map((part) => part.text || '').join('\n').trim();
 }
 
-export async function generateVertexContent({ contents, generationConfig, label = 'vertex-text', model: modelOverride }) {
+function functionCallsFromParts(parts) {
+  return (parts || [])
+    .map((part) => part.functionCall || part.function_call)
+    .filter(Boolean)
+    .map((call) => {
+      let args = call.args || call.arguments || {};
+      if (typeof args === 'string') {
+        try { args = JSON.parse(args); } catch { args = {}; }
+      }
+      return { name: call.name, args: args && typeof args === 'object' ? args : {} };
+    });
+}
+
+function isPredictDenied(status, message) {
+  return status === 403 || /PERMISSION_DENIED|aiplatform\.endpoints\.predict/i.test(message || '');
+}
+
+export async function generateVertexContent({
+  contents,
+  generationConfig,
+  systemInstruction,
+  tools,
+  toolConfig,
+  label = 'vertex-text',
+  model: modelOverride,
+  allowEmpty = false,
+}) {
   const project = vertexProject();
-  const location = vertexLocation();
   const model = String(modelOverride || vertexTextModel() || 'gemini-2.5-flash').replace(/^models\//, '');
   const token = await vertexAccessToken();
-  const url = vertexGenerateUrl(project, location, model);
-
-  console.log(`[Sukhmal Gemini] ${label} vertex=oauth project=${project} location=${location} model=${model}`);
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents,
-      generationConfig: generationConfig || { temperature: 0.4 },
-    }),
-    signal: AbortSignal.timeout(60000),
-  });
-
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = json?.error?.message || `Vertex HTTP ${res.status}`;
-    console.warn(`[Sukhmal Gemini] ${label} vertex failed status=${res.status} message=${String(msg).slice(0, 300)}`);
-    throw apiError(res.status, msg);
+  const locations = vertexLocationCandidates();
+  const body = {
+    contents,
+    generationConfig: generationConfig || { temperature: 0.4 },
+  };
+  if (systemInstruction) {
+    body.systemInstruction = typeof systemInstruction === 'string'
+      ? { parts: [{ text: systemInstruction }] }
+      : systemInstruction;
   }
+  if (tools?.length) body.tools = tools;
+  if (toolConfig) body.toolConfig = toolConfig;
 
-  const text = textFromParts(json?.candidates?.[0]?.content?.parts);
-  if (!text) {
-    const err = new Error('Vertex Gemini returned an empty reply');
-    err.code = 'gemini_error';
-    throw err;
+  let lastErr = null;
+  for (const location of locations) {
+    const url = vertexGenerateUrl(project, location, model);
+    console.log(`[Sukhmal Gemini] ${label} vertex=oauth project=${project} location=${location} model=${model}`);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = json?.error?.message || `Vertex HTTP ${res.status}`;
+      console.warn(`[Sukhmal Gemini] ${label} vertex failed location=${location} status=${res.status} message=${String(msg).slice(0, 300)}`);
+      lastErr = apiError(res.status, msg);
+      if (isPredictDenied(res.status, msg) && location !== locations[locations.length - 1]) continue;
+      throw lastErr;
+    }
+    const parts = json?.candidates?.[0]?.content?.parts || [];
+    const text = textFromParts(parts);
+    const functionCalls = functionCallsFromParts(parts);
+    if (!text && !functionCalls.length && !allowEmpty) {
+      const err = new Error('Vertex Gemini returned an empty reply');
+      err.code = 'gemini_error';
+      throw err;
+    }
+    console.log(`[Sukhmal Gemini] ${label} ok model=${model} location=${location} chars=${text.length} calls=${functionCalls.length}`);
+    return { text, functionCalls, parts, model, apiVersion: 'vertex', location };
   }
-  console.log(`[Sukhmal Gemini] ${label} ok model=${model} api=vertex-oauth chars=${text.length}`);
-  return { text, model, apiVersion: 'vertex' };
+  throw lastErr || new Error('Vertex Gemini request failed');
 }
 
 /** Same parts layout as Studio generateContentParts() in geminiClient.js. */

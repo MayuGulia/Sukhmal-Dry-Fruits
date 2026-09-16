@@ -64,6 +64,10 @@ export function AiInventoryBar({ onApplied }) {
     setBusy(true);
     try {
       const data = await adminApi.previewInventory(command);
+      if (data?.mode === 'answer' || (data?.answer && !(data.changes || []).length)) {
+        setPreview(data);
+        return;
+      }
       const changes = data.changes || [];
       if (!changes.length) {
         setError('Gemini did not propose a product change. Try a clearer command, e.g. “roasted namkeen out of stock”.');
@@ -139,7 +143,7 @@ export function AiInventoryBar({ onApplied }) {
           <input
             value={command}
             onChange={(e) => setCommand(e.target.value)}
-            placeholder='e.g. roasted namkeen all weights 250g 500g instock kar do aur price 399 se 599 kardo'
+            placeholder='e.g. what’s today’s revenue, or roasted namkeen 250g price 399'
             className="sk-input !rounded-xl !py-3.5 pr-12 w-full bg-white"
           />
           <button
@@ -152,12 +156,17 @@ export function AiInventoryBar({ onApplied }) {
           </button>
         </div>
         <button type="submit" disabled={busy || !command.trim()} className="sk-btn-primary !rounded-xl !px-5 shrink-0">
-          Preview <Send size={14} />
+          {busy ? 'Working…' : 'Preview'} <Send size={14} />
         </button>
       </form>
       {error && (
         <div role="alert" className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[13px] text-red-700">
           {error}
+        </div>
+      )}
+      {preview?.answer && (
+        <div className="mt-3 rounded-xl border border-line bg-white p-4 text-sm leading-relaxed whitespace-pre-wrap">
+          {preview.answer}
         </div>
       )}
       {preview?.changes?.length > 0 && (

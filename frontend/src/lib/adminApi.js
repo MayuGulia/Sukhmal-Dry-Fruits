@@ -16,6 +16,8 @@ import { canonicalStatus, statusSlug } from '@/lib/orderStatus';
 import { applyProductPackPatch, productFromImportRow } from '@/lib/adminProductPatch';
 import { productDocIdFromSlug, slugifyProductName } from '@/lib/adminProductExcel';
 import { adminApi } from '@/lib/adminApiBinding';
+import { analyticsDay } from '@/lib/analyticsEvents';
+import { mapFeedbackDoc } from '@/lib/feedback';
 import {
   collection,
   doc,
@@ -23,6 +25,7 @@ import {
   getDocs,
   limit,
   onSnapshot,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -170,6 +173,82 @@ async function listFirestoreProducts({ activeOnly = false, limit: cap } = {}) {
   } catch {
     return catalogFallback({ activeOnly, limit: cap });
   }
+}
+
+const productCache = { at: 0, rows: null };
+async function listFirestoreProductsCached() {
+  if (productCache.rows && Date.now() - productCache.at < 20000) return productCache.rows;
+  const rows = await listFirestoreProducts({ activeOnly: false });
+  productCache.at = Date.now();
+  productCache.rows = rows;
+  return rows;
+}
+
+const CATEGORY_LABELS = {
+  'dry-fruits': 'Dry Fruits',
+  nuts: 'Nuts',
+  seeds: 'Seeds',
+  dates: 'Dates',
+  berries: 'Berries',
+  'gift-hampers': 'Gift Hampers',
+  all: 'the catalog',
+};
+
+function categorySlugFromCommand(command) {
+  const t = String(command || '').toLowerCase();
+  if (/dry[\s_-]*fruits?/.test(t)) return 'dry-fruits';
+  if (/gift[\s_-]*hampers?|\bhampers?\b/.test(t)) return 'gift-hampers';
+  if (/\bnuts?\b/.test(t)) return 'nuts';
+  if (/\bseeds?\b/.test(t)) return 'seeds';
+  if (/\bdates?\b/.test(t)) return 'dates';
+  if (/\bberr(?:y|ies)\b/.test(t)) return 'berries';
+  if (/all products|whole catalog|entire catalog/.test(t)) return 'all';
+  return '';
+}
+
+function wantsCategoryProductCount(command) {
+  const t = String(command || '').toLowerCase().trim();
+  if (/^(set|update|make)\b/.test(t) || /\b(out of stock|\boos\b|price|₹)\b/.test(t)) return false;
+  if (!categorySlugFromCommand(t)) return false;
+  return /how many|total|kitne|kitna|count|stock|product|categor/.test(t);
+}
+
+function formatCategoryProductCount(catalog, slug) {
+  const rows = (catalog || []).filter((p) => {
+    if (p.isDeleted) return false;
+    if (slug === 'all') return true;
+    return String(p.category || '').toLowerCase().replace(/\s+/g, '-') === slug;
+  });
+  const label = CATEGORY_LABELS[slug] || slug;
+  const names = rows.map((p) => p.name).filter(Boolean).slice(0, 8);
+  if (!rows.length) {
+    return {
+      mode: 'answer',
+      answer: `There are no products in the ${label} category.`,
+      changes: [],
+      toolsUsed: ['getCategorySummary'],
+      hasChanges: false,
+      previewId: null,
+    };
+  }
+  const extra = names.length ? `\nExamples: ${names.join(', ')}.` : '';
+  return {
+    mode: 'answer',
+    answer: `The ${label} category has ${rows.length} products.${extra}`,
+    changes: [],
+    toolsUsed: ['getCategorySummary'],
+    hasChanges: false,
+    previewId: null,
+  };
+}
+
+function skipInventoryCatalog(command) {
+  const text = String(command || '').trim();
+  if (/^(hi|hii+|hello|hey|namaste)\b/i.test(text) && text.length < 24) return true;
+  if (wantsCategoryProductCount(text)) return false;
+  if (/product|categor|stock|dry fruit|nuts?|seeds?|dates?|berries|hamper/i.test(text)) return false;
+  return /^(what|which|how many|show|list|tell me|kaun|kitna)\b/i.test(text)
+    && !/price|₹|set |update /i.test(text);
 }
 
 function productDocForFirestore(p) {
@@ -564,15 +643,39 @@ Object.assign(adminApi, {
   },
   subscribeDashboard: ({ from, to, status }, { onStats, onOrders, onProducts, onError }) => {
     if (!db) {
-      onStats?.({ revenueToday: 0, revenueMonth: 0, totalOrders: 0, pending: 0, inStock: 0, outOfStock: 0 });
+      onStats?.({
+        revenueToday: 0,
+        revenueMonth: 0,
+        totalOrders: 0,
+        pending: 0,
+        inStock: 0,
+        outOfStock: 0,
+        clicksToday: 0,
+        usersMonth: 0,
+        feedbackNew: 0,
+        feedbackTotal: 0,
+      });
       onOrders?.([]);
       onProducts?.(catalogFallback({ limit: 6 }));
       return () => {};
     }
     let orders = [];
     let products = [];
+    let clicksToday = 0;
+    let usersMonth = 0;
+    let sessionsToday = 0;
+    let feedbackNew = 0;
+    let feedbackTotal = 0;
+    const today = analyticsDay();
+    const month = today.slice(0, 7);
     const emit = () => {
-      onStats?.(computeStats(orders, products, from, to));
+      onStats?.({
+        ...computeStats(orders, products, from, to),
+        clicksToday,
+        usersMonth: usersMonth || sessionsToday,
+        feedbackNew,
+        feedbackTotal,
+      });
       onOrders?.(filterAdminOrders(orders, { status, from, to }));
       onProducts?.(products.slice(0, 6));
     };
@@ -585,25 +688,55 @@ Object.assign(adminApi, {
       if (!products.length) products = catalogFallback({ limit: 6 });
       emit();
     }, (err) => { products = catalogFallback({ limit: 6 }); emit(); onError?.(new Error(friendlyFsError(err, 'Could not load live admin data.'))); });
-    return () => { u1(); u2(); };
+    const u3 = onSnapshot(
+      query(collection(db, 'analytics_events'), where('day', '==', today)),
+      (snap) => {
+        clicksToday = snap.docs.filter((d) => d.data()?.event_type === 'page_view').length;
+        sessionsToday = new Set(snap.docs.map((d) => d.data()?.session_id).filter(Boolean)).size;
+        emit();
+      },
+      () => { clicksToday = 0; sessionsToday = 0; emit(); },
+    );
+    const u4 = onSnapshot(doc(db, 'analytics_monthly', month), (snap) => {
+      usersMonth = Number(snap.data()?.uniqueUsers) || 0;
+      emit();
+    }, () => { usersMonth = 0; emit(); });
+    const u5 = onSnapshot(collection(db, 'feedback'), (snap) => {
+      const rows = snap.docs.map((d) => mapFeedbackDoc(d.id, d.data()));
+      feedbackTotal = rows.length;
+      feedbackNew = rows.filter((row) => !row.published).length;
+      emit();
+    }, () => { feedbackNew = 0; feedbackTotal = 0; emit(); });
+    return () => { u1(); u2(); u3(); u4(); u5(); };
   },
   previewInventory: async (command) => {
-    let products = [];
-    try {
-      products = await listFirestoreProducts({ activeOnly: false });
-    } catch {
-      products = [];
+    const text = String(command || '').trim();
+    const looksGreeting = /^(hi|hii+|hello|hey|namaste)\b/i.test(text) && text.length < 24;
+    let catalog = [];
+    if (!skipInventoryCatalog(text)) {
+      let products = [];
+      try {
+        products = await listFirestoreProductsCached();
+      } catch {
+        products = [];
+      }
+      if (!products.length) products = catalogFallback({ activeOnly: false });
+      catalog = compactInventoryCatalog(products);
+      if (!catalog.length && !looksGreeting) {
+        throw new Error('No products available for the assistant. Publish the catalog from Products first.');
+      }
     }
-    if (!products.length) products = catalogFallback({ activeOnly: false });
-    const catalog = compactInventoryCatalog(products);
-    if (!catalog.length) {
-      throw new Error('No products available for the assistant. Publish the catalog from Products first.');
+    if (wantsCategoryProductCount(text)) {
+      return formatCategoryProductCount(catalog, categorySlugFromCommand(text) || 'all');
     }
     try {
-      const r = await aiApi.post('/admin/ai-inventory/preview', { command, catalog });
+      const r = await aiApi.post('/admin/ai-inventory/preview', { command: text, catalog });
       const data = r.data;
       if (!data || typeof data !== 'object' || Array.isArray(data) || data.error) {
         throw new Error(data?.message || data?.error || 'AI preview failed');
+      }
+      if (data.mode === 'answer' || (data.answer && !(data.changes || []).length)) {
+        return { ...data, changes: data.changes || [], previewId: null };
       }
       if (!Array.isArray(data.changes) || !data.changes.length) {
         throw new Error('Gemini did not propose a product change. Try a clearer command.');
@@ -639,6 +772,47 @@ Object.assign(adminApi, {
       await batch.commit();
     }
     return { wrote, existing: 0 };
+  },
+  analyticsDaily: async (from, to) => {
+    requireDb();
+    const snap = await getDocs(collection(db, 'analytics_daily'));
+    const fromD = from ? new Date(from) : new Date(0);
+    const toD = to ? new Date(to) : new Date();
+    return snap.docs
+      .map((d) => ({ id: d.id, day: d.id, ...d.data() }))
+      .filter((row) => {
+        const t = new Date(`${row.day || row.id}T00:00:00`);
+        return t >= fromD && t <= toD;
+      })
+      .sort((a, b) => String(a.day || a.id).localeCompare(String(b.day || b.id)));
+  },
+  analyticsMonthly: async (month) => {
+    requireDb();
+    const id = month || analyticsDay().slice(0, 7);
+    const snap = await getDoc(doc(db, 'analytics_monthly', id));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : { month: id, uniqueUsers: 0, pageViews: 0 };
+  },
+  subscribeFeedback: (onRows, onError) => {
+    if (!db) {
+      onRows([]);
+      return () => {};
+    }
+    return onSnapshot(
+      query(collection(db, 'feedback'), orderBy('createdAt', 'desc'), limit(200)),
+      (snap) => onRows(snap.docs.map((d) => mapFeedbackDoc(d.id, d.data()))),
+      (err) => {
+        onRows([]);
+        onError?.(err);
+      },
+    );
+  },
+  setFeedbackPublished: async (id, published) => {
+    requireDb();
+    if (!id) throw new Error('Missing review.');
+    await updateDoc(doc(db, 'feedback', id), {
+      published: Boolean(published),
+    });
+    return { id, published: Boolean(published) };
   },
   applyInventory: async (previewId, editedChanges) => {
     const runnable = (editedChanges || []).filter((c) => !c.noop);
