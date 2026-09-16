@@ -365,7 +365,7 @@ export function AdminDashboard() {
             return (
               <div key={p.id} className="rounded-xl border border-line bg-white overflow-hidden">
                 <div className="aspect-square bg-cream-200">
-                  <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-contain p-2" />
+                  <img src={p.images?.[0]} alt={p.name} className="w-full h-full object-contain p-2" loading="lazy" decoding="async" />
                 </div>
                 <div className="p-3">
                   <div className="font-display font-bold text-[14px] leading-tight line-clamp-2">

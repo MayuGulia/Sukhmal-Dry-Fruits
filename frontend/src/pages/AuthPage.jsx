@@ -517,8 +517,7 @@ export default function AuthPage({ mode = 'login' }) {
         <img
           src={HERO_IMG}
           alt="Sukhmal Dry Fruits gift hamper"
-          className="absolute inset-0 w-full h-full object-cover scale-105"
-        />
+          className="absolute inset-0 w-full h-full object-cover scale-105" loading="lazy" decoding="async" />
         <div className="absolute inset-0 bg-gradient-to-t from-brand-900 via-brand-900/55 to-brand-900/20" />
         <div className="absolute inset-0 opacity-[0.12]" style={{
           backgroundImage: 'radial-gradient(circle at 20% 20%, #E4C79A 0, transparent 40%), radial-gradient(circle at 80% 60%, #BDAA7E 0, transparent 35%)',

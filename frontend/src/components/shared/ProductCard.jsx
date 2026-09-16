@@ -5,11 +5,12 @@ import { inr } from '@/lib/utils';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { packVariants } from '@/lib/commerceStore';
 import { boxCatalogShot } from '@/lib/liveCatalog';
+import { optimizedSrc } from '@/lib/optimizedSrc';
 import AddToCartButton, { hamperAsProduct, hamperVariant } from '@/components/shared/AddToCartButton';
 
 /** Product catalog cards use the packaged jar/box (gallery image 2). Gift hampers stay on image 1. */
 export function listingImage(p) {
-  return boxCatalogShot(p) || p?.img || p?.image || '';
+  return optimizedSrc(boxCatalogShot(p) || p?.img || p?.image || '');
 }
 
 function usesPackShot(p) {

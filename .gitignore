@@ -19,7 +19,6 @@ dist/
 **/.secret.local
 !.env.example
 !**/.env.example
-!firebase/http-functions/.env.sukhmal-website
 /secrets/
 *.json
 !package.json

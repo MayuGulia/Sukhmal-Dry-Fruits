@@ -17,7 +17,7 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider, FIREBASE_ENABLED } from '@/lib/firebase';
 import { isStrongPassword, passwordPolicyMessage, stripHtml, toE164IndianPhone } from '@/lib/security';
 import { ADMIN_EMAIL, isAdminEmail } from '@/lib/adminEmails';
-import { setAuthToken } from '@/lib/api';
+import { setAuthToken, aiApi } from '@/lib/api';
 import {
   googleSignInPrefersRedirect,
   shouldFallbackGoogleRedirect,
@@ -85,13 +85,16 @@ function mapSession(fbUser, claims = {}) {
 
 async function sessionFromFirebaseUser(fbUser) {
   let claims = {};
+  let idToken = '';
   try {
     const tokenResult = await fbUser.getIdTokenResult();
     claims = tokenResult.claims || {};
-    setAuthToken(tokenResult.token);
+    idToken = tokenResult.token || '';
+    setAuthToken(idToken);
   } catch {
     try {
-      setAuthToken(await fbUser.getIdToken());
+      idToken = await fbUser.getIdToken();
+      setAuthToken(idToken);
     } catch {
       setAuthToken(null);
     }
@@ -100,6 +103,11 @@ async function sessionFromFirebaseUser(fbUser) {
   try {
     localStorage.setItem(LS, JSON.stringify(session));
   } catch {}
+  if (session.customClaims?.admin && idToken) {
+    try {
+      await aiApi.post('/create-admin-session', { idToken });
+    } catch {}
+  }
   return session;
 }
 
@@ -306,6 +314,7 @@ export const AuthProvider = ({ children }) => {
     phoneConfirmation = null;
     resetPhoneRecaptcha();
     setAuthToken(null);
+    try { await aiApi.post('/clear-admin-session'); } catch {}
     setUser(null);
   };
 

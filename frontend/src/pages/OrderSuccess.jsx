@@ -135,8 +135,7 @@ export default function OrderSuccess() {
                     src={heroSrc}
                     alt={heroItem?.name || 'Your order'}
                     className={heroIsHamper ? 'w-full h-full object-cover' : 'w-full h-full object-contain p-4 bg-white'}
-                    data-testid="order-hero-image"
-                  />
+                    data-testid="order-hero-image" loading="lazy" decoding="async" />
                 </div>
                 <div
                   className={`absolute -top-2.5 left-1/2 -translate-x-1/2 w-11 h-11 rounded-full bg-white border-2 border-[var(--sk-gold-400)] text-brand-900 grid place-items-center shadow-sk-md transition-transform duration-500 ${
@@ -157,8 +156,7 @@ export default function OrderSuccess() {
                       <img
                         src={shot.src}
                         alt={shot.alt}
-                        className={shot.hamper ? 'w-full h-full object-cover' : 'w-full h-full object-contain p-1'}
-                      />
+                        className={shot.hamper ? 'w-full h-full object-cover' : 'w-full h-full object-contain p-1'} loading="lazy" decoding="async" />
                     </div>
                   ))}
                 </div>
@@ -259,8 +257,7 @@ export default function OrderSuccess() {
                       alt={it.name}
                       className={`w-12 h-12 rounded-lg object-contain p-1 bg-white border border-line shrink-0 ${
                         isHamperLine(it) ? 'object-cover p-0' : ''
-                      }`}
-                    />
+                      }`} loading="lazy" decoding="async" />
                     <div className="flex-1 min-w-0">
                       <div className="line-clamp-1 text-brand-900 font-medium text-[13px]">{it.name}</div>
                       <div className="text-[11px] text-ink-500">

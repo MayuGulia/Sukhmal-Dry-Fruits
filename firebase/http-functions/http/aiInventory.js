@@ -1,6 +1,7 @@
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { json, readJsonBody, httpsFn, VERTEX_RUNTIME_SA } = require('../_shared/httpFn');
+const { requireAdminSession } = require('../_shared/adminSession');
 
 const GREETING_RE = /^(hi|hii+|hello|hey|namaste|yo|hola|good\s+(morning|afternoon|evening))\b/i;
 const GREETING_ANSWER = 'Hi — I’m Sukhmal’s inventory assistant. I can check today’s revenue, list low-stock products, summarise the cart-to-checkout funnel, and preview stock or price changes before anything is written. Try “what’s today’s revenue”, “which products are low in stock”, or “set almonds 250g price to ₹399”.';
@@ -16,6 +17,8 @@ async function loadInventoryHelper() {
 
 const aiInventory = httpsFn(async (req, res) => {
   if (req.method !== 'POST') return json(res, { error: 'method', message: 'POST required' }, 405);
+  const gate = await requireAdminSession(req, res);
+  if (!gate) return;
 
   const op = String(req.query?.op || '').trim();
   const reqPath = String(req.path || req.originalUrl || req.url || '');

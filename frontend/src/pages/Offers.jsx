@@ -5,7 +5,7 @@ import ProductCard from '@/components/shared/ProductCard';
 import { useProducts, useHampers, ProductSkeleton, HamperSkeleton } from '@/lib/catalog';
 import { PremiumHamperCard } from '@/pages/GiftHampers';
 
-const HERO_IMG = '/brand/offers-deals-banner.jpg';
+const HERO_IMG = '/brand/offers-deals-banner.webp';
 
 const HIGHLIGHTS = [
   { Ic: Percent, t: 'Seasonal markdowns', s: 'Curated cuts on bestsellers every week' },
@@ -28,8 +28,7 @@ export default function Offers() {
           <img
             src={HERO_IMG}
             alt="Sukhmal luxury dry fruit gift hamper with gold ribbon"
-            className="w-full h-full object-cover object-[18%_center] sm:object-[28%_center] lg:object-[78%_center]"
-          />
+            className="w-full h-full object-cover object-[18%_center] sm:object-[28%_center] lg:object-[78%_center]" loading="lazy" decoding="async" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#1a120e]/94 via-[#2a1a12]/88 to-[#1a120e]/78 lg:from-[#1a120e]/90 lg:via-[#2a1a12]/68 lg:to-[#3C2415]/28" />
         </div>
         <div className="relative sk-container py-12 md:py-16">

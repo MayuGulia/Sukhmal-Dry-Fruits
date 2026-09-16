@@ -200,7 +200,7 @@ export function Dashboard() {
             )}
             {recent.map((o) => (
               <div key={o.id} className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 border-b border-line last:border-0 first:pt-0 last:pb-0">
-                <img src={o.image} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                <img src={o.image} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-brand-900 text-sm truncate">{o.title}</div>
                   <div className="text-[12px] text-ink-500 mt-0.5">
@@ -339,7 +339,7 @@ export function MyOrders({ history = false }) {
         )}
         {filtered.map((o) => (
           <div key={o.id} className="sk-card p-4 md:p-5 flex flex-col md:flex-row md:items-center gap-4 !shadow-sm">
-            <img src={o.image} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+            <img src={o.image} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-brand-900 text-sm md:text-[15px] truncate">{o.title}</div>
               <div className="text-[12px] text-ink-500 mt-0.5">
@@ -492,7 +492,7 @@ export function OrderDetail() {
         <div className="space-y-3">
           {(o.lines || []).map((line) => (
             <div key={line.name} className="flex items-center gap-3 pb-3 border-b border-line last:border-0 last:pb-0">
-              <img src={line.image} alt="" className="w-14 h-14 rounded-xl object-cover" />
+              <img src={line.image} alt="" className="w-14 h-14 rounded-xl object-cover" loading="lazy" decoding="async" />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-brand-900 text-sm">{line.name}</div>
                 <div className="text-[12px] text-ink-500">{line.weight} · Qty {line.qty}</div>

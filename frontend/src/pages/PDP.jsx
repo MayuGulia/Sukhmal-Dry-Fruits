@@ -174,7 +174,7 @@ function ProductGallery({ images, name, outOfStock }) {
         >
           {images.map((src, i) => (
             <div key={src + i} className="relative min-w-full snap-center aspect-square">
-              <img src={src} alt={`${name} ${i + 1}`} className="w-full h-full object-contain p-4 bg-cream-200" draggable={false} decoding="async" />
+              <img src={src} alt={`${name} ${i + 1}`} className="w-full h-full object-contain p-4 bg-cream-200" draggable={false} decoding="async" loading={i === 0 ? 'eager' : 'lazy'} />
             </div>
           ))}
         </div>
@@ -215,6 +215,7 @@ function ProductGallery({ images, name, outOfStock }) {
             className="w-full h-full object-contain p-6 cursor-zoom-in transition-transform duration-500 group-hover:scale-[1.02]"
             onClick={() => setLightbox(true)}
             decoding="async"
+            loading="eager"
           />
           {outOfStock && (
             <div className="absolute inset-0 bg-black/50 grid place-items-center">
@@ -251,7 +252,7 @@ function ProductGallery({ images, name, outOfStock }) {
                     i === idx ? 'border-[var(--sk-gold-400)] shadow-sk-sm' : 'border-line hover:border-brand-700'
                   }`}
                 >
-                  <img src={im} alt="" className="w-full h-full object-cover" />
+                  <img src={im} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 </button>
               ))}
             </div>
@@ -816,7 +817,7 @@ export default function PDP() {
                 </ul>
               </div>
               <div className="hidden md:block rounded-2xl overflow-hidden aspect-square bg-cream-200 border border-line">
-                <img src={images[0]} alt="" className="w-full h-full object-cover" />
+                <img src={images[0]} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
             </div>
           )}

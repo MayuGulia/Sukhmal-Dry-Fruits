@@ -84,7 +84,29 @@ service cloud.firestore {
     }
 
     match /bulkInquiries/{inquiryId} {
-      allow create: if request.resource.data.keys().hasAny(['phone', 'contact', 'email', 'companyName', 'name']);
+      allow create: if request.resource.data.keys().hasOnly([
+          'type', 'companyName', 'name', 'contact', 'phone', 'email',
+          'quantity', 'occasion', 'notes', 'budget', 'status', 'createdAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 10
+        && request.resource.data.phone.size() <= 20
+        && request.resource.data.get('email', '') is string
+        && request.resource.data.get('email', '').size() <= 120
+        && request.resource.data.get('companyName', '') is string
+        && request.resource.data.get('companyName', '').size() <= 120
+        && request.resource.data.get('contact', '') is string
+        && request.resource.data.get('contact', '').size() <= 80
+        && request.resource.data.get('notes', '') is string
+        && request.resource.data.get('notes', '').size() <= 500
+        && request.resource.data.get('quantity', '') is string
+        && request.resource.data.get('quantity', '').size() <= 40
+        && request.resource.data.get('occasion', '') is string
+        && request.resource.data.get('occasion', '').size() <= 80
+        && request.resource.data.get('budget', '') is string
+        && request.resource.data.get('budget', '').size() <= 40;
       allow read, update: if isStaff();
       allow delete: if false;
     }

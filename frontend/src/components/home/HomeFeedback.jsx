@@ -128,8 +128,7 @@ export default function HomeFeedback() {
         src={FEEDBACK_SCENE_IMG}
         alt=""
         aria-hidden
-        className="absolute inset-0 w-full h-full object-cover object-center"
-      />
+        className="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" decoding="async" />
       <div className="absolute inset-0 bg-[#FAF7F0]/35" aria-hidden />
 
       <div className="relative sk-container py-14 md:py-16 lg:py-[4.25rem]">

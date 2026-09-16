@@ -161,8 +161,7 @@ export default function Festival() {
                   <img
                     src={f.image}
                     alt={`${f.name} dry fruit gift hampers`}
-                    className={`absolute inset-0 w-full h-full object-cover ${dark ? 'opacity-45 mix-blend-luminosity' : 'opacity-55'}`}
-                  />
+                    className={`absolute inset-0 w-full h-full object-cover ${dark ? 'opacity-45 mix-blend-luminosity' : 'opacity-55'}`} loading="lazy" decoding="async" />
                   <div
                     className={`absolute inset-0 ${
                       dark

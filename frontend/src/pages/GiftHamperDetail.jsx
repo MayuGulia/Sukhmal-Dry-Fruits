@@ -108,7 +108,7 @@ export default function GiftHamperDetail() {
       <div className="sk-container py-6 md:py-10 grid md:grid-cols-2 gap-8 md:gap-12">
         <div>
           <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-cream-200 relative group">
-            <img src={gallery[imgIdx] || gallery[0]} alt={h.name} className="w-full h-full object-cover" />
+            <img src={gallery[imgIdx] || gallery[0]} alt={h.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
             <button
               type="button"
               aria-label="Wishlist"
@@ -152,7 +152,7 @@ export default function GiftHamperDetail() {
                   i === imgIdx ? 'border-brand-900' : 'border-line hover:border-brand-700',
                 )}
               >
-                <img src={im} alt={`${h.name} view ${i + 1}`} className="w-full h-full object-cover" />
+                <img src={im} alt={`${h.name} view ${i + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </button>
             ))}
           </div>
@@ -245,9 +245,9 @@ export default function GiftHamperDetail() {
                 <li key={c.name} className="flex items-center gap-3">
                   <div className="h-11 w-11 rounded-full overflow-hidden bg-cream-300 shrink-0 grid place-items-center ring-1 ring-line">
                     {c.image ? (
-                      <img src={c.image} alt={c.name} className="w-full h-full object-cover" />
+                      <img src={c.image} alt={c.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     ) : (
-                      <img src={h.image} alt={h.name} className="w-full h-full object-cover opacity-90" />
+                      <img src={h.image} alt={h.name} className="w-full h-full object-cover opacity-90" loading="lazy" decoding="async" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 flex items-baseline justify-between gap-2">

@@ -63,8 +63,7 @@ export default function Corporate() {
           <img
             src={CORP_PROMO_IMG || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=1800&auto=format&fit=crop&q=80'}
             alt="Corporate dry fruit gift hampers for teams and clients"
-            className="w-full h-full object-cover"
-          />
+            className="w-full h-full object-cover" loading="lazy" decoding="async" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#1a120e]/92 via-[#2a1a12]/75 to-[#3C2415]/40" />
         </div>
         <div className="relative sk-container py-14 md:py-20 text-white">

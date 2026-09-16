@@ -441,8 +441,7 @@ export default function TrackOrder() {
                 <img
                   src={HERO_IMG}
                   alt="Premium dry fruits gift box"
-                  className="w-full h-full object-cover"
-                />
+                  className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
             </div>
           </div>

@@ -97,7 +97,7 @@ const BrandVideo = forwardRef(function BrandVideo(
   };
 
   if (!src && fallback) {
-    return <img src={fallback} alt="" className={className} />;
+    return <img src={fallback} alt="" className={className} loading="lazy" decoding="async" />;
   }
 
   const video = (
@@ -138,8 +138,7 @@ const BrandVideo = forwardRef(function BrandVideo(
           src={fallback}
           alt=""
           className={className}
-          style={{ display: 'none' }}
-        />
+          style={{ display: 'none' }} loading="lazy" decoding="async" />
       ) : null}
       {video}
       {showToggle ? (

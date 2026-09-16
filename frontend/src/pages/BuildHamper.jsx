@@ -167,25 +167,21 @@ function LifestyleChrome({ variant = 'budget' }) {
         alt=""
         className={`absolute object-cover rounded-2xl shadow-lg opacity-90 ${
           variant === 'budget' ? '-left-4 top-10 w-32 md:w-44 rotate-[-8deg] hidden sm:block' : '-left-6 top-20 w-28 md:w-40 rotate-[-6deg] hidden md:block'
-        }`}
-      />
+        }`} loading="lazy" decoding="async" />
       <img
         src={LIFE_RIBBON}
         alt=""
-        className="absolute -left-2 bottom-24 w-24 md:w-32 opacity-80 hidden lg:block rotate-[12deg] rounded-xl object-cover aspect-square"
-      />
+        className="absolute -left-2 bottom-24 w-24 md:w-32 opacity-80 hidden lg:block rotate-[12deg] rounded-xl object-cover aspect-square" loading="lazy" decoding="async" />
       <img
         src={LIFE_BOX}
         alt=""
         className={`absolute object-cover rounded-xl shadow-xl opacity-95 ${
           variant === 'budget' ? '-right-2 top-4 w-28 md:w-40 rotate-[6deg] hidden sm:block' : '-right-4 top-8 w-32 md:w-44 rotate-[4deg] hidden md:block'
-        }`}
-      />
+        }`} loading="lazy" decoding="async" />
       <img
         src={LIFE_TRAY}
         alt=""
-        className="absolute -right-4 bottom-6 w-36 md:w-48 rounded-full opacity-90 shadow-lg object-cover aspect-square border-4 border-white/70 hidden sm:block"
-      />
+        className="absolute -right-4 bottom-6 w-36 md:w-48 rounded-full opacity-90 shadow-lg object-cover aspect-square border-4 border-white/70 hidden sm:block" loading="lazy" decoding="async" />
       <div className="absolute left-1/4 bottom-10 w-28 h-28 rounded-full bg-[var(--sk-gold-300)]/30 blur-3xl" />
     </div>
   );
@@ -380,7 +376,7 @@ function HamperSidebar({
             {chosen.map((p) => (
               <div key={p.id} className="flex items-start gap-2.5">
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shrink-0">
-                  <img src={p.img} alt="" className="w-full h-full object-contain" />
+                  <img src={p.img} alt="" className="w-full h-full object-contain" loading="lazy" decoding="async" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] text-[var(--sk-espresso)] font-semibold truncate leading-tight">{p.name}</div>
@@ -944,7 +940,7 @@ export default function BuildHamper() {
                       }`}
                     >
                       <div className="relative aspect-[4/3] overflow-hidden bg-[var(--sk-cream-200)]">
-                        <img src={s.img} alt={s.name} className="w-full h-full object-cover" />
+                        <img src={s.img} alt={s.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                         <span className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 grid place-items-center text-[var(--sk-ink-400)]">
                           <Heart size={14} />
                         </span>
@@ -1347,8 +1343,7 @@ export default function BuildHamper() {
                             <img
                               src={previewSlides[previewThumb].url}
                               alt={previewSlides[previewThumb].label || styleObj.name}
-                              className="w-full h-full object-cover"
-                            />
+                              className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           ) : (
                             <div className="w-full h-full grid place-items-center text-sm text-[var(--sk-ink-500)] p-6 text-center">
                               Choose a hamper and products, then generate the preview.
@@ -1380,7 +1375,7 @@ export default function BuildHamper() {
                               }`}
                               title={slide.label}
                             >
-                              <img src={slide.url} alt={slide.label || ''} className="w-full h-full object-cover" />
+                              <img src={slide.url} alt={slide.label || ''} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                             </button>
                           ))}
                           <button
@@ -1526,7 +1521,7 @@ export default function BuildHamper() {
                     Your {styleObj.name.toLowerCase()} with {itemCount} item{itemCount === 1 ? '' : 's'} ({inr(cartTotal)}) is ready.
                   </p>
                   <div className="mt-4 inline-flex items-center gap-2 text-sm text-[var(--sk-ink-600)] bg-white border border-[var(--sk-line)] rounded-xl px-4 py-2">
-                    <img src={styleObj.img} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                    <img src={styleObj.img} alt="" className="w-10 h-10 rounded-lg object-cover" loading="lazy" decoding="async" />
                     <span className="font-semibold text-[var(--sk-brown-900)]">{styleObj.name}</span>
                   </div>
                   <div className="mt-8 flex flex-wrap gap-3 justify-center">

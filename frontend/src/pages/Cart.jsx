@@ -71,7 +71,7 @@ export default function Cart() {
                   >
                     <div className="flex items-start gap-3.5">
                       <div className="w-[84px] h-[84px] rounded-xl overflow-hidden bg-white shrink-0 border border-line grid place-items-center">
-                        <img src={orderItemImage(it) || it.image} alt={it.name} className="w-full h-full object-contain p-1.5" />
+                        <img src={orderItemImage(it) || it.image} alt={it.name} className="w-full h-full object-contain p-1.5" loading="lazy" decoding="async" />
                       </div>
                       <div className="min-w-0">
                         <div className="font-display font-semibold text-brand-900 leading-snug text-[15px] md:text-base">

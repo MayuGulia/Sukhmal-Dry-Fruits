@@ -273,8 +273,7 @@ export default function Wedding() {
               <img
                 src={BULK_GIFT_IMG}
                 alt="Premium wedding gift box"
-                className="w-full h-full object-cover"
-              />
+                className="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
           </div>
         </div>
@@ -324,7 +323,7 @@ export default function Wedding() {
                 rel="noreferrer"
                 className="shrink-0 w-44 h-44 md:w-52 md:h-52 rounded-xl overflow-hidden shadow-sk-sm"
               >
-                <img src={src} alt="Sukhmal wedding gift hamper" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                <img src={src} alt="Sukhmal wedding gift hamper" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
               </a>
             ))}
             <a

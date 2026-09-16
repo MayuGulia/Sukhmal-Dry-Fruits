@@ -7,16 +7,16 @@ import {
   Search, Sparkles, Box, ClipboardCheck, ArrowRight,
 } from 'lucide-react';
 
-const HERO_IMG = '/brand/about-hero-family.png';
-const STORE_IMG = '/brand/sukhmal.png';
-const QUOTE_IMG = '/brand/about-quote-nuts.png';
-const CTA_IMG = '/brand/about-thankyou-nuts.png';
+const HERO_IMG = '/brand/about-hero-family.webp';
+const STORE_IMG = '/brand/sukhmal.webp';
+const QUOTE_IMG = '/brand/about-quote-nuts.webp';
+const CTA_IMG = '/brand/about-thankyou-nuts.webp';
 
 const PROCESS_IMGS = [
-  '/brand/about-process-sorting.png',
-  '/brand/about-process-hands.png',
-  '/brand/about-process-packaging.png',
-  '/brand/about-process-quality.png',
+  '/brand/about-process-sorting.webp',
+  '/brand/about-process-hands.webp',
+  '/brand/about-process-packaging.webp',
+  '/brand/about-process-quality.webp',
 ];
 
 const TIMELINE = [
@@ -84,6 +84,7 @@ export default function About() {
               src={HERO_IMG}
               alt="Sukhmal family with gift hampers"
               className="w-full h-[280px] md:h-[420px] object-cover rounded-2xl shadow-[var(--sk-shadow-lg)] border border-line"
+              fetchPriority="high"
             />
           </div>
         </div>
@@ -97,6 +98,8 @@ export default function About() {
               src={STORE_IMG}
               alt="Sukhmal Dry Fruits Korner store front, Surajmal Vihar, East Delhi"
               className="w-full h-full min-h-[320px] object-cover rounded-2xl border border-line shadow-[var(--sk-shadow-md)]"
+              loading="lazy"
+              decoding="async"
             />
           </div>
           <div className="lg:col-span-5 flex flex-col justify-center">
@@ -119,7 +122,7 @@ export default function About() {
                   Our mission is to deliver purity, quality and smiles in every pack we send.
                 </p>
               </div>
-              <img src={QUOTE_IMG} alt="Premium Sukhmal nuts in a bowl" className="mt-6 w-full h-28 object-cover rounded-xl opacity-90" />
+              <img src={QUOTE_IMG} alt="Premium Sukhmal nuts in a bowl" className="mt-6 w-full h-28 object-cover rounded-xl opacity-90" loading="lazy" decoding="async" />
             </div>
           </div>
         </div>
@@ -221,7 +224,7 @@ export default function About() {
       {/* CLOSING CTA */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img src={CTA_IMG} alt="Thank-you dry fruit assortment from Sukhmal" className="w-full h-full object-cover" />
+          <img src={CTA_IMG} alt="Thank-you dry fruit assortment from Sukhmal" className="w-full h-full object-cover" loading="lazy" decoding="async" />
           <div className="absolute inset-0 bg-brand-900/85" />
         </div>
         <div className="relative sk-container py-16 md:py-20 text-center text-white">

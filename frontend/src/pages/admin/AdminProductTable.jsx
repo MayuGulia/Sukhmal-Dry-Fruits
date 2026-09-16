@@ -38,7 +38,7 @@ function FileThumb({ file, onRemove }) {
   }, [file]);
   return (
     <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-line bg-cream-200 shrink-0">
-      {src ? <img src={src} alt="" className="w-full h-full object-cover" /> : null}
+      {src ? <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" /> : null}
       <button
         type="button"
         className="absolute top-1 right-1 bg-white/95 rounded-full p-0.5 shadow-sk-sm"
@@ -492,7 +492,7 @@ export function AdminProductTable() {
                           className="relative w-11 h-11 rounded-lg overflow-hidden border border-line bg-cream-200 shrink-0"
                           title="Add or replace images"
                         >
-                          <img src={src} alt="" className="w-full h-full object-cover" />
+                          <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           {uploadingId === p.id && (
                             <span className="absolute inset-0 bg-black/40 text-white text-[10px] grid place-items-center">…</span>
                           )}

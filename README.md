@@ -58,5 +58,3 @@ If that variable is empty, the website uses the built-in catalog and still runs.
 3. Visiting `/admin` without the admin custom claim silently returns home.
 
 Local demo stores orders, stock, and AI inventory diffs in the browser. Connecting Firebase, Razorpay, and Gemini (server env only) turns on live payments, Firestore, and the three AI APIs. Empty-hamper photos are still needed before hamper image compositing looks like the real box.
-
-One-time Firebase admin seed: `node scripts/seed-admin.mjs` — then delete the script and service-account JSON.

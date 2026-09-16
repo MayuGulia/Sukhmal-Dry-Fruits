@@ -3,7 +3,7 @@
  */
 
 /** Full-bleed walnut gift hamper with gold bow — native 1535×1024 (3:2). */
-export const HERO_IMG = '/brand/hero-luxury-hamper-v6.png';
+export const HERO_IMG = '/brand/hero-luxury-hamper-v6.webp';
 export const HERO_STILL_SRC = HERO_IMG;
 export const HERO_VIDEO_SRC = '/brand/hero-home.mp4';
 export const HERO_VIDEO_LAYOUT = 'cover';
@@ -17,11 +17,11 @@ export const WEDDING_VIDEO_POSITION = 'center center';
 /** Optional YouTube/Vimeo embed URL — used in the lightbox if set. */
 export const HERO_VIDEO_EMBED = '';
 
-export const BYOH_BANNER_IMG = '/brand/gift-special-banner.jpg';
-export const FEEDBACK_SCENE_IMG = '/brand/feedback-scene-bg.jpg';
-export const WEDDING_PROMO_IMG = '/brand/wedding-gifts-banner.png';
-export const CORP_PROMO_IMG = '/brand/corporate-gifts-banner.png';
-export const AI_PREVIEW_IMG = '/brand/hero-luxury-hamper-v2.png';
+export const BYOH_BANNER_IMG = '/brand/gift-special-banner.webp';
+export const FEEDBACK_SCENE_IMG = '/brand/feedback-scene-bg.webp';
+export const WEDDING_PROMO_IMG = '/brand/wedding-gifts-banner.webp';
+export const CORP_PROMO_IMG = '/brand/corporate-gifts-banner.webp';
+export const AI_PREVIEW_IMG = '/brand/hero-luxury-hamper-v2.webp';
 
 /** Square category cards — product photography on beige bases */
 export const SHOP_CATEGORY_TILES = [

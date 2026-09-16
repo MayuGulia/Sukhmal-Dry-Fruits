@@ -10,6 +10,7 @@ import { estimateDeliveryByPincode } from '@/lib/deliveryEstimate';
 import { trackEvent } from '@/lib/analyticsEvents';
 import { useUserProfile } from '@/hooks/useAccountData';
 import { api } from '@/lib/api';
+import { loadRazorpay } from '@/lib/razorpay';
 import {
   Lock, MapPin, CalendarDays, Gift, CreditCard, Landmark, Wallet, Banknote,
   ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Plus, Truck,
@@ -71,7 +72,7 @@ function OrderSummaryBody({ items, totals, count, estimate }) {
             key={it.key}
             className={`flex items-start gap-2.5 py-3 ${idx > 0 ? 'border-t border-line' : ''}`}
           >
-            <img src={orderItemImage(it) || it.image} className={`w-12 h-12 rounded-lg object-contain p-1 bg-white border border-line shrink-0 ${isHamperLine(it) ? '!object-cover !p-0' : ''}`} alt="" />
+            <img src={orderItemImage(it) || it.image} className={`w-12 h-12 rounded-lg object-contain p-1 bg-white border border-line shrink-0 ${isHamperLine(it) ? '!object-cover !p-0' : ''}`} alt="" loading="lazy" decoding="async" />
             <div className="flex-1 min-w-0">
               <div className="line-clamp-1 font-display font-semibold text-brand-900 text-[13px]">{it.name}</div>
               {it.variant && <div className="text-[11px] text-ink-500 mt-0.5">{it.variant}</div>}
@@ -278,10 +279,11 @@ export default function Checkout() {
             paymentMethod: 'razorpay',
             items: items.map((it) => ({ id: it.id, slug: it.slug, qty: it.qty, variant: it.variant })),
           });
-          if (r.data?.razorpayOrderId && window.Razorpay && (r.data.keyId || process.env.REACT_APP_RAZORPAY_KEY_ID)) {
+          if (r.data?.razorpayOrderId && (r.data.keyId || process.env.REACT_APP_RAZORPAY_KEY_ID)) {
             await attachRazorpayOrderId(orderId, r.data.razorpayOrderId);
+            const Razorpay = await loadRazorpay();
             await new Promise((resolve, reject) => {
-              const rzp = new window.Razorpay({
+              const rzp = new Razorpay({
                 key: r.data.keyId || process.env.REACT_APP_RAZORPAY_KEY_ID,
                 amount: r.data.amount,
                 currency: r.data.currency || 'INR',

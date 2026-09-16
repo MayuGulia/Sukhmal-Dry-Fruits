@@ -19,7 +19,7 @@ const STORE_GALLERY = [
   { src: STORE_PHOTOS[1], alt: 'Sukhmal Dry Fruits Korner store front, Surajmal Vihar, East Delhi' },
   { src: STORE_PHOTOS[2], alt: 'Sukhmal Dry Fruits Korner store front, Surajmal Vihar, East Delhi' },
 ];
-const HERO_IMG = '/brand/contact-hero-hamper.png';
+const HERO_IMG = '/brand/contact-hero-hamper.webp';
 const BULK_IMG = '/brand/contact-bulk-hamper.png';
 
 const CHANNELS = [
@@ -172,8 +172,7 @@ export default function Contact() {
             <img
               src={HERO_IMG}
               alt="Sukhmal luxury gift hamper"
-              className="w-full h-[260px] md:h-[360px] object-cover rounded-2xl border border-line shadow-[var(--sk-shadow-lg)]"
-            />
+              className="w-full h-[260px] md:h-[360px] object-cover rounded-2xl border border-line shadow-[var(--sk-shadow-lg)]" loading="lazy" decoding="async" />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="h-14 w-14 rounded-full bg-white/90 text-brand-900 grid place-items-center shadow-[var(--sk-shadow-md)]">
                 <Play size={22} fill="currentColor" className="ml-0.5" />
@@ -329,8 +328,7 @@ export default function Contact() {
           <img
             src={BULK_IMG}
             alt="Bulk gift packaging"
-            className="w-full h-[260px] md:h-[340px] object-cover rounded-2xl border border-line shadow-[var(--sk-shadow-md)]"
-          />
+            className="w-full h-[260px] md:h-[340px] object-cover rounded-2xl border border-line shadow-[var(--sk-shadow-md)]" loading="lazy" decoding="async" />
         </div>
       </section>
 

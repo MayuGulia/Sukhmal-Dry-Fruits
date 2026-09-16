@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { replaceProductsFromRemote, subscribeCatalog, getLiveProducts } from '@/lib/commerceStore';
+import { optimizedSrc } from '@/lib/optimizedSrc';
 import { PRODUCTS as MOCK_CATALOG_PRODUCTS } from '@/data/mockCatalog';
 
 export function hydrateStorefrontProduct(id, data) {
@@ -181,8 +182,8 @@ const PACK_SHOT_PNG = new Set([
 const GALLERY_VER = 'v=pack4';
 
 function gallerySlotSrc(slug, n) {
-  if (n === 2 && PACK_SHOT_PNG.has(slug)) return `/products/${slug}-2.png?${GALLERY_VER}`;
-  return `/products/${slug}-${n}.jpg?v=3`;
+  if (n === 2 && PACK_SHOT_PNG.has(slug)) return `/products/${slug}-2.webp?${GALLERY_VER}`;
+  return `/products/${slug}-${n}.webp?v=3`;
 }
 
 /** Prefer Storage/remote uploads so admin-added photos show on the shop. */
@@ -195,9 +196,9 @@ export function productGalleryImages(p) {
   if (slug && !/^p_/i.test(slug) && !listed.length) {
     return [1, 2, 3, 4, 5].map((n) => gallerySlotSrc(slug, n));
   }
-  if (listed.length) return listed.slice(0, 5);
-  if (p?.img) return [p.img];
-  if (p?.image) return [p.image];
+  if (listed.length) return listed.slice(0, 5).map(optimizedSrc);
+  if (p?.img) return [optimizedSrc(p.img)];
+  if (p?.image) return [optimizedSrc(p.image)];
   return [];
 }
 

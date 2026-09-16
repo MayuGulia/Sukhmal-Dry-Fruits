@@ -176,7 +176,7 @@ export default function GiftAdvisor() {
                   <div className="mt-2 space-y-2 text-left">
                     {m.products.map((p) => (
                       <div key={p.id || p.slug} className="flex gap-2 items-center rounded-xl border border-line bg-white p-2">
-                        <img src={p.images?.[0] || p.image} alt="" className="w-12 h-12 object-cover rounded-lg bg-cream-200" />
+                        <img src={p.images?.[0] || p.image} alt="" className="w-12 h-12 object-cover rounded-lg bg-cream-200" loading="lazy" decoding="async" />
                         <div className="flex-1 min-w-0">
                           <Link to={productHref(p)} className="text-[13px] font-semibold truncate block hover:underline">
                             {p.name}

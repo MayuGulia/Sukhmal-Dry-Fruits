@@ -11,6 +11,7 @@ import { useProducts, ProductSkeleton } from '@/lib/catalog';
 import { TESTIMONIALS } from '@/data/mockContent';
 import { subscribePublishedFeedback } from '@/lib/feedback';
 import { aiApi } from '@/lib/api';
+import { optimizedSrc } from '@/lib/optimizedSrc';
 import {
   SHOP_CATEGORY_TILES,
   FESTIVAL_TILES,
@@ -167,6 +168,7 @@ export default function Home() {
             src={HERO_IMG}
             alt="Sukhmal luxury dry fruit gift hamper"
             className="absolute inset-0 w-full h-full object-cover object-[72%_46%]"
+            fetchPriority="high"
           />
           <div className="sk-hero-shade" aria-hidden />
         </div>
@@ -198,7 +200,7 @@ export default function Home() {
               >
                 <div className="aspect-square rounded-[18px] overflow-hidden bg-[#F4EDE3] ring-1 ring-[var(--sk-line)] shadow-sk-sm group-hover:shadow-sk-md transition-shadow">
                   <img
-                    src={c.image}
+                    src={optimizedSrc(c.image)}
                     alt={`${c.name} — ${c.sub}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
@@ -230,7 +232,7 @@ export default function Home() {
               >
                 <div className="rounded-[18px] overflow-hidden bg-[#F4EDE3] shadow-sk-sm aspect-square ring-1 ring-[var(--sk-line)]">
                   <img
-                    src={f.image}
+                    src={optimizedSrc(f.image)}
                     alt={f.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
@@ -315,6 +317,8 @@ export default function Home() {
                     src={aiPreview || AI_PREVIEW_IMG}
                     alt="AI Generated Preview"
                     className={`w-full aspect-square object-cover ${aiBusy ? 'opacity-40' : ''}`}
+                    loading="lazy"
+                    decoding="async"
                   />
                   <div className="absolute bottom-0 inset-x-0 bg-[var(--sk-espresso)]/85 text-white text-[10px] tracking-wide uppercase text-center py-1.5 font-semibold">
                     AI Generated Preview
@@ -469,7 +473,7 @@ export default function Home() {
                   rel="noreferrer"
                   className="relative aspect-square overflow-hidden rounded-lg block bg-[#F4EDE3] group"
                 >
-                  <img src={im} alt="Sukhmal Dry Fruits Instagram pack shot" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                  <img src={optimizedSrc(im)} alt="Sukhmal Dry Fruits Instagram pack shot" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                   {isLast && (
                     <div className="absolute inset-0 bg-[var(--sk-espresso)]/70 grid place-items-center text-white">
                       <div className="text-center">

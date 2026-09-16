@@ -13,6 +13,7 @@ export const api = axios.create({
 export const aiApi = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 export const setAuthToken = (token) => {
